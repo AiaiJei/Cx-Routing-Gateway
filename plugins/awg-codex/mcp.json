@@ -1,0 +1,19 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "awg_repo": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "${PLUGIN_ROOT}/mcp/repo_map_server.py"
+      ],
+      "cwd": "${PLUGIN_ROOT}",
+      "env": {
+        "AWG_PROJECT_ROOT": "C:\\Users\\20142\\Desktop\\Cx-Routing Gateway",
+        "AWG_BACKEND_PATH": "C:\\Users\\20142\\Desktop\\Agent-Workspace-Governance\\.tmp\\aider-runtime\\Lib\\site-packages",
+        "AWG_BACKEND_SHA256": "f96d1bf7bb5ea803853f85d2348f900dec2a0118e1446e4f5ecc3a1f87905281",
+        "PYTHONDONTWRITEBYTECODE": "1"
+      }
+    }
+  }
+}

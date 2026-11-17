@@ -1,0 +1,17 @@
+{
+  "name": "awg-local",
+  "plugins": [
+    {
+      "name": "awg-governance",
+      "source": {
+        "source": "local",
+        "path": "./plugins/awg-codex"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

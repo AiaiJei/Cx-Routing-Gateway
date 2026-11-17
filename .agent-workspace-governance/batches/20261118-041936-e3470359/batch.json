@@ -1,0 +1,56 @@
+{
+  "batchId": "20261118-041936-e3470359",
+  "packageVersion": "0.4.1",
+  "targetRepo": "C:\\Users\\20142\\Desktop\\Cx-Routing Gateway\\.tmp-awg-source\\.tmp\\worktrees\\awg-mcp-hardening",
+  "records": [
+    {
+      "action": "Replaced",
+      "target": ".codex/config.toml",
+      "resultHash": "79f0a5ee397975814f2b6c465278f65a86734a99eda2b8b3d6a72ff2c6ad0947",
+      "previousHash": "7a6b9bde6fb56eec6213f2402b511b2897813b2b45f88605fd4d6b6c2f9223b9",
+      "preimage": "preimage/.codex/config.toml"
+    },
+    {
+      "action": "Replaced",
+      "target": ".codex/repo-map.json",
+      "resultHash": "50d8c209bb6f198cfaf4a30fe00c1b3ddbcb2a890fb851e110ab7e93ebf71e34",
+      "previousHash": "d9a5e4edc33077de096e7ccf480ddaf11b6b3b925c8b466b8af22fe161c96afe",
+      "preimage": "preimage/.codex/repo-map.json"
+    },
+    {
+      "action": "Replaced",
+      "target": "plugins/awg-codex/mcp.json",
+      "resultHash": "4f92df09cb8947efa627954d58f84051e8b5077865f1c15b5effbc37eb609a95",
+      "previousHash": "9e7e468e570d51217fa24a1706f8997226d0096fe43f37d912fd013f7c8b7198",
+      "preimage": "preimage/plugins/awg-codex/mcp.json"
+    },
+    {
+      "action": "Replaced",
+      "target": "plugins/awg-codex/mcp/repo_map_server.py",
+      "resultHash": "d8062d96e1a93796a0bda54fd8c914b332689afc16ee1ca3a30bfd6c29c31420",
+      "previousHash": "411060ad75487ff6372d7aa69b6699b0bcb42d61826d4a8d1b8df4a394526e22",
+      "preimage": "preimage/plugins/awg-codex/mcp/repo_map_server.py"
+    },
+    {
+      "action": "Replaced",
+      "target": "plugins/awg-codex/mcp/repo_map/backend.py",
+      "resultHash": "a30884f74352ff945dc811705f7aa175863c115504aa2821406de04856230c72",
+      "previousHash": "507241879101160c629d394c1f62dc9b4f00c8b2dc9f6ca3310427c69444921c",
+      "preimage": "preimage/plugins/awg-codex/mcp/repo_map/backend.py"
+    },
+    {
+      "action": "Replaced",
+      "target": "plugins/awg-codex/mcp/repo_map/plugin_service.py",
+      "resultHash": "564f80d858b5d5485e394c0f3af5226dede093fbaedcf274b5edf8458690b669",
+      "previousHash": "a4023b207f134e79a2db02ab2185c4dbece637d99cb52a7bc154007eae045bad",
+      "preimage": "preimage/plugins/awg-codex/mcp/repo_map/plugin_service.py"
+    },
+    {
+      "action": "Replaced",
+      "target": "plugins/awg-codex/mcp/repo_map/service.py",
+      "resultHash": "b469064536a0a0c4738296dc53d198c5d642f101f46f833cac28164c1cbe84b3",
+      "previousHash": "306e4b127270c501af6decc51e4fcb5b8d192155c81ffc2c2e1c40ddf29bfee5",
+      "preimage": "preimage/plugins/awg-codex/mcp/repo_map/service.py"
+    }
+  ]
+}

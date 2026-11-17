@@ -1,0 +1,32 @@
+
+
+[agents]
+enabled = true
+max_concurrent_threads_per_session = 6
+
+[agents.awg-auditor]
+config_file = "./agents/awg-auditor.toml"
+[agents.awg-explorer]
+config_file = "./agents/awg-explorer.toml"
+[agents.awg-frontend-design]
+config_file = "./agents/awg-frontend-design.toml"
+[agents.awg-frontend-engineer]
+config_file = "./agents/awg-frontend-engineer.toml"
+[agents.awg-implementer]
+config_file = "./agents/awg-implementer.toml"
+[agents.awg-planner]
+config_file = "./agents/awg-planner.toml"
+[agents.awg-reviewer]
+config_file = "./agents/awg-reviewer.toml"
+[agents.awg-specialist]
+config_file = "./agents/awg-specialist.toml"
+[agents.awg-verifier]
+config_file = "./agents/awg-verifier.toml"
+
+[plugins."awg-governance@awg-local"]
+enabled = true
+
+[plugins."awg-governance@awg-local".mcp_servers.awg_repo]
+enabled = true
+default_tools_approval_mode = "prompt"
+enabled_tools = ["repo_map_status", "repo_map_get", "repo_map_refresh", "repo_docs_search", "repo_docs_read", "repo_context_check"]

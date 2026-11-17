@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "project_id": "Cx-Routing Gateway",
+  "repo_id": "awg-e4afee94a79c14e3",
+  "task_id": "AWG-MCP-BOUNDARY-2026-11-18",
+  "contract_revision": 4,
+  "state": "implementing",
+  "scope_paths": [
+    ".codex/awg-task.json",
+    ".codex/config.toml",
+    ".codex/repo-map.json",
+    ".gitignore",
+    "README.md",
+    "AGENTS.md",
+    ".agents/skills/awg-repo-map/SKILL.md",
+    "plugins/awg-codex/mcp.json",
+    "plugins/awg-codex/mcp/repo_map_server.py",
+    "plugins/awg-codex/mcp/repo_map/plugin_service.py",
+    "plugins/awg-codex/mcp/repo_map/backend.py",
+    ".agent-workspace-governance/batches",
+    ".agent-workspace-governance/records",
+    "tests/codex_host_tests.py",
+    "tests/repo_map_plugin_tests.py",
+    "tests/test_awg_mcp_project_binding.py"
+  ],
+  "session_hashes": [],
+  "acceptance_result": "NOT_RUN"
+}

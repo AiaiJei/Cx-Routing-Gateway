@@ -1,0 +1,35 @@
+{
+  "batchId": "20261118-052524-d3d02697",
+  "packageVersion": "0.4.1",
+  "targetRepo": "C:\\Users\\20142\\Desktop\\Cx-Routing Gateway\\.tmp-awg-source\\.tmp\\worktrees\\awg-mcp-hardening",
+  "records": [
+    {
+      "action": "Replaced",
+      "target": "plugins/awg-codex/mcp/repo_map_server.py",
+      "resultHash": "753618c671f2a2eeb776aadcca07b6e9d6abd4d28498a4b856f09f4887b91f0a",
+      "previousHash": "5c8e20684de1b4a55a3dcb8e559c7daf90041425c9feaab1d10c77aecdcc8e73",
+      "preimage": "preimage/plugins/awg-codex/mcp/repo_map_server.py"
+    },
+    {
+      "action": "Replaced",
+      "target": "plugins/awg-codex/mcp/repo_map/plugin_service.py",
+      "resultHash": "ca4865babefa37d3f1d94f466de135b03456bca4f2b209a68834f108537004b8",
+      "previousHash": "564f80d858b5d5485e394c0f3af5226dede093fbaedcf274b5edf8458690b669",
+      "preimage": "preimage/plugins/awg-codex/mcp/repo_map/plugin_service.py"
+    },
+    {
+      "action": "Replaced",
+      "target": "plugins/awg-codex/mcp/repo_map/service.py",
+      "resultHash": "52e70501f5bd2534dc7e906fdbbd913a7dfd2d2e19d69c3af6cce88b52091499",
+      "previousHash": "b469064536a0a0c4738296dc53d198c5d642f101f46f833cac28164c1cbe84b3",
+      "preimage": "preimage/plugins/awg-codex/mcp/repo_map/service.py"
+    },
+    {
+      "action": "Replaced",
+      "target": "plugins/awg-codex/skills/awg-repo-map/SKILL.md",
+      "resultHash": "03e822b245145a31d9b5c2273c4ca2faa37b835b0f90fd8cb91a638e3b314cc1",
+      "previousHash": "f784cca8a678a8d515fd30526741b6716b43b4e7bbc9cbbde9263f267b29bbe1",
+      "preimage": "preimage/plugins/awg-codex/skills/awg-repo-map/SKILL.md"
+    }
+  ]
+}
