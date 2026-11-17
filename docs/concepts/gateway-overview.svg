@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="960" viewBox="0 0 1440 960" role="img" aria-labelledby="title desc">
+<title id="title">Cx Routing Gateway Desktop 概念图</title><desc id="desc">浅色控制台草图：左侧模块导航，中央请求量与模型路由表，右侧上游详情和连通状态。</desc>
+<defs><style>
+*{box-sizing:border-box} .bg{fill:#f5f7f8}.frame{fill:#f8fafb}.sheet{fill:#fff;stroke:#e4e8eb;stroke-width:1}.ink{fill:#18212b}.muted{fill:#73808c}.faint{fill:#9ba5af}.line{stroke:#e8ecef;stroke-width:1}.accent{fill:#2563a6}.accentbg{fill:#edf4fb}.green{fill:#287b54}.greenbg{fill:#edf7f1}.orange{fill:#a85f1e}.orangebg{fill:#fbf3e9}.red{fill:#a63d3d}.redbg{fill:#fbefef}.nav{font:14px 'Segoe UI',Arial,sans-serif}.body{font:13px 'Segoe UI',Arial,sans-serif}.small{font:11px 'Segoe UI',Arial,sans-serif}.label{font:12px 'Segoe UI',Arial,sans-serif}.head{font:600 22px 'Segoe UI',Arial,sans-serif}.title{font:600 14px 'Segoe UI',Arial,sans-serif}.num{font:600 23px 'Segoe UI',Arial,sans-serif}.mono{font:12px Consolas,'Courier New',monospace}
+</style></defs>
+<rect width="1440" height="960" class="bg"/>
+<!-- app chrome -->
+<rect x="0" y="0" width="1440" height="58" class="frame"/>
+<path d="M0 58H1440" stroke="#e7ebee"/>
+<rect x="22" y="17" width="24" height="24" rx="7" fill="#263442"/><path d="M28 29h12M34 23v12" stroke="#fff" stroke-width="1.5"/>
+<text x="56" y="34" class="title ink">Cx Gateway</text><text x="182" y="34" class="small muted">/ 本机实例</text>
+<rect x="512" y="12" width="414" height="34" rx="8" fill="#fff" stroke="#e1e6e9"/><circle cx="529" cy="28" r="5" fill="none" stroke="#8a949d"/><path d="m533 32 4 4" stroke="#8a949d"/><text x="545" y="32" class="small faint">搜索模型、上游、请求 ID</text><text x="895" y="32" class="small faint">Ctrl K</text>
+<circle cx="1377" cy="29" r="14" fill="#e9edf0"/><text x="1372" y="33" class="small ink">林</text><text x="1300" y="33" class="small muted">本机用户</text>
+<!-- sidebar -->
+<rect x="0" y="58" width="238" height="902" class="frame"/>
+<text x="24" y="91" class="small faint">工作区</text>
+<rect x="12" y="106" width="214" height="38" rx="7" fill="#e9edf0"/><rect x="26" y="118" width="14" height="13" rx="2" fill="none" stroke="#344452"/><path d="M29 128l3-4 2 2 3-5" fill="none" stroke="#344452"/><text x="51" y="130" class="nav ink" font-weight="600">总览</text>
+<text x="27" y="178" class="nav muted">⇄</text><text x="51" y="178" class="nav muted">上游服务</text><text x="27" y="218" class="nav muted">⇢</text><text x="51" y="218" class="nav muted">模型路由</text><text x="27" y="258" class="nav muted">≡</text><text x="51" y="258" class="nav muted">调用日志</text><text x="27" y="298" class="nav muted">⌑</text><text x="51" y="298" class="nav muted">接入凭证</text>
+<path d="M20 326H218" class="line"/><text x="24" y="353" class="small faint">应用</text><text x="27" y="391" class="nav muted">⚙</text><text x="51" y="391" class="nav muted">设置</text>
+<rect x="14" y="868" width="210" height="68" rx="8" fill="#f0f3f5"/><circle cx="32" cy="891" r="4" fill="#287b54"/><text x="45" y="895" class="small ink">Gateway 正在运行</text><text x="26" y="919" class="small muted">Desktop 已启动</text>
+<!-- work sheet -->
+<rect x="246" y="66" width="1186" height="886" rx="16" class="sheet"/>
+<text x="278" y="105" class="small muted">Desktop  /  Gateway 总览</text><text x="278" y="143" class="head ink">网关总览</text><text x="278" y="167" class="body muted">监控路由、上游可用性与近期调用</text>
+<rect x="1245" y="119" width="154" height="36" rx="7" fill="#202a34"/><text x="1263" y="142" class="body" fill="#fff">＋ 配置上游</text>
+<!-- metrics -->
+<path d="M278 194H1400" class="line"/><path d="M278 277H1400" class="line"/><path d="M558 194V277M838 194V277M1118 194V277" class="line"/>
+<text x="292" y="220" class="label muted">近 24 小时请求</text><text x="292" y="256" class="num ink">18,426</text><text x="572" y="220" class="label muted">成功率</text><text x="572" y="256" class="num ink">99.2%</text><text x="852" y="220" class="label muted">P95 延迟</text><text x="852" y="256" class="num ink">842 <tspan class="label muted">ms</tspan></text><text x="1132" y="220" class="label muted">活跃上游</text><text x="1132" y="256" class="num ink">4 <tspan class="label muted">/ 5</tspan></text>
+<!-- main grid -->
+<text x="278" y="319" class="title ink">请求趋势</text><text x="278" y="340" class="small muted">过去 24 小时 · 按请求数</text><text x="955" y="321" class="small muted">总量 18,426</text>
+<rect x="278" y="357" width="710" height="199" rx="8" fill="#fff" stroke="#edf0f2"/>
+<path d="M308 394H965M308 438H965M308 482H965M308 526H965" stroke="#eef1f3"/>
+<text x="284" y="398" class="small faint">600</text><text x="284" y="442" class="small faint">400</text><text x="284" y="486" class="small faint">200</text><text x="303" y="546" class="small faint">00:00</text><text x="450" y="546" class="small faint">06:00</text><text x="610" y="546" class="small faint">12:00</text><text x="770" y="546" class="small faint">18:00</text><text x="930" y="546" class="small faint">现在</text>
+<path d="M310 493 L355 481 L402 487 L448 460 L495 469 L541 442 L588 456 L635 420 L681 431 L728 408 L775 421 L821 390 L868 403 L914 377 L964 388" fill="none" stroke="#2673ad" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<!-- upstream health right -->
+<text x="1018" y="319" class="title ink">上游健康</text><text x="1018" y="340" class="small muted">5 个上游 · 最近测试</text><text x="1375" y="320" class="small accent">查看全部 →</text>
+<path d="M1018 357H1398M1018 407H1398M1018 457H1398M1018 507H1398M1018 557H1398" class="line"/>
+<circle cx="1030" cy="382" r="4" fill="#288154"/><text x="1043" y="386" class="body ink">OpenAI Primary</text><text x="1043" y="400" class="small muted">Responses</text><text x="1358" y="386" class="small green">正常 · 38ms</text>
+<circle cx="1030" cy="432" r="4" fill="#288154"/><text x="1043" y="436" class="body ink">Anthropic</text><text x="1043" y="450" class="small muted">Messages</text><text x="1358" y="436" class="small green">正常 · 51ms</text>
+<circle cx="1030" cy="482" r="4" fill="#288154"/><text x="1043" y="486" class="body ink">兼容代理 A</text><text x="1043" y="500" class="small muted">Chat Completions</text><text x="1358" y="486" class="small green">正常 · 74ms</text>
+<circle cx="1030" cy="532" r="4" fill="#c67a2d"/><text x="1043" y="536" class="body ink">备用节点 B</text><text x="1043" y="550" class="small muted">Chat Completions</text><text x="1358" y="536" class="small orange">待检查</text>
+<!-- routing table -->
+<path d="M278 589H1398" class="line"/><text x="278" y="621" class="title ink">模型路由</text><text x="278" y="642" class="small muted">客户端模型名映射至上游模型与协议</text><text x="1325" y="622" class="small accent">编辑路由 →</text>
+<text x="292" y="675" class="small muted">客户端模型</text><text x="560" y="675" class="small muted">入站协议</text><text x="730" y="675" class="small muted">目标上游 / 模型</text><text x="1084" y="675" class="small muted">出站协议</text><text x="1275" y="675" class="small muted">状态</text>
+<path d="M278 686H1398M278 738H1398M278 790H1398M278 842H1398" class="line"/>
+<text x="292" y="716" class="body ink">gpt-4o</text><text x="560" y="716" class="small ink">Res</text><text x="730" y="716" class="body ink">兼容上游 A <tspan class="muted">/ model-x</tspan></text><text x="1084" y="716" class="small ink">Chat</text><circle cx="1284" cy="712" r="4" fill="#288154"/><text x="1295" y="716" class="small green">启用</text>
+<text x="292" y="768" class="body ink">claude-sonnet</text><text x="560" y="768" class="small ink">Messages</text><text x="730" y="768" class="body ink">Anthropic <tspan class="muted">/ claude-sonnet-4</tspan></text><text x="1084" y="768" class="small ink">Messages</text><circle cx="1284" cy="764" r="4" fill="#288154"/><text x="1295" y="768" class="small green">启用</text>
+<text x="292" y="820" class="body ink">fast-chat</text><text x="560" y="820" class="small ink">Chat</text><text x="730" y="820" class="body ink">兼容代理 A <tspan class="muted">/ model-x</tspan></text><text x="1084" y="820" class="small ink">Chat</text><circle cx="1284" cy="816" r="4" fill="#288154"/><text x="1295" y="820" class="small green">启用</text>
+<text x="278" y="895" class="small muted">示例路由：下游 Res → 上游 Chat → 响应返回 Res</text><text x="1274" y="895" class="small muted">本机运行实例</text>
+</svg>
