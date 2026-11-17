@@ -1,0 +1,1141 @@
+{
+  "batchId": "20261118-032407-94037da0",
+  "packageVersion": "0.4.1",
+  "targetRepo": "C:\\Users\\20142\\Desktop\\Cx-Routing Gateway",
+  "records": [
+    {
+      "action": "Created",
+      "target": ".codex/config.toml",
+      "resultHash": "7a6b9bde6fb56eec6213f2402b511b2897813b2b45f88605fd4d6b6c2f9223b9",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".codex/repo-map.json",
+      "resultHash": "d9a5e4edc33077de096e7ccf480ddaf11b6b3b925c8b466b8af22fe161c96afe",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".codex/awg-task.json",
+      "resultHash": "5384387c288bba502a27f431bd7ae90182d1c702964516a5b67e32fa524be4ae",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "AGENTS.md",
+      "resultHash": "7df06b4b1c475aeb76a090838086d5b64af6374a6b4d5724143cf3678da758fe",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".codex/agents/awg-auditor.toml",
+      "resultHash": "11111c4ec1fb7c69e8985bb884dc0aad6d1ff728ed191ea069d71b6acb7bf5c1",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".codex/agents/awg-explorer.toml",
+      "resultHash": "973e9047d6946bcc25dc3f1a45bdb4fc5339c6b0cc3d94f28aea80a587c3b7df",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".codex/agents/awg-frontend-design.toml",
+      "resultHash": "3c0645769ddf9018c4c1e828f071e807a36d0c66e00cf94426f9efc41085232a",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".codex/agents/awg-frontend-engineer.toml",
+      "resultHash": "0e630b4c5acb2168c826198d8e7a16991b119d6f4e976d8d8f689836b11640ad",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".codex/agents/awg-implementer.toml",
+      "resultHash": "54ac1b7ac379ea5be3127e20af5615fa1b4408675a14809c43e06b77e9795561",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".codex/agents/awg-planner.toml",
+      "resultHash": "b995aab5d291df13677547cc50fe5da8a47c63939835737ab52975c1a2579fe7",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".codex/agents/awg-reviewer.toml",
+      "resultHash": "7bfdcef5ed19282061b1818513d3cf09c31e434f4b1287f19b2368b55019bd31",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".codex/agents/awg-specialist.toml",
+      "resultHash": "325f18e1dd6cc0d27f79c0545a3d7f16e8156d6f73ce0b04b55b75e41fcdf83a",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".codex/agents/awg-verifier.toml",
+      "resultHash": "1010ec57619bf6fd04f20d7a88371d70e0e9aefa61af22159cc7865ae0f164eb",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/mcp.json",
+      "resultHash": "9e7e468e570d51217fa24a1706f8997226d0096fe43f37d912fd013f7c8b7198",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/plugin.json",
+      "resultHash": "fd22a6a23d17636c427ef1236a48347c80d3c52b7cfebd0100219189af01ea32",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/hooks/hooks.json",
+      "resultHash": "d84dbc39fc282d2d198350b735cf01a9a7107cefb6ead801c7110637266be760",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/hooks/policy.py",
+      "resultHash": "d839e4d7b083502d6bcc3a99197190b8a0dcc44738fad7c952b91efc259991ae",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/hooks/pre_tool_use.py",
+      "resultHash": "b996400f5c7559048796bc9176db88159bd9b784953585e44f45a34734af0ac1",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/hooks/session_start.py",
+      "resultHash": "c081c1f568d427860a70d05b4389cfae536da888130fe0342b2bd9dcdccc9857",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/mcp/repo_map_server.py",
+      "resultHash": "411060ad75487ff6372d7aa69b6699b0bcb42d61826d4a8d1b8df4a394526e22",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/mcp/repo_map/backend.py",
+      "resultHash": "507241879101160c629d394c1f62dc9b4f00c8b2dc9f6ca3310427c69444921c",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/mcp/repo_map/cache.py",
+      "resultHash": "3edf8ccc18170d7f7e238652beab3ebba13c2cd7d335b2263495bfad9a303274",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/mcp/repo_map/errors.py",
+      "resultHash": "fe05ac67c10fe1dd8e834dc3628911a954567c66f27a471f66850be012d45413",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/mcp/repo_map/plugin_service.py",
+      "resultHash": "a4023b207f134e79a2db02ab2185c4dbece637d99cb52a7bc154007eae045bad",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/mcp/repo_map/protocol.py",
+      "resultHash": "fc959effc088cd3897c0af538e269e8111aaf114e88995a3a6a63484d8ce39d4",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/mcp/repo_map/schema.py",
+      "resultHash": "9f0ff8b7b87a140a8587b1b36a1a8d0dfd90814c9521dfe57c4578c53acb799e",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/mcp/repo_map/service.py",
+      "resultHash": "306e4b127270c501af6decc51e4fcb5b8d192155c81ffc2c2e1c40ddf29bfee5",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/mcp/repo_map/source.py",
+      "resultHash": "5983ac1a80a6203e54e54063f769ae3283bca2c1be92c12374cccabfd521a75b",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/mcp/repo_map/__init__.py",
+      "resultHash": "69a0fe8b4e2d853e3f13d5f22f077e206de6eb13d76d655d4f0cc5bb6c241cea",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/awg-repo-map/SKILL.md",
+      "resultHash": "f784cca8a678a8d515fd30526741b6716b43b4e7bbc9cbbde9263f267b29bbe1",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/awg-workspace-governance/SKILL.md",
+      "resultHash": "3809c2ddc4c11b3728894cedcbd40c113317923b8da53067b8b7a86df096779d",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/brainstorming/builder-check-prompt.md",
+      "resultHash": "36d51a4723d6f0a3ce5811a0ea3b3a8424f07533947e1355f5d8cb8cce40c55e",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/brainstorming/SKILL.md",
+      "resultHash": "2c9ca71f94886f9ca9f4aef055f7cafb3e1a9bdf3aeebf8f4cb547c69405d207",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/brainstorming/visual-companion.md",
+      "resultHash": "6ffcb038b53254bd31debaa15e12dcd4ff24bd63d690e0b644ac6396701cf2e2",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/diagnosing-superpowers/SKILL.md",
+      "resultHash": "3143de8695c5a2d63e8b1675f33837578076f464deb127c2ebdd0b46fceef886",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/dispatching-parallel-agents/SKILL.md",
+      "resultHash": "1968923066f3b707eb01d1992cdf4c42284c3855f70253b9cd5000ff45fca13c",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/executing-plans/SKILL.md",
+      "resultHash": "deaf176fa179827e80f2ea3101db3ea90fdf562ebef340eba761e4687940f5f5",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/finishing-a-development-branch/SKILL.md",
+      "resultHash": "8db5a922b242dd4e1bf824cb91c13b3e8d8e8a86d6ceaf7f0774eb9cce909d65",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/receiving-code-review/SKILL.md",
+      "resultHash": "091df1629510af1b92fc4abd6f96732ebedb4cb2c0f3457e8f2740b0504a2438",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/requesting-code-review/code-reviewer.md",
+      "resultHash": "82e370be6b3447523816286195571e4216ba56ba1ad6ad0e87862294c4c78dcb",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/requesting-code-review/SKILL.md",
+      "resultHash": "2180e14a448e9410bec88e6646a2d1f0ce7fdd58de27388c1e052e929679d2bc",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/subagent-driven-development/implementer-prompt.md",
+      "resultHash": "81dd9d5a3fb0b09b96b5829f03b9796842f3199ef7591d1ba1c2db2a515f64d0",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/subagent-driven-development/re-review-prompt.md",
+      "resultHash": "ad54d0a10f1c2c8e656456e0a46e654af5dfe5ee6bcef63428cfd69b8dcd9311",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/subagent-driven-development/SKILL.md",
+      "resultHash": "1baf70e307bde682c462513c86116333f1f066168c6710f45145bf5f0b00828d",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/subagent-driven-development/task-reviewer-prompt.md",
+      "resultHash": "61a04c2fb29907887d8babee1594f5e35ae26d461e7e584f5b7c283215165e08",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/systematic-debugging/condition-based-waiting-example.ts",
+      "resultHash": "40ae5ebe497fdf310200e43fe986552546d0a22837c0d39e855db1cfd33eb88e",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/systematic-debugging/condition-based-waiting.md",
+      "resultHash": "e89fec8400d6cd50f43407cec9fab50976ba4d55d0ec2eb51c0bd68036b54c26",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/systematic-debugging/defense-in-depth.md",
+      "resultHash": "1e175fb86fc357e58c6aebf5441e481e1b7868b4380c0456b63a17eefbd18ba7",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/systematic-debugging/find-polluter.sh",
+      "resultHash": "dd7b8f13c4cc2a24b33ff87b18da9248f3e1c80a085c3316224f69ff0fa5c43c",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/systematic-debugging/root-cause-tracing.md",
+      "resultHash": "75b933b6a8c40bdb2031b10f21654395b56ec6ab6bc7b018c18d3fe57aeb7fb8",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/systematic-debugging/SKILL.md",
+      "resultHash": "51c6435d98c83c42c96ba7c35725a0b2c376cd487fb1a4e6bd0ddbe7e33ef202",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/test-driven-development/SKILL.md",
+      "resultHash": "64b03fce4aee5a97a93160cea8111f3ba13a17b7c001db4bd5836d67fd10705d",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/test-driven-development/writing-good-tests.md",
+      "resultHash": "51471c853306ff92ca8bb41dcaea05f31c0e46b03651f8f3c99754b7172f4ae1",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/using-git-worktrees/SKILL.md",
+      "resultHash": "8cfb86f121269e8f7f12361e6795c4f6738828340e28964c9229d365666c9edd",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/using-superpowers/SKILL.md",
+      "resultHash": "82c5c8866ad7f5dd4440ce66bd7806ba48a2f13771beae5cf112e53f08fe36ba",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/verification-before-completion/SKILL.md",
+      "resultHash": "2befe7fc55bcadaa3d97dd9e8efeb633d2561c0ebe74c5a8b17c4d9e7e4520b3",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/writing-plans/SKILL.md",
+      "resultHash": "a6c67c1900064347c2a329990dd3c555657c51c3ec53b259a08aa01a2c26139a",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/writing-skills/render-graphs.js",
+      "resultHash": "c7f412cc629461c4d10287e668731874c0497707023e3e3f74a5355eb2cee196",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/writing-skills/SKILL.md",
+      "resultHash": "8cb3ac68c6d8c4bb46886b998b09af7989643cab8bd0e46ee86dd62e64546bbe",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/brainstorming/scripts/frame-template.html",
+      "resultHash": "6a8a4e58bd6a44b904e2e3c57de774481d909204597e1498de53f1b2fecc4c4e",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/brainstorming/scripts/helper.js",
+      "resultHash": "43c6d69954a46ec34a2a262bcc62a9a7e83e839c739f199cb72646d397c686e3",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/brainstorming/scripts/server.cjs",
+      "resultHash": "763abf96510e0b892a1141397b31aa82ef900cf87ed34dde94bc8782baf4a7ca",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/brainstorming/scripts/start-server.sh",
+      "resultHash": "314dd68dc00e8dd94c7491aca8a5f004c7fddffc161e2b07482f29f48d13659a",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/brainstorming/scripts/stop-server.sh",
+      "resultHash": "0b5ccbbd57f62d3ed88993f7940b5ee0e5c0fc9b21c550c623da4f6292e47daf",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/diagnosing-superpowers/prompts/analyst-common.md",
+      "resultHash": "88801c36070be2a54a8a9a29632b01ab21db053e2e76ee49b5252a9b74ca4090",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/diagnosing-superpowers/prompts/cost-and-time.md",
+      "resultHash": "fe97a66d4db3b436816ef82694bda413b522b3a862dd41978da01e358fffecc4",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/diagnosing-superpowers/prompts/plan-adherence.md",
+      "resultHash": "1dcbab82033598a2e9c9ee42e950d4b1822d2c871c02cef9e102cdd5cbbda113",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/diagnosing-superpowers/prompts/quality-evidence.md",
+      "resultHash": "749d11cf678f379ed77a29274cad456634e0284aa523639a1a214a9f2b986eb1",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/diagnosing-superpowers/prompts/repeated-work.md",
+      "resultHash": "895027f2dfa4b1b8bcdb7ac9aec8d45a80bff212fad6ec6cad5ab38fa68322f5",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/diagnosing-superpowers/prompts/request-conflicts.md",
+      "resultHash": "e800e38d8b7752c212c76c5c3ed75cd78b749684263ea0c313586f26af6f4b5c",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/diagnosing-superpowers/prompts/scrub-audit.md",
+      "resultHash": "5cc48f05a7f81f5f7e05e0c7ceafc0fb8774bcaf75fe88dcb5c7e408026c70ad",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/diagnosing-superpowers/prompts/scrub.md",
+      "resultHash": "854cb3320cc5377b493cea2f72519d67983464882db68a0f408a7d0a0f040b8c",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/diagnosing-superpowers/prompts/similar-session.md",
+      "resultHash": "b190f713b463df2bb5ec3914647e204074d1bd50643a53159db6d13cace916c1",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/diagnosing-superpowers/prompts/skill-timeline.md",
+      "resultHash": "45d604d583b57a77b9033eced8eb875ef342af70fcd66cf7d15c6dc89964890f",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/diagnosing-superpowers/prompts/stumbles.md",
+      "resultHash": "1f2d1f048aff7b8b400006301f1ce8c232ecc7e9d5f705af27a849b2c03ea2e7",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/diagnosing-superpowers/references/context-safety.md",
+      "resultHash": "e6be2bd3495f454d4bedee9484d728d245d1fa656e11fc4ceec5693c16e4730a",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/diagnosing-superpowers/references/github-issues.md",
+      "resultHash": "d26ef9197b4a6ae5159ae6d11abd162bcc624d95fc7ccf508e07b68f916a1b19",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/diagnosing-superpowers/references/redaction-policy.md",
+      "resultHash": "96b16f47074838fe2d7e609577d6f8b0ad460f8378b281a3f96ee23cb5a08bde",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/diagnosing-superpowers/references/session-discovery.md",
+      "resultHash": "6d1dced083e5d978448a78df298cf515531b0eb39b2854a4a2afbffeb69a7435",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/diagnosing-superpowers/templates/bundle-README.md",
+      "resultHash": "2e6ddc6b106028d5ebd00a50ad93a77111d675c219ee1273cd0857869e8d51ec",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/diagnosing-superpowers/templates/case.md",
+      "resultHash": "597892462be83bc478536ec91f7c285f6dd25d119c560734a3a180fe8471301d",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/diagnosing-superpowers/templates/issue.md",
+      "resultHash": "afd21779e5de5bc5adfe2f5a50a04e44ab8d50d9ad0f829243de248d6f023eed",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/diagnosing-superpowers/templates/report.md",
+      "resultHash": "38295d0fd785e8608f330815c59ebd7047942002ec7085aecbed54681f56b0c1",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/executing-plans/scripts/task-done",
+      "resultHash": "ac0b5ebafc7d471507b7e94d88da77a11f187ba277c8d48fefaf8ff3e4fee50e",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/executing-plans/scripts/task-start",
+      "resultHash": "4ae7ce3b6777c3240af786197836a6b4bbf3b0ee831c25f147c149ea8db54a21",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/subagent-driven-development/references/batching.md",
+      "resultHash": "b54dc7e23dbfb90db89bcb2fb3af591aabf6a271a165fbc0da4c6f9439980eac",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/subagent-driven-development/references/cannot-verify.md",
+      "resultHash": "e698713a15e0eabf1a2ab26ffe1bb04bf70c9d6d2e2060d44a0f9a1bdd4408bf",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/subagent-driven-development/references/final-review.md",
+      "resultHash": "6c9e12093e46c4ad0a203bc07709c17e3470f855f1b78e55c5e7b722a012a32c",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/subagent-driven-development/references/fix-loop.md",
+      "resultHash": "1938ce707915efc44021e563ebc29666329e20ad861b6c50b89f305b8f4e8d8b",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/subagent-driven-development/references/handling-reports.md",
+      "resultHash": "8f759cdd4936220c38aab05b6d6c48c6df8ac8f146b0f37a6d2facbf87133c67",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/subagent-driven-development/references/preflight.md",
+      "resultHash": "3ea21c5fc1af1a190ac8a9d19ceb0849b47bf2ffe27b87dffcc21b6a0539776c",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/subagent-driven-development/references/resuming.md",
+      "resultHash": "ff6e38bde2276faa2a7e93513086caded0ea10edbf2ec7f349a7e3b0d7c668c4",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/subagent-driven-development/scripts/review-package",
+      "resultHash": "aed7c6e09fc660417d28898ed975e84651cb9f18f4675141cd475edfb7037f3d",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/subagent-driven-development/scripts/sdd-repo",
+      "resultHash": "6f8256a776968d394bae679572e41ce572fd45c72074b98f9a8eb8b4f160e06f",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/subagent-driven-development/scripts/sdd-workspace",
+      "resultHash": "de3af5252fa595fc2000ba05cf69e06187d5c8aae9d283cced4c167ad1813061",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/subagent-driven-development/scripts/task-brief",
+      "resultHash": "0f244a12e146393c552ba62069d3eedcc85cb3f76de67b01f4e11219e5ebbcd8",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/using-superpowers/references/antigravity-tools.md",
+      "resultHash": "4880f6de3da4e32f9659ebe7a72b9e0ebfff04e028c2ed96173f86d0387a04c0",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/using-superpowers/references/claude-code-tools.md",
+      "resultHash": "21479a3fee27448cab8748a3b5687e53bb257883bda9c070426f9a1ab5cebf1b",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/using-superpowers/references/codex-tools.md",
+      "resultHash": "1a38ad9b188c393052f58d95657a1c35ea6aafc8b5a27f198f3922912f70bbe7",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/using-superpowers/references/gemini-tools.md",
+      "resultHash": "62b9157bcb0ee3c6784e3d0da0798ddfa5872f9e0c34bea48f3079dabea71965",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/using-superpowers/references/hermes-tools.md",
+      "resultHash": "e2185c976a3c87503910e05e2aea58cc89bc8e569bb624b93df9958ac47a9190",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/using-superpowers/references/muse-tools.md",
+      "resultHash": "5a1da5c575fe18456ca71cd47ebfd8a38c745f8d82a67fe64d5b83080000eeb3",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/using-superpowers/references/pi-tools.md",
+      "resultHash": "703dbc83d23ecab9c6f388460c38abc482e9dee2fe6772a8c7a255152ad3a4d5",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/writing-skills/references/anthropic-best-practices.md",
+      "resultHash": "217629b356c09c9bd11017c9788e8fc654ca1b32c92d4a51cd490e16dd65e59a",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/writing-skills/references/bulletproofing.md",
+      "resultHash": "9397023e6bc85b556a57f3097371363bf03e28e755c57f403f470bcda90e0a23",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/writing-skills/references/CLAUDE_MD_TESTING.md",
+      "resultHash": "0b379a3415e185d3c434b3ad283d8aa132f3022c2a4f210f168865b5986bcef0",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/writing-skills/references/discovery.md",
+      "resultHash": "c6bbc74af3be90f693f7cbc986af6fa94e8df75f65109b52e96032587f5b92af",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/writing-skills/references/flowcharts.md",
+      "resultHash": "8b1f542391f274f0d33f3457ac099a3d317d6877eaa3b8d3b1ebef151b55fda7",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/writing-skills/references/graphviz-conventions.dot",
+      "resultHash": "e2890a593c91370e384b42f2f67b1a6232c9e69dddea7891a0c1c46d7b20b694",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/writing-skills/references/persuasion-principles.md",
+      "resultHash": "a51bc9bf75189ea73a27b3fb504a2fdfdb966fb1f7f1cdf03203230a216ccc03",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/skills/writing-skills/references/testing-skills-with-subagents.md",
+      "resultHash": "ed8a6862c085900135962390530d9dc7637ad6d650b4324ce3b051287a5c3f22",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/third-party/superpowers/LICENSE",
+      "resultHash": "a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": "plugins/awg-codex/third-party/superpowers/UPSTREAM.json",
+      "resultHash": "1d6ad549a2767be36cbe62b2cb42e3f9cd6b70ad81342e470864a84d1d674b2a",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/plugins/marketplace.json",
+      "resultHash": "3162ba74de9527cb41a59949f17240adcd65234a8f6bdda0c14a4ceafa914cf6",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/awg-repo-map/SKILL.md",
+      "resultHash": "f784cca8a678a8d515fd30526741b6716b43b4e7bbc9cbbde9263f267b29bbe1",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/app-interface.csv",
+      "resultHash": "331e7cf2c0b222d80c566c5f255c63cb339f65bfd02e471a720f28e4864a9f08",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/catalog-summary.json",
+      "resultHash": "65fe0b64480a8a827738297d0a64ca55c627d4afcb774fe4555c59cea8dd6905",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/charts.csv",
+      "resultHash": "4115cf1120680f2cedef0676cb648f30c7ef4699e2a947535d4113e71ed3b12a",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/colors.csv",
+      "resultHash": "8162429222bce22df62b564085946a30d07cc9722c58d0a3a494bd0d1d00841c",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/data-provenance.json",
+      "resultHash": "e82fb33ed49375a300e93d9c11ccd1c1493c999e84ee7ee295e527634786e2e0",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/google-font-licenses.json",
+      "resultHash": "35688523f2955795caa1a47c53b83099e60c1708461476f9cc3a050cf3b0148a",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/google-fonts.csv",
+      "resultHash": "1c8c3b2ea1faf6a1012da463756def8b3889db33f2226f0343bb4daa80307d03",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/icons.csv",
+      "resultHash": "50816c6012030178195a16ee481ebf58b47bd985d70e8ec58886cc83f6eddafc",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/landing.csv",
+      "resultHash": "9a2edd3bb676c2a58f00ade7a062e285222d4297bfd847c8d5b056f0dbbf52d0",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/motion.csv",
+      "resultHash": "381affe8df8ea1f66fbbda2598827f9f54299107bbe6a1b4e9b68f6b62091ceb",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/phosphor-icons-upstream.json",
+      "resultHash": "2399325233b277b5c97a80e6a5e8941154f5d057beee4e7613db87c87d700236",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/products.csv",
+      "resultHash": "42473f75e8dde5987bdf89ce55d8c168091b80a356cae691dd60247d80720b70",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/react-performance.csv",
+      "resultHash": "3d925802539abac5afeb63ae8aa1960b7229ad271b3a47caed40ab2d97ad0734",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/stacks/angular.csv",
+      "resultHash": "704be83f2bad30c7e6de01afb113ffa01e0c458762f48b7102f31ba2367b5553",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/stacks/astro.csv",
+      "resultHash": "2c2f55fadaafc05e04cc321c8194a1a28b656e6757fe2ba316f41b16428299c6",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/stacks/avalonia.csv",
+      "resultHash": "442fca14675a020683473e7e49f08abb27b9df0765c80efe54aef61f1a4ac258",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/stacks/flutter.csv",
+      "resultHash": "64dba0ac17349f28bce517a0f5f48c54d9ed2e487ec0c0258303463b382f41a0",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/stacks/html-tailwind.csv",
+      "resultHash": "d05a581d20af57b8ca0104a6d31d90a07c437d500662a96c3029fc2f9a4678ee",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/stacks/javafx.csv",
+      "resultHash": "2e819b8d5abdd23ad4dae0991650fdb57af497aabd68b37463aa9c442944c869",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/stacks/jetpack-compose.csv",
+      "resultHash": "699de218b286948eaec7d15767b6e1350ee299167e49bf476d82e3ff58724e0a",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/stacks/laravel.csv",
+      "resultHash": "854ea4daa5fc61292d22235ad33b49ba3fe22423c3de8d3cb03758ffed3b59f9",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/stacks/nextjs.csv",
+      "resultHash": "ecd2c27b2ea0127d203ae726060efcdd7335b5e83f96b99e4f3befbbfeebd5a4",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/stacks/nuxt-ui.csv",
+      "resultHash": "c36ee8470926b4a0748d241363c71664c9969c2edbc62f7f72de0db73880fac6",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/stacks/nuxtjs.csv",
+      "resultHash": "3d9b54ed2d151bd9c86e9e5609b8a6f88a00c4c52fa601a30af96c49b2c4d176",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/stacks/react-native.csv",
+      "resultHash": "ba31dd9c0c04da6bc02a74448bf121f9c0728ae5ba3b4d47b487778b0a1135b5",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/stacks/react.csv",
+      "resultHash": "2d2b9c198e875106a30f7ee68341a9ee0033cad60a7e130cf23152783e08aeda",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/stacks/shadcn.csv",
+      "resultHash": "e56cfde5b74907836ac3582a4779d5b7f3d206a702ab81b8669a1b668c3eeb51",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/stacks/svelte.csv",
+      "resultHash": "f6e379ba802941ba26b01d4ffbe3cd39120f2587659a1d93851c707f66bc13db",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/stacks/swiftui.csv",
+      "resultHash": "bdd9231ff3ad658f4e7c063e1eb49df2fd09ac8d90631a86df899b39833b9623",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/stacks/threejs.csv",
+      "resultHash": "97542e0ba34915a0ff7578be20e1619495df47c95c8c1c39b83e3785e1de771f",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/stacks/uno.csv",
+      "resultHash": "a0474363e4225b5367214d5675fd3e075f137026f9500f0d04357882ef4f6d48",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/stacks/uwp.csv",
+      "resultHash": "c409f08c1fbba1f1029f1acaa554e7b4471cc85517a5751c9f2e62465badcd5c",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/stacks/vue.csv",
+      "resultHash": "b655f1ebb9dff2652d15981f31b1784c8a6d4759efd2815a14f3088257569f95",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/stacks/winui.csv",
+      "resultHash": "e676dc1c13ee6c205c40b0746f1335150a346c7a49a0616d2545bc3d2c930c85",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/stacks/wpf.csv",
+      "resultHash": "9781a9950b20333637b30a02e498b7efca21b618a3eeb8665836f3ac6e974da7",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/styles.csv",
+      "resultHash": "a93a4d9d7025856575d7b7583bda020be9043013432c5af7c58af9dbdfb206b7",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/typography.csv",
+      "resultHash": "321fc446e89024488ebae96dda93efc4d2307bd8bddb240857ad51364f6782c8",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/ui-reasoning.csv",
+      "resultHash": "f0774dd741cecdad5eec842034bd6d5e9ea50e9f220a1910069748daa0bb8e9a",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/data/ux-guidelines.csv",
+      "resultHash": "ff81ec613f70ba9fc3fcce52dbe4ae35d44b2079dbe6dc066d2d6e38c28facd5",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/LICENSE",
+      "resultHash": "738f69dfa83db5c347c678fb9d90e560877059f0de93a327c39001bff92dc014",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/scripts/core.py",
+      "resultHash": "e544826963efefce3c59b65e18d83d92a5baf571f05458025bf1fa9021eced42",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/scripts/design_system.py",
+      "resultHash": "1f7bad0452306feeec549ad32cff3d2183e48a8f08876da7b5971c2d5e23b790",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/scripts/reasoning_contract.py",
+      "resultHash": "b8bac1af82aa280d3e06f00aabaeac4337e632996b07fed874e2b6ee6e9c5913",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/scripts/search.py",
+      "resultHash": "8373e2dd2d560d9853ec116140de0e0d5bee45a6abe5e041173c84e1c36a7f87",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/scripts/validate_data.py",
+      "resultHash": "718ad4cbb227436015c9c2bc80fc583d6ed738b01c1a940ef85e350780d99f58",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/SKILL.md",
+      "resultHash": "5905a2b470ca86077daf03f3c13361b949a702ae9f98399515abc55882cb9aa3",
+      "previousHash": null,
+      "preimage": null
+    },
+    {
+      "action": "Created",
+      "target": ".agents/skills/ui-ux-pro-max/UPSTREAM.md",
+      "resultHash": "1e4bd2ab4f206f62aa0624dd1aeb906293b1a7ede5c6a5a422454d6b1696c9e8",
+      "previousHash": null,
+      "preimage": null
+    }
+  ]
+}

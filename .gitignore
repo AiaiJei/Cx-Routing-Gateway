@@ -1,0 +1,9 @@
+# Local project index/cache data
+/.agent-workspace-governance/repo-map-awg-cache/
+
+# Temporary upstream checkout used to prepare the Codex projection
+/.tmp-awg-source/
+
+# Python-generated files
+__pycache__/
+*.py[cod]
