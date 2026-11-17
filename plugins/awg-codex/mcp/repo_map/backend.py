@@ -6,6 +6,34 @@ import sys
 from .errors import RepoMapError
 
 
+def fingerprint_backend(configured_path):
+    """Hash every file shipped in the pinned Aider package, including bytecode."""
+    import hashlib
+
+    path = Path(configured_path).resolve()
+    if (path / "Lib" / "site-packages").is_dir():
+        path = path / "Lib" / "site-packages"
+    elif (path / "lib" / "site-packages").is_dir():
+        path = path / "lib" / "site-packages"
+    package = path / "aider"
+    if package.is_symlink() or not package.is_dir():
+        raise ValueError("configured backend does not contain a regular Aider package")
+    entries = sorted(package.rglob("*"), key=lambda item: item.relative_to(package).as_posix())
+    if not entries or any(item.is_symlink() for item in entries):
+        raise ValueError("configured Aider package is empty or contains symbolic links")
+    digest = hashlib.sha256()
+    for item in entries:
+        if not item.is_file():
+            continue
+        relative = item.relative_to(package).as_posix().encode("utf-8")
+        content = item.read_bytes()
+        digest.update(len(relative).to_bytes(4, "big"))
+        digest.update(relative)
+        digest.update(len(content).to_bytes(8, "big"))
+        digest.update(content)
+    return digest.hexdigest()
+
+
 class OfflineModel:
     name = "awg-offline-character-estimator"
 

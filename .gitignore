@@ -7,3 +7,6 @@
 # Python-generated files
 __pycache__/
 *.py[cod]
+
+# Test fixture workspaces
+/tests/.tmp/

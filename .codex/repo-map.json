@@ -2,12 +2,13 @@
   "workspaces": [
     {
       "workspace_id": "awg-e4afee94a79c14e3",
-      "root": "C:\\Users\\20142\\Desktop\\Cx-Routing Gateway",
+      "root": "..",
       "project_id": "Cx-Routing Gateway",
       "repo_id": "awg-e4afee94a79c14e3",
       "allow_refresh": false
     }
   ],
-  "cache_dir": "C:\\Users\\20142\\Desktop\\Cx-Routing Gateway\\.agent-workspace-governance\\repo-map-awg-cache",
-  "backend_path": "C:\\Users\\20142\\Desktop\\Agent-Workspace-Governance\\.tmp\\aider-runtime\\Lib\\site-packages"
+  "cache_dir": "../.agent-workspace-governance/repo-map-awg-cache",
+  "backend_path": "C:\\Users\\20142\\Desktop\\Agent-Workspace-Governance\\.tmp\\aider-runtime\\Lib\\site-packages",
+  "backend_sha256": "f96d1bf7bb5ea803853f85d2348f900dec2a0118e1446e4f5ecc3a1f87905281"
 }

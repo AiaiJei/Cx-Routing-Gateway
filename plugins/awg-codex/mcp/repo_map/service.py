@@ -72,17 +72,25 @@ def _validate_schema(value, schema, label):
 
 
 class RepoMapService:
-    def __init__(self, config_path=None):
-        raw_path = config_path or os.environ.get("AWG_REPO_MAP_CONFIG")
-        if not raw_path:
-            raise RepoMapError("CONFIG_MISSING", "AWG_REPO_MAP_CONFIG is not set")
-        path = Path(raw_path).resolve()
-        if not path.is_file() or path.stat().st_size > 65_536:
-            raise RepoMapError("CONFIG_INVALID", "Repo Map config is missing or exceeds 64 KiB")
-        try:
-            config = json.loads(path.read_text(encoding="utf-8-sig"))
-        except (OSError, UnicodeError, json.JSONDecodeError):
-            raise RepoMapError("CONFIG_INVALID", "Repo Map config is not valid UTF-8 JSON") from None
+    def __init__(self, config_path=None, *, config_data=None, config_dir=None):
+        if config_data is not None:
+            if config_path is not None or not isinstance(config_data, dict):
+                raise RepoMapError("CONFIG_INVALID", "provide either a config path or a parsed config object")
+            if config_dir is None:
+                raise RepoMapError("CONFIG_INVALID", "config_dir is required with parsed project configuration")
+            path = (Path(config_dir).expanduser() / "repo-map.json").resolve()
+            config = config_data
+        else:
+            raw_path = config_path or os.environ.get("AWG_REPO_MAP_CONFIG")
+            if not raw_path:
+                raise RepoMapError("CONFIG_MISSING", "AWG_REPO_MAP_CONFIG is not set")
+            path = Path(raw_path).resolve()
+            if not path.is_file() or path.stat().st_size > 65_536:
+                raise RepoMapError("CONFIG_INVALID", "Repo Map config is missing or exceeds 64 KiB")
+            try:
+                config = json.loads(path.read_text(encoding="utf-8-sig"))
+            except (OSError, UnicodeError, json.JSONDecodeError):
+                raise RepoMapError("CONFIG_INVALID", "Repo Map config is not valid UTF-8 JSON") from None
         workspaces = config.get("workspaces")
         if not isinstance(workspaces, list) or len(workspaces) != 1 or not isinstance(workspaces[0], dict):
             raise RepoMapError("CONFIG_INVALID", "AWG Repo MCP requires exactly one registered workspace")
@@ -91,13 +99,18 @@ class RepoMapService:
             if not isinstance(workspace.get(field), str) or not workspace[field].strip():
                 raise RepoMapError("CONFIG_INVALID", f"workspace.{field} is required")
         self.workspace_id = workspace["workspace_id"]
-        self.root = Path(workspace["root"]).resolve()
+        registered_root = Path(workspace["root"]).expanduser()
+        self.root = (registered_root if registered_root.is_absolute()
+                     else (path.parent / registered_root)).resolve()
         if _git_root(self.root) != self.root:
             raise RepoMapError("CONFIG_INVALID", "registered root must be the Git worktree root")
         self.project_id = workspace["project_id"]
         self.repo_id = workspace["repo_id"]
         self.allow_refresh = workspace.get("allow_refresh") is True
-        cache_dir = Path(config.get("cache_dir", self.root / ".agent-workspace-governance/repo-map-awg-cache")).resolve()
+        cache_dir = Path(config.get("cache_dir", self.root / ".agent-workspace-governance/repo-map-awg-cache")).expanduser()
+        if not cache_dir.is_absolute():
+            cache_dir = path.parent / cache_dir
+        cache_dir = cache_dir.resolve()
         if not cache_dir.is_relative_to(self.root):
             raise RepoMapError("CONFIG_INVALID", "Repo Map cache must remain inside the registered workspace")
         self.store = GenerationStore(cache_dir)
