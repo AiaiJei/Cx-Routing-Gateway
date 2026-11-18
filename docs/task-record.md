@@ -39,9 +39,9 @@
 - 设计范围已由 Owner 批准：可运行 Desktop 界面、六个规划页面、fixture 状态和未来 API/IPC 接缝；不含 Gateway、后端、真实上游调用、密钥持久化、合并或发布。
 - 合同：`.codex/awg-task.json`，记录授权路径、验收及回退；这是仓内任务记录，不代表 AWG runtime 已加载或生效。
 - 隔离：`codex/desktop-frontend-phase1`，worktree 位于 `.worktree/desktop-frontend-phase1`；原有未跟踪 `.agent-workspace-governance/`、`.agents/`、`.tmp-awg-source/`、`plugins/` 与既有 `.worktree/frontend-scaffold` 保持不动。
-- 技术方向：沿用 scaffold 中 React/Vite/TypeScript/React Router/Vitest/Testing Library 方向；当前没有原生 Desktop 壳，本阶段不声称产出可安装原生包。
+- 技术方向：沿用 React/Vite/TypeScript/React Router/Vitest/Testing Library，并补充 Electron shell；当前提供可启动 Desktop 进程，但不含安装器、自动更新或 Gateway 生命周期实现。
 - 实现：六页导航、typed fixtures/client boundary、上游与路由会话内表单、搜索/过滤、模拟状态、掩码凭证、只读运行时设置及键盘跳过导航。
-- 当前检查：页面组件测试与生产构建在 PR 前重跑；桌面浏览器已覆盖六页主要视图；窄屏截图受宿主窗口最小化影响，记为 `NOT_RUN`；原生打包/后端联调亦为 `NOT_RUN`。
+- 当前检查：页面组件测试与生产构建在 PR 前重跑；浏览器已覆盖六页主要视图；Electron Desktop 进程需用 `npm run desktop:dev` 启动；窄屏截图受宿主窗口最小化影响，记为 `NOT_RUN`；安装器/后端联调仍为 `NOT_RUN`。
 - 依赖风险：完整 `npm audit` 报 5 项 high，位于 Vite/Vitest 开发依赖链 `picomatch`；生产依赖审计为 0。常规 `npm audit fix` 未修复，强制修复要求破坏性降级，当前保留并披露。
 - 回退：撤销该专属 PR；无运行时或持久化副作用。
 - 状态：设计范围已批准；合同/设计/计划/实现已记录；全量复测、独立审查和 Owner 最终验收待完成。
@@ -60,3 +60,5 @@
 - 已处理 Minor：总览空日志时平均耗时显示 `-`；日志增加状态筛选测试。异步上游测试仍保留错误边界作为 client 替换时的保护点，当前 fixture ID 不会触发该路径。
 - 修复后验证：17 项测试通过，生产构建通过，生产依赖审计 0 项漏洞，Taste lint 0 FAIL/6 WARN；窄屏真实浏览器截图仍为 `NOT_RUN`。
 - PR：`https://github.com/AiaiJei/Cx-Routing-Gateway/pull/3`，状态：已创建、未合并；Owner acceptance 仍为 pending。
+- 后续修订：按 Owner 反馈补充 Electron 原生窗口与自定义标题栏；窗口无系统 frame，标题栏提供最小化、最大化/还原、关闭和拖拽区域，IPC 通过 preload 暴露且保持 context isolation。
+- 修订验证：17 项测试通过，生产构建通过，`electron/main.cjs` 与 `electron/preload.cjs` 语法检查通过；窗口实际进程已启动，Computer Use 后续观察因物理 Escape 被用户中止。

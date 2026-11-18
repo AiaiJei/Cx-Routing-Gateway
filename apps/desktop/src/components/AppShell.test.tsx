@@ -20,6 +20,11 @@ describe("AppShell", () => {
     }
     expect(screen.getByRole("heading", { name: "总览" })).toBeVisible();
     expect(screen.getByRole("link", { name: "跳到主要内容" })).toHaveAttribute("href", "#main-content");
+    expect(screen.getByRole("banner", { name: "窗口标题栏" })).toBeVisible();
+    expect(screen.getByTestId("window-title")).toHaveAttribute("data-window-title", "true");
+    expect(screen.getByRole("button", { name: "最小化窗口" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "最大化窗口" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "关闭窗口" })).toBeVisible();
   });
 
   it("opens and closes the narrow-screen navigation with the keyboard", async () => {

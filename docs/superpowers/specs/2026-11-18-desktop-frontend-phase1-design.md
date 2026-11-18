@@ -14,7 +14,7 @@ Deliver the first runnable Cx-Routing Gateway Desktop workspace so a local user 
 
 ## Non-goals
 
-- No Gateway process lifecycle, API/IPC server, real upstream requests, model discovery, credential persistence, authentication, or database.
+- No Gateway process lifecycle, API/IPC server, real upstream requests, model discovery, credential persistence, authentication, database, installer, or auto-update.
 - No claim that simulated health checks, model sync, request counts, or keys are live or secure production data.
 - No merge, release, or deployment.
 
@@ -23,7 +23,7 @@ Deliver the first runnable Cx-Routing Gateway Desktop workspace so a local user 
 1. Extend static concept images only. This has little implementation cost but cannot demonstrate navigation, forms, table filters, or UI states, so it does not meet the approved runnable-frontend scope.
 2. Build a runnable Desktop frontend with fixture-backed screens and an explicit adapter boundary. This follows the development plan's frontend-first phase and makes each planned workflow reviewable while keeping runtime claims honest. **Selected.**
 
-The selected implementation uses the React/Vite/TypeScript direction already present in the separate, uncommitted `frontend-scaffold` worktree, with React Router and the existing IBM Plex font packages. The active work is isolated on `codex/desktop-frontend-phase1`; no files from that other worktree are overwritten or moved.
+The selected implementation uses React/Vite/TypeScript with React Router, the existing IBM Plex font packages, and a minimal Electron shell that loads the renderer in a native window. The active work is isolated on `codex/desktop-frontend-phase1`; no files from the other scaffold worktree are overwritten or moved.
 
 ## Architecture
 

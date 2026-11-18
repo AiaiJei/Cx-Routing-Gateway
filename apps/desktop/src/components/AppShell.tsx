@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { NavLink } from "react-router";
+import { WindowTitleBar } from "./WindowTitleBar";
 
 const destinations = [
   { label: "总览", to: "/", end: true },
@@ -23,7 +24,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [navigationOpen]);
 
   return (
-    <div className="app-frame">
+    <>
+      <WindowTitleBar />
+      <div className="app-frame">
       <a className="skip-link" href="#main-content">跳到主要内容</a>
       <aside className={`sidebar${navigationOpen ? " is-open" : ""}`}>
         <NavLink className="brand" to="/" onClick={() => setNavigationOpen(false)}>
@@ -66,6 +69,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {children}
         </main>
       </section>
-    </div>
+      </div>
+    </>
   );
 }
