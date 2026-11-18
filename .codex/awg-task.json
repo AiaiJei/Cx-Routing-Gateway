@@ -1,0 +1,40 @@
+{
+  "contract_version": 1,
+  "project": "Cx-Routing Gateway",
+  "repository": "AiaiJei/Cx-Routing-Gateway",
+  "task_id": "CXRG-FE-PHASE1-2026-11-18",
+  "title": "Runnable Desktop frontend phase 1",
+  "status": "active",
+  "branch": "codex/desktop-frontend-phase1",
+  "base": "master",
+  "authorized_paths": [
+    ".codex/awg-task.json",
+    "docs/superpowers/specs/2026-11-18-desktop-frontend-phase1-design.md",
+    "docs/superpowers/plans/2026-11-18-desktop-frontend-phase1.md",
+    "docs/task-record.md",
+    "apps/desktop/**",
+    "tests/**"
+  ],
+  "scope": {
+    "include": [
+      "Runnable Desktop UI shell and six planned screens",
+      "Fixture-backed UI interactions and explicit simulated/unavailable states",
+      "Responsive and keyboard-accessible frontend behavior",
+      "Frontend verification and dedicated pull request"
+    ],
+    "exclude": [
+      "Gateway runtime, backend APIs, IPC server, and real upstream calls",
+      "Credential persistence, production authentication, and database changes",
+      "Merge, release, and deployment"
+    ]
+  },
+  "acceptance": [
+    "Development startup and production build succeed",
+    "All six screens are navigable and key local interactions work",
+    "Fixture data and simulated outcomes are not represented as live runtime evidence",
+    "Responsive and keyboard accessibility checks are recorded",
+    "Independent review is completed and findings are addressed or reported"
+  ],
+  "rollback": "Revert the dedicated frontend PR; no persistent data or runtime side effects are introduced.",
+  "owner_acceptance": "pending"
+}

@@ -32,3 +32,40 @@
 ## 协议方向修订（2026-11-18）
 
 按用户澄清明确通用语义：入站协议取自任意下游客户端实际请求，出站协议由对应模型路由配置；上游响应转换回该请求的原入站协议，不绑定特定客户端。概念图总览、路由、日志示例同步调整。
+
+## 阶段 1 前端任务（2026-11-18）
+
+- 任务 ID：`CXRG-FE-PHASE1-2026-11-18`；项目/仓库：Cx-Routing Gateway / `AiaiJei/Cx-Routing-Gateway`。
+- 设计范围已由 Owner 批准：可运行 Desktop 界面、六个规划页面、fixture 状态和未来 API/IPC 接缝；不含 Gateway、后端、真实上游调用、密钥持久化、合并或发布。
+- 合同：`.codex/awg-task.json`，记录授权路径、验收及回退；这是仓内任务记录，不代表 AWG runtime 已加载或生效。
+- 隔离：`codex/desktop-frontend-phase1`，worktree 位于 `.worktree/desktop-frontend-phase1`；原有未跟踪 `.agent-workspace-governance/`、`.agents/`、`.tmp-awg-source/`、`plugins/` 与既有 `.worktree/frontend-scaffold` 保持不动。
+- 技术方向：沿用 React/Vite/TypeScript/React Router/Vitest/Testing Library，并补充 Electron shell；当前提供可启动 Desktop 进程，但不含安装器、自动更新或 Gateway 生命周期实现。
+- 实现：六页导航、typed fixtures/client boundary、上游与路由会话内表单、搜索/过滤、模拟状态、掩码凭证、只读运行时设置及键盘跳过导航。
+- 当前检查：页面组件测试与生产构建在 PR 前重跑；浏览器已覆盖六页主要视图；Electron Desktop 进程需用 `npm run desktop:dev` 启动；窄屏截图受宿主窗口最小化影响，记为 `NOT_RUN`；安装器/后端联调仍为 `NOT_RUN`。
+- 依赖风险：完整 `npm audit` 报 5 项 high，位于 Vite/Vitest 开发依赖链 `picomatch`；生产依赖审计为 0。常规 `npm audit fix` 未修复，强制修复要求破坏性降级，当前保留并披露。
+- 回退：撤销该专属 PR；无运行时或持久化副作用。
+- 状态：设计范围已批准；合同/设计/计划/实现已记录；全量复测、独立审查和 Owner 最终验收待完成。
+
+### 能力记录
+
+- 已调用：AWG 工作区治理、头脑风暴、Git worktree、计划编写、TDD、计划执行、Taste 前端设计、代码审查、完成前验证、Computer Use。
+- Repo Map 未调用：本仓入口与依赖文档足以直接导航；无外部 MCP 调用。
+- `ui-ux-pro-max` 未调用：本会话技能清单未提供其可读取/调用入口。
+- AWG task 文件是仓内任务合同，不表示 AWG runtime 已激活。
+
+### 独立审查处理
+
+- 审查范围：`9b9bc23..2be6541`，只读审查；结论无 Critical，提出两项 Important 和两项 Minor。
+- 已修复 Important：调用日志新增详情对话区，展示脱敏摘要并明确正文未记录；所有页面通过 `useWorkspace` 读取 typed client 数据，并提供读取错误提示。
+- 已处理 Minor：总览空日志时平均耗时显示 `-`；日志增加状态筛选测试。异步上游测试仍保留错误边界作为 client 替换时的保护点，当前 fixture ID 不会触发该路径。
+- 修复后验证：17 项测试通过，生产构建通过，生产依赖审计 0 项漏洞，Taste lint 0 FAIL/6 WARN；窄屏真实浏览器截图仍为 `NOT_RUN`。
+- PR：`https://github.com/AiaiJei/Cx-Routing-Gateway/pull/3`，状态：已创建、未合并；Owner acceptance 仍为 pending。
+- 后续修订：按 Owner 反馈补充 Electron 原生窗口与自定义标题栏；窗口无系统 frame，标题栏提供最小化、最大化/还原、关闭和拖拽区域，IPC 通过 preload 暴露且保持 context isolation。
+- 修订验证：17 项测试通过，生产构建通过，`electron/main.cjs` 与 `electron/preload.cjs` 语法检查通过；窗口实际进程已启动，Computer Use 后续观察因物理 Escape 被用户中止。
+- 交互修订：上游新增改为弹窗，并移除上游出站协议字段；模型路由弹窗支持勾选多个上游、加载各上游模型、分别选择模型，一个客户端模型可配置多个上游承载。专项与全量测试、构建均通过。
+- 布局修订：弹窗关闭使用 `X`，上游弹窗补充 Key 输入和模拟连通测试入口；移除取消按钮，统一下拉控件箭头/焦点/边框样式，修正普通输入框误显示下拉箭头的问题。
+- 焦点样式修订：移除全局焦点规则与控件局部 outline 的叠加，统一为单层 accent 焦点环，并为搜索框、输入框、下拉框和按钮保持一致的可见选中态。
+- 下拉菜单修订：新增全局 `CustomSelect`，替换日志筛选、路由协议和模型选择的原生 select；统一菜单、选中态、键盘导航、Escape、点击外部关闭和表单隐藏值同步。
+- 日志详情修订：调用日志详情从页面内嵌面板改为统一弹窗，复用遮罩、`X` 关闭、Escape 和点击外部关闭行为。
+- 总览修订：按 Owner 选择的“运行态总览”重排首屏，优先展示 Gateway 状态与快捷入口；失败调用单独进入“需要关注”；配置就绪与运行概况分组，最近调用保留在下方。
+- 总览按钮修订：快捷操作统一为规范按钮组，固定高度与对齐方式，统一边框/圆角/间距，并补充 hover、active 和链接按钮去装饰处理。
