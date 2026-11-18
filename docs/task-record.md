@@ -59,3 +59,4 @@
 - 已修复 Important：调用日志新增详情对话区，展示脱敏摘要并明确正文未记录；所有页面通过 `useWorkspace` 读取 typed client 数据，并提供读取错误提示。
 - 已处理 Minor：总览空日志时平均耗时显示 `-`；日志增加状态筛选测试。异步上游测试仍保留错误边界作为 client 替换时的保护点，当前 fixture ID 不会触发该路径。
 - 修复后验证：17 项测试通过，生产构建通过，生产依赖审计 0 项漏洞，Taste lint 0 FAIL/6 WARN；窄屏真实浏览器截图仍为 `NOT_RUN`。
+- PR：`https://github.com/AiaiJei/Cx-Routing-Gateway/pull/3`，状态：已创建、未合并；Owner acceptance 仍为 pending。
