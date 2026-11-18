@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { EmptyResult, FixtureNotice, PageHeader, SearchField } from "../components/PageHeader";
+import { CustomSelect } from "../components/CustomSelect";
 import { useWorkspace } from "../data/use-workspace";
 import type { CallLog } from "../domain/types";
 
@@ -20,7 +21,7 @@ export function LogsPage() {
       <FixtureNotice>示例日志 · 非运行时记录</FixtureNotice>
       {error && <p className="action-feedback" role="alert">工作区数据读取失败：{error}</p>}
       <div className="toolbar"><SearchField label="搜索调用日志" value={query} onChange={setQuery} />
-        <label className="select-field"><span className="sr-only">按状态筛选</span><select aria-label="按状态筛选" value={status} onChange={(event) => setStatus(event.target.value)}><option>全部</option><option>成功</option><option>失败</option></select></label>
+        <div className="select-field"><CustomSelect ariaLabel="按状态筛选" name="log-status" value={status} options={["全部", "成功", "失败"]} onChange={setStatus} /></div>
         <span className="result-count">{logs.length} 条示例</span>
         {hasFilter && <button className="button-text" type="button" aria-label="清除筛选" onClick={() => { setQuery(""); setStatus("全部"); }}>清除筛选</button>}
       </div>

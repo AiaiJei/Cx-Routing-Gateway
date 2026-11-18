@@ -18,7 +18,8 @@ describe("LogsPage", () => {
   it("filters sample logs by status", async () => {
     const user = userEvent.setup();
     render(<LogsPage />);
-    await user.selectOptions(screen.getByRole("combobox", { name: "按状态筛选" }), "失败");
+    await user.click(screen.getByRole("combobox", { name: "按状态筛选" }));
+    await user.click(screen.getByRole("option", { name: "失败" }));
     expect(screen.getByText("req-29ab10ce")).toBeVisible();
     expect(screen.queryByText("req-7d3a9f21")).not.toBeInTheDocument();
   });

@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { FixtureNotice, PageHeader } from "../components/PageHeader";
 import { Modal } from "../components/Modal";
+import { CustomSelect } from "../components/CustomSelect";
 import { useWorkspace } from "../data/use-workspace";
 import type { ModelRoute, Protocol } from "../domain/types";
 
@@ -9,6 +10,9 @@ export function RoutesPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [selectedUpstreamIds, setSelectedUpstreamIds] = useState<string[]>([]);
   const [modelsLoaded, setModelsLoaded] = useState(false);
+  const [inboundProtocol, setInboundProtocol] = useState<Protocol>("Res");
+  const [outboundProtocol, setOutboundProtocol] = useState<Protocol>("Chat");
+  const [modelSelections, setModelSelections] = useState<Record<string, string>>({});
   const { data, error } = useWorkspace();
   const [routes, setRoutes] = useState(data.routes);
   useEffect(() => setRoutes(data.routes), [data.routes]);
@@ -29,6 +33,9 @@ export function RoutesPage() {
     setFormOpen(false);
     setSelectedUpstreamIds([]);
     setModelsLoaded(false);
+    setInboundProtocol("Res");
+    setOutboundProtocol("Chat");
+    setModelSelections({});
     setMessage("路由已添加到当前页面会话；刷新后不会保留，也未调用 Gateway。");
   }
   return (
@@ -40,10 +47,10 @@ export function RoutesPage() {
       {formOpen && <Modal title="新增路由示例" onClose={() => setFormOpen(false)}><form className="modal-form" onSubmit={addRoute}>
         <span className="helper-text">仅当前页面会话；一个客户端模型可以由多个上游服务承载。</span>
         <label>客户端模型别名<input name="alias" required maxLength={100} autoComplete="off" /></label>
-        <label>客户端协议 / 入站<select name="inbound" defaultValue="Res"><option>Res</option><option>Mes</option><option>Chat</option></select></label>
+        <label>客户端协议 / 入站<CustomSelect ariaLabel="客户端协议 / 入站" name="inbound" value={inboundProtocol} options={["Res", "Mes", "Chat"]} onChange={(value) => setInboundProtocol(value as Protocol)} /></label>
         <fieldset className="upstream-picker"><legend>选择上游服务</legend>{data.upstreams.map((upstream) => <label className="checkbox-row" key={upstream.id}><input type="checkbox" aria-label={upstream.name} checked={selectedUpstreamIds.includes(upstream.id)} onChange={(event) => setSelectedUpstreamIds((current) => event.target.checked ? [...current, upstream.id] : current.filter((id) => id !== upstream.id))} />{upstream.name}<span className="cell-subtext">{upstream.models.length} 个示例模型</span></label>)}<button className="button-secondary" type="button" disabled={!selectedUpstreamIds.length} onClick={() => setModelsLoaded(true)}>加载已选上游模型</button></fieldset>
-        {modelsLoaded && selectedUpstreamIds.map((upstreamId) => { const upstream = data.upstreams.find((item) => item.id === upstreamId); return upstream ? <label key={upstream.id}>{upstream.name} 模型<select name={`model-${upstream.id}`} aria-label={`${upstream.name} 模型`} required defaultValue=""><option value="" disabled>选择模型</option>{upstream.models.map((model) => <option key={model} value={model}>{model}</option>)}</select></label> : null; })}
-        <label>上游协议 / 出站<select name="outbound" defaultValue="Chat"><option>Res</option><option>Mes</option><option>Chat</option></select></label>
+        {modelsLoaded && selectedUpstreamIds.map((upstreamId) => { const upstream = data.upstreams.find((item) => item.id === upstreamId); return upstream ? <label key={upstream.id}>{upstream.name} 模型<CustomSelect ariaLabel={`${upstream.name} 模型`} name={`model-${upstream.id}`} value={modelSelections[upstream.id] ?? ""} options={upstream.models} placeholder="选择模型" onChange={(value) => setModelSelections((current) => ({ ...current, [upstream.id]: value }))} /></label> : null; })}
+        <label>上游协议 / 出站<CustomSelect ariaLabel="上游协议 / 出站" name="outbound" value={outboundProtocol} options={["Res", "Mes", "Chat"]} onChange={(value) => setOutboundProtocol(value as Protocol)} /></label>
         <div className="form-actions"><button className="button-secondary" type="button" onClick={() => setFormOpen(false)}>取消</button><button className="button-primary" type="submit" disabled={!modelsLoaded || !selectedUpstreamIds.length}>保存示例路由</button></div>
       </form></Modal>}
       <div className="table-scroll"><table>
