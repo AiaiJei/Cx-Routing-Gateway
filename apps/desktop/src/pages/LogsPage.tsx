@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { EmptyResult, FixtureNotice, PageHeader, SearchField } from "../components/PageHeader";
 import { CustomSelect } from "../components/CustomSelect";
+import { Modal } from "../components/Modal";
 import { useWorkspace } from "../data/use-workspace";
 import type { CallLog } from "../domain/types";
 
@@ -32,11 +33,10 @@ export function LogsPage() {
           <td><button className="button-text" type="button" aria-label={`查看 ${log.id}`} onClick={() => setSelectedLog(log)}>详情</button></td>
         </tr>)}</tbody>
       </table></div> : <EmptyResult>没有匹配的调用记录</EmptyResult>}
-      {selectedLog && <div className="detail-dialog" role="dialog" aria-modal="true" aria-labelledby="log-detail-title">
-        <div className="detail-dialog-header"><h2 id="log-detail-title" className="section-title">请求 {selectedLog.id} 详情</h2><button className="button-text" type="button" aria-label="关闭详情" onClick={() => setSelectedLog(null)}>关闭</button></div>
+      {selectedLog && <Modal title={`请求 ${selectedLog.id} 详情`} onClose={() => setSelectedLog(null)}>
         <dl className="detail-grid"><div><dt>时间</dt><dd>{selectedLog.time}</dd></div><div><dt>协议方向</dt><dd>{selectedLog.direction}</dd></div><div><dt>入口凭证</dt><dd>{selectedLog.credential}</dd></div><div><dt>结果</dt><dd>{selectedLog.status}</dd></div><div><dt>耗时</dt><dd>{selectedLog.durationMs} ms</dd></div><div><dt>错误摘要</dt><dd>{selectedLog.error ?? "-"}</dd></div></dl>
         <p className="action-feedback">请求和响应正文未记录；示例日志字段已脱敏。</p>
-      </div>}
+      </Modal>}
       <p className="helper-text page-footnote">示例字段已脱敏。真实日志、筛选与保留策略尚未接入。</p>
     </div>
   );

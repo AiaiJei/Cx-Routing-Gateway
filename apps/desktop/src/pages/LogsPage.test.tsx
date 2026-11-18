@@ -37,8 +37,9 @@ describe("LogsPage", () => {
     await user.click(screen.getByRole("button", { name: "查看 req-7d3a9f21" }));
     const dialog = screen.getByRole("dialog", { name: "请求 req-7d3a9f21 详情" });
     expect(dialog).toBeVisible();
+    expect(dialog).toHaveClass("modal");
     expect(dialog).toHaveTextContent("Desktop client ·••••");
     expect(dialog).toHaveTextContent("请求和响应正文未记录");
-    expect(screen.getByRole("button", { name: "关闭详情" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "关闭弹窗" })).toHaveTextContent("×");
   });
 });
