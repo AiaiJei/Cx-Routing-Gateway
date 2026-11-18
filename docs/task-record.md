@@ -59,7 +59,7 @@
 - 已修复 Important：调用日志新增详情对话区，展示脱敏摘要并明确正文未记录；所有页面通过 `useWorkspace` 读取 typed client 数据，并提供读取错误提示。
 - 已处理 Minor：总览空日志时平均耗时显示 `-`；日志增加状态筛选测试。异步上游测试仍保留错误边界作为 client 替换时的保护点，当前 fixture ID 不会触发该路径。
 - 修复后验证：17 项测试通过，生产构建通过，生产依赖审计 0 项漏洞，Taste lint 0 FAIL/6 WARN；窄屏真实浏览器截图仍为 `NOT_RUN`。
-- PR：`https://github.com/AiaiJei/Cx-Routing-Gateway/pull/3`，状态：已创建、未合并；Owner acceptance 仍为 pending。
+- PR：`https://github.com/AiaiJei/Cx-Routing-Gateway/pull/3`，已于 2026-11-18 合并；合并提交：`8ee341deff499224079f3e604e1a4a77b4a1ab50`。Owner acceptance 仍为 pending。
 - 后续修订：按 Owner 反馈补充 Electron 原生窗口与自定义标题栏；窗口无系统 frame，标题栏提供最小化、最大化/还原、关闭和拖拽区域，IPC 通过 preload 暴露且保持 context isolation。
 - 修订验证：17 项测试通过，生产构建通过，`electron/main.cjs` 与 `electron/preload.cjs` 语法检查通过；窗口实际进程已启动，Computer Use 后续观察因物理 Escape 被用户中止。
 - 交互修订：上游新增改为弹窗，并移除上游出站协议字段；模型路由弹窗支持勾选多个上游、加载各上游模型、分别选择模型，一个客户端模型可配置多个上游承载。专项与全量测试、构建均通过。
@@ -69,3 +69,9 @@
 - 日志详情修订：调用日志详情从页面内嵌面板改为统一弹窗，复用遮罩、`X` 关闭、Escape 和点击外部关闭行为。
 - 总览修订：按 Owner 选择的“运行态总览”重排首屏，优先展示 Gateway 状态与快捷入口；失败调用单独进入“需要关注”；配置就绪与运行概况分组，最近调用保留在下方。
 - 总览按钮修订：快捷操作统一为规范按钮组，固定高度与对齐方式，统一边框/圆角/间距，并补充 hover、active 和链接按钮去装饰处理。
+
+### 合并归档
+
+- PR #3 已合并至 `master`；主工作树已快进至合并提交 `8ee341d`。
+- 主工作树合并后验证：`npm test` 19/19 通过；`npm run build` 通过；Electron 主进程和 preload 语法检查通过；`git diff --check` 通过。
+- 任务 worktree `.worktree/desktop-frontend-phase1` 保留为宿主管理目录，未强制删除；主工作树原有未跟踪治理目录保持不变。
