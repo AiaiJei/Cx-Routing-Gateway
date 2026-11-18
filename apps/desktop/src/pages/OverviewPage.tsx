@@ -12,7 +12,7 @@ export function OverviewPage() {
 
   return (
     <div className="page-content">
-      <PageHeader title="总览" description="先确认 Gateway 状态，再处理配置和最近调用。" action={<Link to="/upstreams" className="button-primary">配置上游</Link>} />
+      <PageHeader title="总览" description="先确认 Gateway 状态，再处理配置和最近调用。" />
       <FixtureNotice />
       {error && <p className="action-feedback" role="alert">工作区数据读取失败：{error}</p>}
       <section className="overview-hero" aria-labelledby="gateway-status-title">
@@ -22,7 +22,7 @@ export function OverviewPage() {
           <p className="helper-text">打开 Desktop 后的自动启动流程尚未实现。</p>
           <div className="endpoint-inline"><span className="field-label">预设本机接入地址</span><code>{gateway.url}</code></div>
         </div>
-        <div className="overview-actions"><Link to="/upstreams" className="button-secondary">查看上游</Link><Link to="/routes" className="button-secondary">查看路由</Link><Link to="/credentials" className="button-secondary">查看凭证</Link></div>
+        <div className="overview-actions" aria-label="快捷操作"><Link to="/upstreams" className="button-secondary">查看上游</Link><Link to="/routes" className="button-secondary">查看路由</Link><Link to="/credentials" className="button-secondary">查看凭证</Link></div>
       </section>
       {failedLogs.length > 0 && <section className="attention-panel" aria-labelledby="attention-title"><div className="section-heading"><div><h2 id="attention-title" className="section-title">需要关注</h2><p className="helper-text">示例调用中的失败记录</p></div><Link to="/logs" className="quiet-link">查看日志</Link></div><div className="attention-list">{failedLogs.map((log) => <div className="attention-row" key={log.id}><span className="attention-mark" aria-hidden="true">!</span><div><strong>{log.model}</strong><span className="cell-subtext">{log.error ?? log.status}</span></div><code>{log.id}</code></div>)}</div></section>}
       <div className="overview-grid">

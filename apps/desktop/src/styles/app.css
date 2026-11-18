@@ -198,11 +198,12 @@ td code, code { font-family: "IBM Plex Mono", monospace; font-size: 12px; }
 .url-cell { overflow-wrap: anywhere; }
 .numeric { text-align: right; white-space: nowrap; }
 .status-text { color: var(--warning); white-space: nowrap; }
-.button-primary, .button-secondary { min-height: 36px; padding: 0 12px; border: 1px solid var(--control); border-radius: var(--radius-control); font-size: 13px; cursor: pointer; }
+.button-primary, .button-secondary { display: inline-flex; align-items: center; justify-content: center; min-height: 34px; padding: 0 13px; border: 1px solid var(--control); border-radius: var(--radius-control); font-size: 13px; line-height: 1; text-decoration: none; cursor: pointer; transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease; }
 .button-primary { border-color: var(--text); background: var(--text); color: white; }
 .button-secondary { background: var(--surface); color: var(--text); }
 .button-primary:hover { background: #343638; }
-.button-secondary:hover { background: var(--raised); }
+.button-secondary:hover { border-color: #aeb3b6; background: var(--raised); }
+.button-secondary:active { background: var(--active); }
 .empty-result { margin: 0; padding: 28px 12px; border-block: 1px solid var(--border); color: var(--muted); text-align: center; font-size: 14px; }
 .action-feedback { margin: 0; padding: 10px 12px; border-left: 3px solid var(--accent); background: var(--raised); font-size: 13px; line-height: 1.5; }
 .page-footnote { padding-top: 4px; }
