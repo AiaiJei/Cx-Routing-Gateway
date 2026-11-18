@@ -1,13 +1,15 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { FixtureNotice, PageHeader } from "../components/PageHeader";
-import { workspaceFixtures } from "../data/fixtures";
+import { useWorkspace } from "../data/use-workspace";
 import type { ModelRoute, Protocol } from "../domain/types";
 
 export function RoutesPage() {
   const [message, setMessage] = useState("");
   const [formOpen, setFormOpen] = useState(false);
-  const [routes, setRoutes] = useState(workspaceFixtures.routes);
-  const upstreams = new Map(workspaceFixtures.upstreams.map((upstream) => [upstream.id, upstream.name]));
+  const { data, error } = useWorkspace();
+  const [routes, setRoutes] = useState(data.routes);
+  useEffect(() => setRoutes(data.routes), [data.routes]);
+  const upstreams = new Map(data.upstreams.map((upstream) => [upstream.id, upstream.name]));
 
   function addRoute(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -29,12 +31,13 @@ export function RoutesPage() {
     <div className="page-content">
       <PageHeader title="模型路由" description="将客户端请求协议映射到指定上游，再按原入站协议返回响应。" action={<button className="button-primary" type="button" onClick={() => setFormOpen((open) => !open)}>添加路由</button>} />
       <FixtureNotice>示例路由 · 未连接运行时</FixtureNotice>
+      {error && <p className="action-feedback" role="alert">工作区数据读取失败：{error}</p>}
       {message && <p className="action-feedback" role="status">{message}</p>}
       {formOpen && <form className="editor-form" onSubmit={addRoute}>
         <div className="form-heading"><h2 className="section-title">新增路由示例</h2><span className="helper-text">仅当前页面会话</span></div>
         <label>客户端模型别名<input name="alias" required maxLength={100} autoComplete="off" /></label>
         <label>客户端协议 / 入站<select name="inbound" defaultValue="Res"><option>Res</option><option>Mes</option><option>Chat</option></select></label>
-        <label>目标上游<select name="upstream" defaultValue={workspaceFixtures.upstreams[0]?.id}>{workspaceFixtures.upstreams.map((upstream) => <option key={upstream.id} value={upstream.id}>{upstream.name}</option>)}</select></label>
+        <label>目标上游<select name="upstream" defaultValue={data.upstreams[0]?.id}>{data.upstreams.map((upstream) => <option key={upstream.id} value={upstream.id}>{upstream.name}</option>)}</select></label>
         <label>上游协议 / 出站<select name="outbound" defaultValue="Chat"><option>Res</option><option>Mes</option><option>Chat</option></select></label>
         <label>上游模型<input name="model" required maxLength={120} autoComplete="off" /></label>
         <div className="form-actions"><button className="button-secondary" type="button" onClick={() => setFormOpen(false)}>取消</button><button className="button-primary" type="submit">保存示例路由</button></div>

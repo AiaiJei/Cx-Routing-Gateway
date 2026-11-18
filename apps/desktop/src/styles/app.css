@@ -179,6 +179,12 @@ td code, code { font-family: "IBM Plex Mono", monospace; font-size: 12px; }
 .setting-row .field-label { color: var(--text); font-size: 14px; }
 .setting-row input:disabled { color: var(--muted); background: var(--raised); opacity: 1; }
 .body-copy { max-width: 760px; margin: 0; font-size: 14px; line-height: 1.6; }
+.detail-dialog { display: grid; gap: 16px; max-width: 720px; padding: 18px; border: 1px solid var(--control); border-radius: var(--radius-card); background: var(--surface); }
+.detail-dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 20px; margin: 0; }
+.detail-grid div { display: grid; gap: 4px; }
+.detail-grid dt { color: var(--muted); font-size: 12px; }
+.detail-grid dd { margin: 0; font-size: 13px; }
 .editor-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; max-width: 880px; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-card); background: #fcfcfc; }
 .editor-form > label { display: grid; gap: 6px; color: var(--muted); font-size: 12px; }
 .editor-form input, .editor-form select { width: 100%; min-width: 0; height: 36px; padding: 0 10px; border: 1px solid var(--control); border-radius: var(--radius-control); background: white; color: var(--text); font-size: 13px; }
@@ -235,6 +241,7 @@ td code, code { font-family: "IBM Plex Mono", monospace; font-size: 12px; }
   .result-count { align-self: center; }
   .setting-row { grid-template-columns: 1fr; gap: 8px; }
   .setting-row input { width: 100%; }
+  .detail-grid { grid-template-columns: 1fr; }
   .editor-form { grid-template-columns: 1fr; }
   .form-heading, .form-actions { grid-column: auto; }
   th, td { padding-right: 10px; padding-left: 10px; }

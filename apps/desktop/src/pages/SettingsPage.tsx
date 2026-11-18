@@ -1,14 +1,16 @@
 import { FixtureNotice, PageHeader } from "../components/PageHeader";
-import { workspaceFixtures } from "../data/fixtures";
+import { useWorkspace } from "../data/use-workspace";
 
 export function SettingsPage() {
+  const { data, error } = useWorkspace();
   return (
     <div className="page-content">
       <PageHeader title="设置" description="本机 Gateway 与桌面应用的运行选项。" />
       <FixtureNotice>示例配置 · 只读</FixtureNotice>
+      {error && <p className="action-feedback" role="alert">工作区数据读取失败：{error}</p>}
       <p className="action-feedback" role="note">运行时未接入，以下配置尚不可更改。</p>
       <section className="settings-list" aria-label="Gateway 设置">
-        {workspaceFixtures.settings.map((setting) => <div className="setting-row" key={setting.label}>
+        {data.settings.map((setting) => <div className="setting-row" key={setting.label}>
           <div><label className="field-label" htmlFor={`setting-${setting.label}`}>{setting.label}</label><p className="helper-text">本机运行时配置，当前不可用</p></div>
           <input id={`setting-${setting.label}`} value={setting.value} disabled readOnly />
         </div>)}

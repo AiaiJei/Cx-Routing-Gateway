@@ -1,17 +1,19 @@
 import { Link } from "react-router";
 import { FixtureNotice, PageHeader } from "../components/PageHeader";
-import { workspaceFixtures } from "../data/fixtures";
+import { useWorkspace } from "../data/use-workspace";
 
 export function OverviewPage() {
-  const { gateway, upstreams, routes, logs } = workspaceFixtures;
+  const { data, error } = useWorkspace();
+  const { gateway, upstreams, routes, logs } = data;
   const succeeded = logs.filter((log) => log.status.startsWith("成功")).length;
   const failed = logs.length - succeeded;
-  const average = Math.round(logs.reduce((total, log) => total + log.durationMs, 0) / logs.length);
+  const average = logs.length ? Math.round(logs.reduce((total, log) => total + log.durationMs, 0) / logs.length) : null;
 
   return (
     <div className="page-content">
       <PageHeader title="总览" description="查看本机 Gateway 配置概况与最近的示例调用。" />
       <FixtureNotice />
+      {error && <p className="action-feedback" role="alert">工作区数据读取失败：{error}</p>}
       <section className="overview-status" aria-labelledby="gateway-status-title">
         <div>
           <h2 id="gateway-status-title" className="section-title">本机 Gateway</h2>
@@ -31,7 +33,7 @@ export function OverviewPage() {
           <div><span className="metric-label">模型路由</span><strong>{routes.length}</strong></div>
           <div><span className="metric-label">示例调用</span><strong>{logs.length}</strong></div>
           <div><span className="metric-label">模拟成功 / 失败</span><strong>{succeeded} / {failed}</strong></div>
-          <div><span className="metric-label">平均耗时</span><strong>{average}<small> ms</small></strong></div>
+          <div><span className="metric-label">平均耗时</span><strong>{average === null ? "-" : <>{average}<small> ms</small></>}</strong></div>
         </div>
       </section>
       <section className="page-section" aria-labelledby="recent-logs-title">

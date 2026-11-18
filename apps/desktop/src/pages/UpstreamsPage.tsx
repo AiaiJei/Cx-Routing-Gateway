@@ -1,14 +1,16 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { EmptyResult, FixtureNotice, PageHeader, SearchField } from "../components/PageHeader";
 import { fixtureWorkspaceClient } from "../data/workspace-client";
-import { workspaceFixtures } from "../data/fixtures";
+import { useWorkspace } from "../data/use-workspace";
 import type { Protocol, Upstream } from "../domain/types";
 
 export function UpstreamsPage() {
   const [query, setQuery] = useState("");
   const [feedback, setFeedback] = useState("");
   const [formOpen, setFormOpen] = useState(false);
-  const [upstreams, setUpstreams] = useState(workspaceFixtures.upstreams);
+  const { data, error } = useWorkspace();
+  const [upstreams, setUpstreams] = useState(data.upstreams);
+  useEffect(() => setUpstreams(data.upstreams), [data.upstreams]);
   const visibleUpstreams = useMemo(() => upstreams.filter((upstream) =>
     `${upstream.name} ${upstream.baseUrl} ${upstream.outboundProtocol} ${upstream.models.join(" ")}`.toLowerCase().includes(query.trim().toLowerCase()),
   ), [query, upstreams]);
@@ -40,6 +42,7 @@ export function UpstreamsPage() {
     <div className="page-content">
       <PageHeader title="上游服务" description="管理目标服务与配置的上游出站协议。" action={<button className="button-primary" type="button" onClick={() => setFormOpen((open) => !open)}>添加上游</button>} />
       <FixtureNotice />
+      {error && <p className="action-feedback" role="alert">工作区数据读取失败：{error}</p>}
       <div className="toolbar"><SearchField label="搜索上游服务" value={query} onChange={setQuery} /><span className="result-count">{visibleUpstreams.length} 项</span></div>
       {feedback && <p className="action-feedback" role="status">{feedback}</p>}
       {formOpen && <form className="editor-form" onSubmit={addUpstream}>
