@@ -1,0 +1,14 @@
+import { describe, expect, it } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { OverviewPage } from "./OverviewPage";
+import { MemoryRouter } from "react-router";
+
+describe("OverviewPage", () => {
+  it("shows fixture-backed runtime state and summaries derived from the sample logs", async () => {
+    render(<MemoryRouter><OverviewPage /></MemoryRouter>);
+    expect(await screen.findByText("示例数据 · 非实时" )).toBeVisible();
+    expect(screen.getByText("运行时未接入")).toBeVisible();
+    expect(screen.getByText("3")).toBeVisible();
+    expect(screen.getByText("2 / 1")).toBeVisible();
+  });
+});
