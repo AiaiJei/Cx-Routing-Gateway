@@ -10,5 +10,9 @@ describe("OverviewPage", () => {
     expect(screen.getByText("运行时未接入")).toBeVisible();
     expect(screen.getByText("3")).toBeVisible();
     expect(screen.getByText("2 / 1")).toBeVisible();
+    expect(screen.getByRole("heading", { name: "需要关注" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "配置就绪" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "查看上游" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "查看路由" })).toBeVisible();
   });
 });

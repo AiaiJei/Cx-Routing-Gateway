@@ -153,9 +153,11 @@
 .section-title { margin: 0; font-size: 16px; font-weight: 500; }
 .fixture-notice { display: inline-flex; align-items: center; gap: 8px; width: fit-content; margin: 0; color: var(--muted); font-size: 12px; }
 .fixture-notice .state-dot { width: 6px; height: 6px; }
-.overview-status { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap); align-items: start; padding: 18px 0; border-block: 1px solid var(--border); }
+.overview-hero { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--gap); align-items: center; padding: 20px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--raised); }
+.overview-hero-main { display: grid; gap: 4px; }
 .status-line { display: flex; align-items: center; gap: 8px; margin: 12px 0 4px; font-size: 14px; font-weight: 500; }
 .helper-text { margin: 4px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.endpoint-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
 .endpoint-block { display: grid; align-content: start; gap: 7px; }
 .endpoint-block code, .direction-example p { width: fit-content; padding: 7px 10px; border-radius: 5px; background: var(--raised); }
 .page-section { display: grid; gap: 12px; }
@@ -165,6 +167,17 @@
 .metric-label, .field-label { color: var(--muted); font-size: 12px; }
 .metric-tray strong { font-size: 24px; font-weight: 400; }
 .metric-tray small { color: var(--muted); font-size: 13px; }
+.overview-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.attention-panel, .overview-panel { display: grid; gap: 14px; padding: 18px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); }
+.attention-panel { border-left: 3px solid var(--negative); }
+.attention-list, .ready-list { display: grid; gap: 8px; }
+.attention-row { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 10px; align-items: center; min-height: 42px; padding: 8px 0; border-top: 1px solid var(--border); }
+.attention-mark { display: grid; width: 20px; height: 20px; place-items: center; border-radius: 50%; background: #ffedea; color: var(--negative); font-weight: 600; }
+.attention-row code { color: var(--muted); }
+.overview-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap); }
+.ready-list a { display: flex; align-items: center; justify-content: space-between; min-height: 40px; padding: 0 10px; border-radius: var(--radius-control); color: var(--text); text-decoration: none; }
+.ready-list a:hover { background: var(--raised); }
+.ready-list strong { font-size: 20px; font-weight: 400; }
 .quiet-link, .button-text { color: var(--accent); font-size: 13px; text-decoration: none; }
 .button-text { padding: 6px; border: 0; background: transparent; cursor: pointer; }
 .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
@@ -281,7 +294,9 @@ td code, code { font-family: "IBM Plex Mono", monospace; font-size: 12px; }
   .page-content { gap: 18px; }
   .page-header { align-items: flex-start; }
   .page-description { max-width: 48ch; }
-  .overview-status { grid-template-columns: 1fr; gap: 18px; }
+  .overview-hero { grid-template-columns: 1fr; gap: 16px; }
+  .overview-actions { justify-content: flex-start; }
+  .overview-grid { grid-template-columns: 1fr; gap: 16px; }
   .metric-tray { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 12px; }
   .metric-tray > div:last-child { grid-column: 1 / -1; }
   .toolbar { align-items: stretch; }

@@ -7,35 +7,28 @@ export function OverviewPage() {
   const { gateway, upstreams, routes, logs } = data;
   const succeeded = logs.filter((log) => log.status.startsWith("成功")).length;
   const failed = logs.length - succeeded;
+  const failedLogs = logs.filter((log) => log.status.startsWith("失败"));
   const average = logs.length ? Math.round(logs.reduce((total, log) => total + log.durationMs, 0) / logs.length) : null;
 
   return (
     <div className="page-content">
-      <PageHeader title="总览" description="查看本机 Gateway 配置概况与最近的示例调用。" />
+      <PageHeader title="总览" description="先确认 Gateway 状态，再处理配置和最近调用。" action={<Link to="/upstreams" className="button-primary">配置上游</Link>} />
       <FixtureNotice />
       {error && <p className="action-feedback" role="alert">工作区数据读取失败：{error}</p>}
-      <section className="overview-status" aria-labelledby="gateway-status-title">
-        <div>
+      <section className="overview-hero" aria-labelledby="gateway-status-title">
+        <div className="overview-hero-main">
           <h2 id="gateway-status-title" className="section-title">本机 Gateway</h2>
           <p className="status-line"><span className="state-dot" />运行时未接入</p>
           <p className="helper-text">打开 Desktop 后的自动启动流程尚未实现。</p>
+          <div className="endpoint-inline"><span className="field-label">预设本机接入地址</span><code>{gateway.url}</code></div>
         </div>
-        <div className="endpoint-block">
-          <span className="field-label">预设本机接入地址</span>
-          <code>{gateway.url}</code>
-          <span className="helper-text">界面示例，当前没有服务监听此地址。</span>
-        </div>
+        <div className="overview-actions"><Link to="/upstreams" className="button-secondary">查看上游</Link><Link to="/routes" className="button-secondary">查看路由</Link><Link to="/credentials" className="button-secondary">查看凭证</Link></div>
       </section>
-      <section className="page-section" aria-labelledby="summary-title">
-        <div className="section-heading"><h2 id="summary-title" className="section-title">配置概况</h2></div>
-        <div className="metric-tray">
-          <div><span className="metric-label">上游服务</span><strong>{upstreams.length}</strong></div>
-          <div><span className="metric-label">模型路由</span><strong>{routes.length}</strong></div>
-          <div><span className="metric-label">示例调用</span><strong>{logs.length}</strong></div>
-          <div><span className="metric-label">模拟成功 / 失败</span><strong>{succeeded} / {failed}</strong></div>
-          <div><span className="metric-label">平均耗时</span><strong>{average === null ? "-" : <>{average}<small> ms</small></>}</strong></div>
-        </div>
-      </section>
+      {failedLogs.length > 0 && <section className="attention-panel" aria-labelledby="attention-title"><div className="section-heading"><div><h2 id="attention-title" className="section-title">需要关注</h2><p className="helper-text">示例调用中的失败记录</p></div><Link to="/logs" className="quiet-link">查看日志</Link></div><div className="attention-list">{failedLogs.map((log) => <div className="attention-row" key={log.id}><span className="attention-mark" aria-hidden="true">!</span><div><strong>{log.model}</strong><span className="cell-subtext">{log.error ?? log.status}</span></div><code>{log.id}</code></div>)}</div></section>}
+      <div className="overview-grid">
+        <section className="overview-panel" aria-labelledby="ready-title"><div className="section-heading"><div><h2 id="ready-title" className="section-title">配置就绪</h2><p className="helper-text">当前工作区中的示例配置</p></div></div><div className="ready-list"><Link to="/upstreams"><span>上游服务</span><strong>{upstreams.length}</strong></Link><Link to="/routes"><span>模型路由</span><strong>{routes.length}</strong></Link><Link to="/credentials"><span>接入凭证</span><strong>{data.credentials.length}</strong></Link></div></section>
+        <section className="overview-panel" aria-labelledby="summary-title"><div className="section-heading"><div><h2 id="summary-title" className="section-title">运行概况</h2><p className="helper-text">最近示例调用的摘要</p></div></div><div className="metric-tray"><div><span className="metric-label">调用数</span><strong>{logs.length}</strong></div><div><span className="metric-label">成功 / 失败</span><strong>{succeeded} / {failed}</strong></div><div><span className="metric-label">平均耗时</span><strong>{average === null ? "-" : <>{average}<small> ms</small></>}</strong></div></div></section>
+      </div>
       <section className="page-section" aria-labelledby="recent-logs-title">
         <div className="section-heading">
           <h2 id="recent-logs-title" className="section-title">最近调用</h2>
