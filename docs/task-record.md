@@ -62,3 +62,4 @@
 - PR：`https://github.com/AiaiJei/Cx-Routing-Gateway/pull/3`，状态：已创建、未合并；Owner acceptance 仍为 pending。
 - 后续修订：按 Owner 反馈补充 Electron 原生窗口与自定义标题栏；窗口无系统 frame，标题栏提供最小化、最大化/还原、关闭和拖拽区域，IPC 通过 preload 暴露且保持 context isolation。
 - 修订验证：17 项测试通过，生产构建通过，`electron/main.cjs` 与 `electron/preload.cjs` 语法检查通过；窗口实际进程已启动，Computer Use 后续观察因物理 Escape 被用户中止。
+- 交互修订：上游新增改为弹窗，并移除上游出站协议字段；模型路由弹窗支持勾选多个上游、加载各上游模型、分别选择模型，一个客户端模型可配置多个上游承载。专项与全量测试、构建均通过。

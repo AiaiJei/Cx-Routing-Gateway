@@ -29,9 +29,10 @@ describe("UpstreamsPage", () => {
     const user = userEvent.setup();
     render(<UpstreamsPage />);
     await user.click(screen.getByRole("button", { name: "添加上游" }));
+    expect(screen.getByRole("dialog", { name: "新增上游示例" })).toBeVisible();
     await user.type(screen.getByLabelText("服务名称"), "Local Demo");
     await user.type(screen.getByLabelText("Base URL"), "https://local.example/v1");
-    await user.selectOptions(screen.getByLabelText("上游出站协议"), "Chat");
+    expect(screen.queryByLabelText("上游出站协议")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "保存示例上游" }));
     expect(screen.getByText("Local Demo")).toBeVisible();
     expect(screen.getByRole("status")).toHaveTextContent("刷新后不会保留");

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { EmptyResult, FixtureNotice, PageHeader, SearchField } from "../components/PageHeader";
+import { Modal } from "../components/Modal";
 import { fixtureWorkspaceClient } from "../data/workspace-client";
 import { useWorkspace } from "../data/use-workspace";
-import type { Protocol, Upstream } from "../domain/types";
+import type { Upstream } from "../domain/types";
 
 export function UpstreamsPage() {
   const [query, setQuery] = useState("");
@@ -12,7 +13,7 @@ export function UpstreamsPage() {
   const [upstreams, setUpstreams] = useState(data.upstreams);
   useEffect(() => setUpstreams(data.upstreams), [data.upstreams]);
   const visibleUpstreams = useMemo(() => upstreams.filter((upstream) =>
-    `${upstream.name} ${upstream.baseUrl} ${upstream.outboundProtocol} ${upstream.models.join(" ")}`.toLowerCase().includes(query.trim().toLowerCase()),
+    `${upstream.name} ${upstream.baseUrl} ${upstream.models.join(" ")}`.toLowerCase().includes(query.trim().toLowerCase()),
   ), [query, upstreams]);
 
   function addUpstream(event: FormEvent<HTMLFormElement>) {
@@ -22,7 +23,6 @@ export function UpstreamsPage() {
       id: `up-local-${Date.now()}`,
       name: String(form.get("name")).trim(),
       baseUrl: String(form.get("baseUrl")).trim(),
-      outboundProtocol: String(form.get("protocol")) as Protocol,
       credentialLabel: "未配置",
       status: "未连接",
       models: [],
@@ -45,19 +45,17 @@ export function UpstreamsPage() {
       {error && <p className="action-feedback" role="alert">工作区数据读取失败：{error}</p>}
       <div className="toolbar"><SearchField label="搜索上游服务" value={query} onChange={setQuery} /><span className="result-count">{visibleUpstreams.length} 项</span></div>
       {feedback && <p className="action-feedback" role="status">{feedback}</p>}
-      {formOpen && <form className="editor-form" onSubmit={addUpstream}>
-        <div className="form-heading"><h2 className="section-title">新增上游示例</h2><span className="helper-text">仅当前页面会话</span></div>
+      {formOpen && <Modal title="新增上游示例" onClose={() => setFormOpen(false)}><form className="modal-form" onSubmit={addUpstream}>
+        <span className="helper-text">仅当前页面会话；出站协议在模型路由中配置。</span>
         <label>服务名称<input name="name" required maxLength={80} autoComplete="off" /></label>
         <label>Base URL<input name="baseUrl" type="url" required placeholder="https://api.example/v1" autoComplete="url" /></label>
-        <label>上游出站协议<select name="protocol" defaultValue="Chat"><option>Res</option><option>Mes</option><option>Chat</option></select></label>
         <div className="form-actions"><button className="button-secondary" type="button" onClick={() => setFormOpen(false)}>取消</button><button className="button-primary" type="submit">保存示例上游</button></div>
-      </form>}
+      </form></Modal>}
       {visibleUpstreams.length ? <div className="table-scroll"><table>
-        <thead><tr><th>服务</th><th>Base URL</th><th>协议 / 出站</th><th>模型</th><th>状态</th><th><span className="sr-only">操作</span></th></tr></thead>
+        <thead><tr><th>服务</th><th>Base URL</th><th>模型</th><th>状态</th><th><span className="sr-only">操作</span></th></tr></thead>
         <tbody>{visibleUpstreams.map((upstream) => <tr key={upstream.id}>
           <td><strong>{upstream.name}</strong><span className="cell-subtext">凭证引用：{upstream.credentialLabel}</span></td>
           <td><code className="url-cell">{upstream.baseUrl}</code></td>
-          <td>{upstream.outboundProtocol}</td>
           <td>{upstream.models.length} 个示例模型</td>
           <td><span className="status-text">{upstream.status}</span></td>
           <td><button className="button-secondary" type="button" aria-label={`测试 ${upstream.name}`} onClick={() => void testConnection(upstream.id)}>模拟测试</button></td>

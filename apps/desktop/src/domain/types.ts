@@ -5,7 +5,6 @@ export type Upstream = {
   id: string;
   name: string;
   baseUrl: string;
-  outboundProtocol: Protocol;
   credentialLabel: string;
   status: "未连接" | "待测试";
   models: string[];
@@ -15,8 +14,7 @@ export type ModelRoute = {
   id: string;
   alias: string;
   inboundProtocol: Protocol;
-  upstreamId: string;
-  upstreamModel: string;
+  targets: { upstreamId: string; upstreamModel: string }[];
   outboundProtocol: Protocol;
   enabled: boolean;
 };

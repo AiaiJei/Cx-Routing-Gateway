@@ -7,6 +7,7 @@ Deliver the first runnable Cx-Routing Gateway Desktop workspace so a local user 
 ## Goals
 
 - Provide a desktop application shell with navigation for overview, upstreams, model routes, logs, access credentials, and settings.
+- Provide modal workflows for upstream creation and route creation; route targets may include multiple upstream services with independently selected models.
 - Implement the six planned screens using the repository's page concepts and the existing Framed Sheet visual direction.
 - Use coherent fixture data and provide useful loading, empty, error, unavailable, and simulated states where relevant.
 - Keep UI state and presentation separate from data access so a future local IPC/API adapter can replace fixtures without rewriting screen components.
@@ -35,6 +36,7 @@ The shell follows the repository's Framed Sheet direction: restrained light chro
 
 - The product is a single-user Desktop application, not an administrator console or hosted web dashboard.
 - Inbound protocol belongs to the client request; outbound protocol belongs to the selected route; response conversion returns to the original inbound protocol. The UI must preserve this distinction.
+- Upstream records do not own an outbound protocol; outbound protocol is configured per model route.
 - Res/Mes/Chat expansions remain labeled as planned terminology where the product has not confirmed their exact version semantics.
 - No new backend behavior or security guarantee may be implied by frontend-only interactions.
 - Dependencies should follow the already present React 18, Vite, TypeScript, React Router, and Vitest/Testing Library scaffold direction; do not migrate frameworks.
