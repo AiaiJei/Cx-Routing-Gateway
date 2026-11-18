@@ -12,6 +12,7 @@ describe("OverviewPage", () => {
     expect(screen.getByText("2 / 1")).toBeVisible();
     expect(screen.getByRole("heading", { name: "需要关注" })).toBeVisible();
     expect(screen.getByRole("heading", { name: "配置就绪" })).toBeVisible();
+    expect(screen.queryByRole("link", { name: "配置上游" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "查看上游" })).toBeVisible();
     expect(screen.getByRole("link", { name: "查看路由" })).toBeVisible();
   });
