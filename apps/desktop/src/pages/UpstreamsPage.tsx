@@ -23,7 +23,7 @@ export function UpstreamsPage() {
       id: `up-local-${Date.now()}`,
       name: String(form.get("name")).trim(),
       baseUrl: String(form.get("baseUrl")).trim(),
-      credentialLabel: "未配置",
+      credentialLabel: form.get("key") ? "已配置（当前会话）" : "未配置",
       status: "未连接",
       models: [],
     };
@@ -38,6 +38,10 @@ export function UpstreamsPage() {
     setFeedback(result.message);
   }
 
+  function simulateNewUpstreamTest() {
+    setFeedback("连通测试未执行，当前仅为界面演示；不会发起网络请求。");
+  }
+
   return (
     <div className="page-content">
       <PageHeader title="上游服务" description="管理目标服务与配置的上游出站协议。" action={<button className="button-primary" type="button" onClick={() => setFormOpen((open) => !open)}>添加上游</button>} />
@@ -49,7 +53,8 @@ export function UpstreamsPage() {
         <span className="helper-text">仅当前页面会话；出站协议在模型路由中配置。</span>
         <label>服务名称<input name="name" required maxLength={80} autoComplete="off" /></label>
         <label>Base URL<input name="baseUrl" type="url" required placeholder="https://api.example/v1" autoComplete="url" /></label>
-        <div className="form-actions"><button className="button-secondary" type="button" onClick={() => setFormOpen(false)}>取消</button><button className="button-primary" type="submit">保存示例上游</button></div>
+        <label>上游 Key<input name="key" type="password" required autoComplete="new-password" /></label>
+        <div className="form-actions"><button className="button-secondary" type="button" onClick={simulateNewUpstreamTest}>模拟连通测试</button><button className="button-primary" type="submit">保存示例上游</button></div>
       </form></Modal>}
       {visibleUpstreams.length ? <div className="table-scroll"><table>
         <thead><tr><th>服务</th><th>Base URL</th><th>模型</th><th>状态</th><th><span className="sr-only">操作</span></th></tr></thead>

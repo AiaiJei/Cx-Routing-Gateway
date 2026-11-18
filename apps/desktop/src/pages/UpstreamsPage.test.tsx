@@ -30,9 +30,14 @@ describe("UpstreamsPage", () => {
     render(<UpstreamsPage />);
     await user.click(screen.getByRole("button", { name: "添加上游" }));
     expect(screen.getByRole("dialog", { name: "新增上游示例" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "关闭弹窗" })).toHaveTextContent("×");
+    expect(screen.queryByRole("button", { name: "取消" })).not.toBeInTheDocument();
     await user.type(screen.getByLabelText("服务名称"), "Local Demo");
     await user.type(screen.getByLabelText("Base URL"), "https://local.example/v1");
+    await user.type(screen.getByLabelText("上游 Key"), "sk-demo-key");
     expect(screen.queryByLabelText("上游出站协议")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "模拟连通测试" }));
+    expect(screen.getByRole("status")).toHaveTextContent("连通测试未执行");
     await user.click(screen.getByRole("button", { name: "保存示例上游" }));
     expect(screen.getByText("Local Demo")).toBeVisible();
     expect(screen.getByRole("status")).toHaveTextContent("刷新后不会保留");
