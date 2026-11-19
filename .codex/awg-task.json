@@ -5,7 +5,7 @@
   "task_id": "CXRG-WORKSPACE-DESIGN-2026-11-19",
   "title": "Desktop workspace redesign 1.0.1",
   "status": "active",
-  "stage": "implemented-awaiting-owner-acceptance",
+  "stage": "implementation-refinement",
   "branch": "codex/desktop-workspace-redesign",
   "base": "master",
   "base_sha": "9807fd32b27c436dde55129308799ec4d6187643",
@@ -25,7 +25,8 @@
     "scripts/smoke-packaged.mjs",
     "tests/runtime/release-manifest.test.mjs",
     "tests/runtime/check-update.test.mjs",
-    "docs/superpowers/plans/2026-11-19-workspace-redesign-1.0.1.md"
+    "docs/superpowers/plans/2026-11-19-workspace-redesign-1.0.1.md",
+    "apps/desktop/electron/main.cjs"
   ],
   "scope": {
     "include": [
@@ -90,6 +91,18 @@
       "date": "2026-11-19",
       "scope": "Dedicated row action columns, shared button layout, internal workspace scrolling and global scrollbar appearance; preserve version 1.0.1 and all backend behavior",
       "design_approval": "approved by direct change request"
+    },
+    {
+      "request": "窗口尺寸和比例缩小15%，后拉起desktop",
+      "scope": "Scale default and minimum window dimensions to 85%, set renderer zoomFactor 0.85, rebuild and launch Desktop 1.0.1",
+      "design_approval": "approved by direct change request",
+      "date": "2026-11-19"
+    },
+    {
+      "design_approval": "approved by direct refinement request",
+      "scope": "Present ordered upstream targets as compact horizontal priority tags with secondary hostnames and one failover summary; preserve routing order and behavior",
+      "date": "2026-11-19",
+      "request": "目标上游改为横向/标签式或更好的呈现"
     }
   ],
   "product_version": "1.0.1",

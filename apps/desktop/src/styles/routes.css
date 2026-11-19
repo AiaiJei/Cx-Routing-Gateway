@@ -12,9 +12,16 @@
 .routes-table td { height: 88px; padding-block: 20px; vertical-align: top; }
 .routes-table td .cell-subtext { margin-top: 8px; }
 .routes-table .route-model-name { display: block; font-size: 15px; font-weight: 500; line-height: 24px; }
-.route-target { line-height: 24px; }
-.route-target + .route-target { margin-top: 12px; }
-.route-target .cell-subtext { line-height: 1.4; }
+/* Ordered compact tags keep the failover sequence readable without a tall stack. */
+.route-targets { display: grid; gap: 8px; min-width: 0; }
+.route-target-list { display: flex; flex-wrap: wrap; align-items: start; gap: 10px 6px; margin: 0; padding: 0; list-style: none; }
+.route-target-item { display: grid; gap: 4px; max-width: 100%; min-width: 0; }
+.route-target-tag { display: inline-flex; align-items: center; gap: 6px; width: fit-content; max-width: 100%; min-height: 26px; padding: 3px 7px; border: 1px solid var(--border); border-radius: 5px; background: var(--raised); line-height: 18px; }
+.route-target-priority { flex: none; color: var(--muted); font-size: 11px; }
+.route-target-priority.is-preferred { color: var(--text); font-weight: 500; }
+.route-target-name { min-width: 0; font-size: 13px; font-weight: 500; overflow-wrap: anywhere; }
+.route-target-host { max-width: 180px; padding-left: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 11px; line-height: 16px; }
+.route-failover-summary { margin: 0; color: var(--muted); font-size: 11px; line-height: 18px; overflow-wrap: anywhere; }
 .route-state { display: inline-flex; align-items: center; gap: 8px; min-height: 24px; font-size: 13px; }
 .route-state-mark { display: inline-grid; place-items: center; width: 13px; height: 13px; border: 1px solid #777b83; border-radius: 50%; color: var(--muted); font-size: 10px; line-height: 1; }
 .route-state.is-enabled .route-state-mark { border-color: var(--positive); color: var(--positive); }
@@ -25,7 +32,7 @@
 .routes-table.has-actions .route-col-inbound,
 .routes-table.has-actions .route-col-outbound,
 .routes-table.has-actions .route-col-response { width: 88px; }
-.routes-table.has-actions .route-col-upstream { width: 240px; }
+.routes-table.has-actions .route-col-upstream { width: 280px; }
 .routes-table.has-actions .route-col-state { width: 104px; }
 .routes-table.has-actions .route-col-actions { width: 300px; }
 .routes-table.has-actions th { padding-inline: 12px; }

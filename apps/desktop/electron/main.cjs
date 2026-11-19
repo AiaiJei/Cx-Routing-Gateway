@@ -38,10 +38,10 @@ function trustedSender(event) {
 
 function createWindow() {
   const window = new BrowserWindow({
-    width: 1440,
-    height: 900,
-    minWidth: 960,
-    minHeight: 640,
+    width: 1224,
+    height: 765,
+    minWidth: 816,
+    minHeight: 544,
     frame: false,
     show: false,
     backgroundColor: "#f9fbfc",
@@ -50,6 +50,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      zoomFactor: 0.85,
     },
   });
   window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));

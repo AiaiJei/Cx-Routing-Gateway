@@ -3,6 +3,7 @@ import { WorkspaceState } from "../components/WorkspaceState";
 import { useState, type FormEvent } from "react";
 import { EmptyResult, FixtureNotice, PageHeader } from "../components/PageHeader";
 import { ProtocolExplanation } from "../components/ProtocolExplanation";
+import { RouteTargets } from "../components/RouteTargets";
 import { Modal } from "../components/Modal";
 import { Button } from "../components/Button";
 import { CustomSelect } from "../components/CustomSelect";
@@ -11,14 +12,6 @@ import { RouteTestDialog } from "../components/RouteTestDialog";
 import { defaultWorkspaceClient } from "../data/workspace-client";
 import { useWorkspace } from "../data/use-workspace";
 import type { ModelRoute, Protocol } from "../domain/types";
-
-function hostname(baseUrl: string | undefined) {
-  if (!baseUrl) return "地址不可用";
-  try {
-    const url = new URL(baseUrl);
-    return ["http:", "https:"].includes(url.protocol) && url.hostname ? url.hostname : "地址不可用";
-  } catch { return "地址不可用"; }
-}
 
 export function RoutesPage() {
   const [message, setMessage] = useState("");
@@ -130,7 +123,7 @@ export function RoutesPage() {
         <tbody>{routes.map((route) => <tr key={route.id}>
           <td><strong className="route-model-name">{route.targets[0]?.upstreamModel ?? route.alias}</strong>{route.targets[0] && route.alias !== route.targets[0].upstreamModel && <span className="cell-subtext">调用名：{route.alias}</span>}</td>
           <td><ProtocolBadge protocol={route.inboundProtocol} /></td>
-          <td>{route.targets.map((target, index) => <div className="route-target" key={`${target.upstreamId}:${target.upstreamModel}`}><strong>{route.targets.length > 1 && `${index + 1}. `}{upstreams.get(target.upstreamId) ?? "未匹配上游"}</strong><span className="cell-subtext">{hostname(data.upstreams.find(upstream => upstream.id === target.upstreamId)?.baseUrl)}</span></div>)}{route.targets.length > 1 && <span className="cell-subtext">连续失败 {route.failover?.failureThreshold ?? 3} 次后切换 · {(route.failover?.statusClasses ?? [4, 5]).map(value => `${value}xx`).join(" / ")}</span>}</td>
+          <td><RouteTargets route={route} upstreams={data.upstreams} /></td>
           <td><ProtocolBadge protocol={route.outboundProtocol} /></td>
           <td><ProtocolBadge protocol={route.inboundProtocol} /></td>
           <td className="route-state-cell"><span className={`route-state ${data.meta.live && route.enabled ? "is-enabled" : ""}`}><span className="route-state-mark" aria-hidden="true"><svg viewBox="0 0 12 12" fill="none">{route.enabled ? <path d="m3 6 2 2 4-4" /> : <path d="M3 6h6" />}</svg></span>{route.enabled ? "已启用" : "已停用"}</span>{!data.meta.live && <span className="cell-subtext route-preview-state">预览状态</span>}</td>{data.meta.live && <td className="row-actions-cell"><div className="row-actions" role="group" aria-label={`${route.alias} 操作`}>{route.enabled && <Button variant="accent" size="small" className="route-action-test" aria-label={`测试调用 ${route.alias}`} onClick={() => setTestingRoute(route)}><svg className="route-test-play-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M5 3.8c0-.6.7-.9 1.2-.6l6 3.8a.7.7 0 0 1 0 1.2l-6 3.8a.7.7 0 0 1-1.2-.6z" fill="currentColor" /></svg>测试调用</Button>}<Button variant="secondary" size="small" className="route-action-edit" onClick={() => openForm(route)}>编辑</Button><Button variant="secondary" size="small" className="route-action-toggle" onClick={() => void toggleRoute(route)}>{route.enabled ? "停用" : "启用"}</Button><Button variant="danger" size="small" className="route-action-delete" onClick={() => void deleteRoute(route.id)}>删除</Button></div></td>}
