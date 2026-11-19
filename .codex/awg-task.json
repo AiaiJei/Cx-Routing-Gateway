@@ -1,5 +1,5 @@
 {
-  "title": "Request log refresh 1.0.3",
+  "title": "Request log refresh, latest-first order and date filters 1.0.3",
   "stage": "pr-open",
   "authorization": {
     "operations": [
@@ -21,7 +21,9 @@
     "Preserve filters/details/rows; recover from failure",
     "Pause hidden/unmounted pages; refresh on return",
     "Full tests/build, browser and independent review",
-    "Dedicated PR from merged PR #7"
+    "Dedicated PR from merged PR #7",
+    "Newest request timestamp first, stable ties, invalid times last",
+    "Realtime/today/last7/last30 calendar filters combine with status/search, reset and polling"
   ],
   "branch": "codex/request-logs-refresh-1.0.3",
   "previous_contract": "docs/tasks/2026-11-20-pr7-contract.json",
@@ -50,7 +52,8 @@
     "docs/task-record.md",
     ".task-evidence/**",
     "apps/desktop/src/pages/SettingsPage.test.tsx",
-    "tests/runtime/release-manifest.test.mjs"
+    "tests/runtime/release-manifest.test.mjs",
+    "apps/desktop/src/domain/request-log-filter*"
   ],
   "contract_version": 1,
   "owner_acceptance": "pending",
@@ -61,19 +64,27 @@
       "evidence": "Full suites still expected 1.0.2. Runtime build-path test also ran before dist existed; rerun after successful build.",
       "date": "2026-11-20",
       "scope": "Synchronize Settings and release-manifest test fixtures with authorized 1.0.3 version bump"
+    },
+    {
+      "date": "2026-11-20",
+      "request": "优化日志记录展示顺序，第一条为最新；新增日期筛选：实时、今日、近7天、近30天",
+      "acceptance": "Newest first; calendar date filters combine with search/status, reset to realtime, polling retains selected filter; no persistence migration.",
+      "scope": "Continue PR #8 / version 1.0.3. Pure view sorting/date filtering and tests; rebuild and relaunch Desktop using existing data after verification."
     }
   ],
   "verification": {
     "installer": "NOT_RUN",
-    "desktop": "74/74",
+    "desktop": "88/88",
     "native_electron_latency": "NOT_RUN",
     "provider": "NOT_RUN",
     "owner": "pending",
-    "browser": "PASS 1440/768/390, fixture log arrival 1556 ms",
+    "browser": "PASS 1440/768/390; today/week/month/realtime 1/2/3/4 fixture rows; reset/keyboard and newest-first verified",
     "runtime": "75/75",
-    "independent_review": "PASS; no P0/P1/P2",
+    "independent_review": "P2 midnight-DST boundary reproduced and fixed with two RED-to-GREEN tests; no deferred code findings",
     "production_build": "PASS",
-    "production_audit": "0 vulnerabilities"
+    "production_audit": "0 vulnerabilities",
+    "date_timezone_tests": "UTC and America/New_York 24/24 each; ordinary suite includes explicit America/Santiago midnight-DST tests",
+    "native_unpacked": "PASS final 1.0.3.0 x64 build and launch, window responds and both health endpoints OK; native date interaction automation PARTIAL"
   },
   "pull_request": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/8"
 }

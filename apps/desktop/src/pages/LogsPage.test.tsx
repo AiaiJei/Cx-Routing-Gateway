@@ -170,4 +170,71 @@ describe("request log refresh", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.getByRole("dialog")).toBe(dialog);
   });
+
+  it("displays newest rows first and prepends later arrivals without changing the source array", async () => {
+    const initial = liveSnapshot();
+    initial.logs = [
+      { ...initial.logs[0], id: "older", time: "2026-11-19T09:00:00Z" },
+      { ...initial.logs[0], id: "newer", time: "2026-11-20T09:00:00Z" },
+    ];
+    let latest = initial;
+    vi.spyOn(defaultWorkspaceClient, "getWorkspace").mockImplementation(async () => latest);
+    render(<LogsPage />);
+    await tick();
+    expect(screen.getAllByRole("button", { name: /^查看 / }).map((button) => button.getAttribute("aria-label"))).toEqual(["查看 newer", "查看 older"]);
+    latest = { ...initial, logs: [...initial.logs, { ...initial.logs[0], id: "newest", time: "2026-11-20T09:00:01Z" }] };
+    await tick(1500);
+    expect(screen.getAllByRole("button", { name: /^查看 / }).map((button) => button.getAttribute("aria-label"))).toEqual(["查看 newest", "查看 newer", "查看 older"]);
+    expect(initial.logs.map(({ id }) => id)).toEqual(["older", "newer"]);
+  });
+
+  it("combines all four date ranges with search and status, and resets everything to realtime", async () => {
+    vi.setSystemTime(new Date(2026, 10, 20, 12));
+    const latest = liveSnapshot();
+    latest.logs = [
+      { ...latest.logs[0], id: "today-match", time: new Date(2026, 10, 20, 9).toISOString(), status: "失败" },
+      { ...latest.logs[0], id: "week-match", time: new Date(2026, 10, 14).toISOString(), status: "失败" },
+      { ...latest.logs[0], id: "month-match", time: new Date(2026, 9, 22).toISOString(), status: "失败" },
+      { ...latest.logs[0], id: "old-match", time: new Date(2026, 9, 21).toISOString(), status: "失败" },
+      { ...latest.logs[0], id: "today-success-match", time: new Date(2026, 10, 20, 10).toISOString(), status: "成功" },
+      { ...latest.logs[0], id: "today-other", time: new Date(2026, 10, 20, 11).toISOString(), status: "失败" },
+    ];
+    vi.spyOn(defaultWorkspaceClient, "getWorkspace").mockResolvedValue(latest);
+    render(<LogsPage />);
+    await tick();
+    const dates = within(screen.getByRole("group", { name: "按日期筛选" }));
+    expect(dates.getByRole("button", { name: "实时" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "match" } });
+    fireEvent.click(screen.getByRole("button", { name: "失败" }));
+    for (const [range, count] of [["今日", 1], ["近7天", 2], ["近30天", 3], ["实时", 4]] as const) {
+      fireEvent.click(dates.getByRole("button", { name: range }));
+      expect(screen.getAllByRole("button", { name: /^查看 / })).toHaveLength(count);
+      expect(dates.getByRole("button", { name: range })).toHaveAttribute("aria-pressed", "true");
+    }
+    fireEvent.click(dates.getByRole("button", { name: "今日" }));
+    fireEvent.click(screen.getByRole("button", { name: "清除筛选" }));
+    expect(dates.getByRole("button", { name: "实时" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "全部" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("searchbox")).toHaveValue("");
+    expect(screen.getAllByRole("button", { name: /^查看 / })).toHaveLength(6);
+    fireEvent.click(dates.getByRole("button", { name: "今日" }));
+    expect(screen.getByRole("button", { name: "清除筛选" })).toBeVisible();
+  });
+
+  it("keeps today's selection across polling and recalculates the day at midnight", async () => {
+    vi.setSystemTime(new Date(2026, 10, 20, 23, 59, 59));
+    const initial = liveSnapshot();
+    initial.logs = [{ ...initial.logs[0], id: "before-midnight", time: new Date(2026, 10, 20, 23, 58).toISOString() }];
+    let latest = initial;
+    vi.spyOn(defaultWorkspaceClient, "getWorkspace").mockImplementation(async () => latest);
+    render(<LogsPage />);
+    await tick();
+    fireEvent.click(screen.getByRole("button", { name: "今日" }));
+    expect(screen.getByRole("button", { name: "查看 before-midnight" })).toBeVisible();
+    latest = { ...initial, logs: [...initial.logs, { ...initial.logs[0], id: "after-midnight", time: new Date(2026, 10, 21).toISOString() }] };
+    await tick(1500);
+    expect(screen.getByRole("button", { name: "今日" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "查看 after-midnight" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "查看 before-midnight" })).not.toBeInTheDocument();
+  });
 });

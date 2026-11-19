@@ -48,3 +48,15 @@ Produces: refresh button, quiet background polling and recoverable errors.
 ## Roles and evidence
 
 Main agent implements/verifies; fresh reviewer reads only. Raw evidence in `.task-evidence`; durable results/review/CAPABILITY in `docs/tasks/2026-11-20-request-log-refresh.md`. Rollback: revert task commits, no migration.
+
+## Task 3: Latest-first order and calendar ranges (user revision)
+
+Files: new `domain/request-log-filter.ts` / `.test.ts`; `pages/LogsPage.tsx` / `.test.tsx`; contract/design/task records.
+Consumes: `CallLog[]`, query/status/dateRange and current time. Produces: `selectRequestLogs(logs, filters, now?)` returning a new sorted array; four shared segmented controls.
+Review focus: ISO offset ordering, invalid timestamps, exact midnight boundaries across months/DST, combined filters/reset, midnight change and new record ordering after poll.
+
+- [x] Write failing pure/domain and UI tests for the above; confirm failures name missing sort/filter behavior.
+- [x] Implement nonmutating timestamp sort and local-calendar filters; reuse `SegmentedControl` and keep polling active in all ranges.
+- [x] Run focused tests in local, UTC and DST zones, full Desktop/Runtime tests and build. Check browser at 1440/768/390.
+- [x] One independent read-only review of this revision. Resolve material findings with regression evidence.
+- [x] Update PR #8 title/body and push revision; wait for CI. Build a fresh named unpacked package, close old Desktop normally, launch revised Desktop and check native window/health. Preserve earlier packages.
