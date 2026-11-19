@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { FixtureNotice, PageHeader } from "../components/PageHeader";
 import { Modal } from "../components/Modal";
 import { CustomSelect } from "../components/CustomSelect";
+import { ProtocolBadge } from "../components/ProtocolBadge";
 import { useWorkspace } from "../data/use-workspace";
 import type { ModelRoute, Protocol } from "../domain/types";
 
@@ -57,11 +58,11 @@ export function RoutesPage() {
         <thead><tr><th>客户端模型别名</th><th>客户端协议 / 入站</th><th>目标上游</th><th>上游协议 / 出站</th><th>响应协议</th><th>状态</th></tr></thead>
         <tbody>{routes.map((route) => <tr key={route.id}>
           <td><code>{route.alias}</code><span className="cell-subtext">{route.targets.map((target) => target.upstreamModel).join("、")}</span></td>
-          <td>{route.inboundProtocol} 入站</td>
+          <td><ProtocolBadge protocol={route.inboundProtocol}>{route.inboundProtocol} 入站</ProtocolBadge></td>
           <td>{route.targets.map((target) => upstreams.get(target.upstreamId) ?? "未匹配上游").join("、")}</td>
-          <td>{route.outboundProtocol}</td>
-          <td>{route.inboundProtocol} 响应</td>
-          <td>{route.enabled ? "已启用（示例）" : "已停用（示例）"}</td>
+          <td><ProtocolBadge protocol={route.outboundProtocol} /></td>
+          <td><ProtocolBadge protocol={route.inboundProtocol}>{route.inboundProtocol} 响应</ProtocolBadge></td>
+          <td><span className="status-badge status-neutral">{route.enabled ? "已启用（示例）" : "已停用（示例）"}</span></td>
         </tr>)}</tbody>
       </table></div>
       <section className="direction-example" aria-label="协议方向示例">

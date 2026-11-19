@@ -38,7 +38,7 @@ export function OverviewPage() {
           <table>
             <thead><tr><th>请求 ID</th><th>模型</th><th>协议方向</th><th>状态</th><th>耗时</th></tr></thead>
             <tbody>{logs.slice(0, 3).map((log) => (
-              <tr key={log.id}><td><code>{log.id}</code></td><td>{log.model}</td><td>{log.direction}</td><td>{log.status}</td><td className="numeric">{log.durationMs} ms</td></tr>
+              <tr key={log.id}><td><code>{log.id}</code></td><td>{log.model}</td><td>{log.direction}</td><td><span className={`status-badge ${log.status.startsWith("成功") ? "status-positive" : "status-negative"}`}>{log.status}</span></td><td className="numeric">{log.durationMs} ms</td></tr>
             ))}</tbody>
           </table>
         </div>

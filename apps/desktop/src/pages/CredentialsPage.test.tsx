@@ -2,8 +2,14 @@ import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CredentialsPage } from "./CredentialsPage";
+import "../styles/app.css";
 
 describe("CredentialsPage", () => {
+  it("keeps its header action label on one line", () => {
+    render(<CredentialsPage />);
+    expect(getComputedStyle(screen.getByRole("button", { name: "演示创建凭证" })).whiteSpace).toBe("nowrap");
+  });
+
   it("only displays masked examples and labels local actions as demonstrations", async () => {
     const user = userEvent.setup();
     render(<CredentialsPage />);

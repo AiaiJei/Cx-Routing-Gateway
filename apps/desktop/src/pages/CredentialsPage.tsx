@@ -15,7 +15,7 @@ export function CredentialsPage() {
       <div className="table-scroll"><table>
         <thead><tr><th>名称</th><th>凭证预览</th><th>模型范围</th><th>创建时间</th><th>最近使用</th><th>状态</th></tr></thead>
         <tbody>{data.credentials.map((credential) => <tr key={credential.id}>
-          <td><strong>{credential.label}</strong></td><td><code>{credential.preview}</code></td><td>{credential.scope}</td><td>{credential.createdAt}</td><td>{credential.lastUsed}</td><td>{credential.status}</td>
+          <td><strong>{credential.label}</strong></td><td><code>{credential.preview}</code></td><td>{credential.scope}</td><td>{credential.createdAt}</td><td>{credential.lastUsed}</td><td><span className="status-badge status-neutral">{credential.status}</span></td>
         </tr>)}</tbody>
       </table></div>
       <section className="endpoint-block credential-endpoint"><span className="field-label">预设本机接入 URL</span><code>http://127.0.0.1:8317</code><span className="helper-text">仅为界面示例；当前无 Gateway 服务监听。</span></section>

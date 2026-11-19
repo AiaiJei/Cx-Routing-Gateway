@@ -9,6 +9,8 @@ describe("RoutesPage", () => {
     expect(await screen.findByText("Res 入站 → Chat 出站 → Res 响应")).toBeVisible();
     expect(screen.getByRole("columnheader", { name: "客户端协议 / 入站" })).toBeVisible();
     expect(screen.getByRole("columnheader", { name: "上游协议 / 出站" })).toBeVisible();
+    expect(screen.getByText("Res 入站")).toHaveClass("protocol-badge", "protocol-res");
+    expect(screen.getByText("Chat")).toHaveClass("protocol-badge", "protocol-chat");
     expect(screen.getByText("示例路由 · 未连接运行时")).toBeVisible();
   });
 

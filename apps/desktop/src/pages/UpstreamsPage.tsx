@@ -62,7 +62,7 @@ export function UpstreamsPage() {
           <td><strong>{upstream.name}</strong><span className="cell-subtext">凭证引用：{upstream.credentialLabel}</span></td>
           <td><code className="url-cell">{upstream.baseUrl}</code></td>
           <td>{upstream.models.length} 个示例模型</td>
-          <td><span className="status-text">{upstream.status}</span></td>
+          <td><span className={`status-badge ${upstream.status === "待测试" ? "status-warning" : "status-neutral"}`}>{upstream.status}</span></td>
           <td><button className="button-secondary" type="button" aria-label={`测试 ${upstream.name}`} onClick={() => void testConnection(upstream.id)}>模拟测试</button></td>
         </tr>)}</tbody>
       </table></div> : <EmptyResult>没有匹配的上游服务</EmptyResult>}

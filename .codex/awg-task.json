@@ -2,25 +2,26 @@
   "contract_version": 1,
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
-  "task_id": "CXRG-FE-PHASE1-2026-11-18",
-  "title": "Runnable Desktop frontend phase 1",
+  "task_id": "CXRG-FE-IOS-HIG-2026-11-19",
+  "title": "Desktop frontend iOS-inspired refinement",
   "status": "active",
-  "branch": "codex/desktop-frontend-phase1",
+  "branch": "codex/desktop-frontend-ios-hig",
   "base": "master",
   "authorized_paths": [
     ".codex/awg-task.json",
-    "docs/superpowers/specs/2026-11-18-desktop-frontend-phase1-design.md",
-    "docs/superpowers/plans/2026-11-18-desktop-frontend-phase1.md",
+    "docs/superpowers/specs/2026-11-19-desktop-ios-hig-design.md",
+    "docs/superpowers/plans/2026-11-19-desktop-ios-hig.md",
     "docs/task-record.md",
     "apps/desktop/**",
     "tests/**"
   ],
   "scope": {
     "include": [
-      "Runnable Desktop UI shell and six planned screens",
-      "Fixture-backed UI interactions and explicit simulated/unavailable states",
-      "Responsive and keyboard-accessible frontend behavior",
-      "Frontend verification and dedicated pull request"
+      "Refine the existing six-screen Desktop frontend with iOS-inspired system color, grouped surfaces, and control treatments",
+      "Remove the brand title from the left sidebar while retaining product identity in the native title bar and workspace header",
+      "Add a corresponding accessible SVG icon to each of the six navigation destinations",
+      "Preserve fixture-backed interactions, explicit simulated/unavailable states, responsive behavior, and keyboard accessibility",
+      "Frontend verification, independent review, and dedicated pull request"
     ],
     "exclude": [
       "Gateway runtime, backend APIs, IPC server, and real upstream calls",
@@ -30,7 +31,8 @@
   },
   "acceptance": [
     "Development startup and production build succeed",
-    "All six screens are navigable and key local interactions work",
+    "All six screens are navigable, each navigation item has its SVG icon, and the sidebar has no site title",
+    "Semantic system colors, protocol distinctions, and grouped controls are applied consistently",
     "Fixture data and simulated outcomes are not represented as live runtime evidence",
     "Responsive and keyboard accessibility checks are recorded",
     "Independent review is completed and findings are addressed or reported"

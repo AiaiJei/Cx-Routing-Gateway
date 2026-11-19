@@ -75,3 +75,18 @@
 - PR #3 已合并至 `master`；主工作树已快进至合并提交 `8ee341d`。
 - 主工作树合并后验证：`npm test` 19/19 通过；`npm run build` 通过；Electron 主进程和 preload 语法检查通过；`git diff --check` 通过。
 - 任务 worktree `.worktree/desktop-frontend-phase1` 保留为宿主管理目录，未强制删除；主工作树原有未跟踪治理目录保持不变。
+
+## iOS 风格前端精修（2026-11-19）
+
+- 任务 ID：`CXRG-FE-IOS-HIG-2026-11-19`；项目/仓库：Cx-Routing Gateway / `AiaiJei/Cx-Routing-Gateway`。
+- 用户要求依据 Apple Human Interface Guidelines 精修现有前端，增加有语义的色彩变化；补充要求：移除左侧菜单栏站点标题，并在每个导航路由标题前增加对应 SVG 标识。
+- 隔离：`codex/desktop-frontend-ios-hig`，worktree `.worktree/desktop-frontend-ios-hig`，基于 `master` 的 `e0f3fda`。已有未跟踪目录和其他 worktree 保持不动。
+- 范围：沿用 React/Vite/Electron、现有六页和数据边界；采用共享语义颜色与分组控件样式；不增加运行时、网络、持久化或依赖迁移。
+- 合同、设计与计划：`.codex/awg-task.json`、`docs/superpowers/specs/2026-11-19-desktop-ios-hig-design.md`、`docs/superpowers/plans/2026-11-19-desktop-ios-hig.md`。
+- 回退：撤销该专属 PR；无持久化运行时副作用。
+- 实现：移除侧栏品牌标题；六个导航项前加入 SVG；增加 Res/Mes/Chat 协议色、状态色、日志分段筛选、分组表面、聚焦样式与移动端标题操作单行处理。
+- TDD：导航/分段控件、协议/状态徽标、宽表格滚动边界、凭证页标题操作均先验证失败，再实现通过。
+- 验证：`npm ci` 完成并报告 0 项漏洞；`npm test` 23/23 通过；`npm run build` 通过；Taste App lint 0 FAIL / 0 WARN；`git diff --check` 通过。
+- 视觉检查：开发态检查总览、上游、路由、日志、凭证、设置；生产预览在 1440/768/390px 检查总览与日志，页面横向溢出为 0。路由及状态颜色对比检查通过；移动总览仍有约 46% 文本低于 13px，源于紧凑辅助标签；少量 fixture 行造成页面留白，保留真实数据规模。
+- 运行证据：开发服务器为 `http://127.0.0.1:4173/`；生产预览检查使用 `http://127.0.0.1:4174/`。原生 Electron 窗口启动 `NOT_RUN`；Owner 最终验收仍 pending。
+- 能力：已读取 AWG 治理、头脑风暴、计划、worktree、TDD、Taste App Screens、验证与代码审查技能；Repo Map 未调用（入口和调用链已由源代码、测试覆盖）；AWG runtime 是否激活不作推断。独立审查待完成。
