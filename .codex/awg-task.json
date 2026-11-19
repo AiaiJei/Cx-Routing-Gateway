@@ -12,6 +12,7 @@
     "docs/superpowers/specs/2026-11-19-desktop-ios-hig-design.md",
     "docs/superpowers/plans/2026-11-19-desktop-ios-hig.md",
     "docs/task-record.md",
+    ".taste-skill/**",
     "apps/desktop/**",
     "tests/**"
   ],
@@ -21,6 +22,7 @@
       "Remove the brand title from the left sidebar while retaining product identity in the native title bar and workspace header",
       "Add a corresponding accessible SVG icon to each of the six navigation destinations",
       "Preserve fixture-backed interactions, explicit simulated/unavailable states, responsive behavior, and keyboard accessibility",
+      "Store generated visual verification screenshots and reports under .taste-skill/ without including them in the product change",
       "Frontend verification, independent review, and dedicated pull request"
     ],
     "exclude": [
