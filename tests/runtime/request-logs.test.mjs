@@ -16,6 +16,9 @@ async function setup(t, respond, outbound = 'Chat') {
   await fs.mkdir(path.resolve('.task-evidence'), { recursive: true });
   const dir = await fs.mkdtemp(path.resolve('.task-evidence', 'request-logs-'));
   const store = new ConfigStore(path.join(dir, 'config.json'));
+  const writeErrors = [];
+  const update = store.update.bind(store);
+  store.update = (...args) => update(...args).catch(error => { writeErrors.push({ code: error.code, message: error.message }); throw error; });
   const upstream = http.createServer(respond);
   const upPort = await listen(upstream);
   await store.update(config => ({ ...config, upstreams: [{ id: 'up', enabled: true, baseUrl: `http://127.0.0.1:${upPort}`, trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'] }], routes: ['Chat', 'Res', 'Mes'].map(inbound => ({ id: inbound, alias: inbound, inboundProtocol: inbound, outboundProtocol: outbound, upstreamId: 'up', modelId: 'model', enabled: true })), clientKeys: [{ id: 'key', enabled: true, scope: [], keyHash: crypto.createHash('sha256').update('test-key').digest('hex') }] }));
@@ -35,7 +38,7 @@ async function setup(t, respond, outbound = 'Chat') {
         if (state.usage.length >= count) return state.usage;
         await new Promise(resolve => setTimeout(resolve, 5));
       }
-      throw new Error('Usage not persisted');
+      throw new Error('Usage not persisted: ' + JSON.stringify({ count, writeErrors }));
     },
   };
 }

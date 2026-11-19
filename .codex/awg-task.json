@@ -4,8 +4,8 @@
   "repository": "AiaiJei/Cx-Routing-Gateway",
   "task_id": "CXRG-REQUEST-LOGS-2026-11-19",
   "title": "Request logs 1.0.2",
-  "status": "complete",
-  "stage": "draft-pr-created",
+  "status": "active",
+  "stage": "integration-authorized",
   "branch": "codex/request-logs-1.0.2",
   "base": "master",
   "base_sha": "6acebc964b7f4f331ec5827819f4bf923829fd5f",
@@ -24,7 +24,9 @@
     "tests/runtime/request-logs.test.mjs",
     ".task-evidence/**",
     "tests/runtime/release-manifest.test.mjs",
-    "scripts/verify-release.mjs"
+    "scripts/verify-release.mjs",
+    "packages/shared/src/config-store.mjs",
+    "tests/runtime/config-store.test.mjs"
   ],
   "authorization": {
     "source": "2026-11-19 user request: increment version by one from PR #6, establish dedicated PR, rename request logs and add popovers/type/tokens/first-token duration",
@@ -32,7 +34,9 @@
       "isolated worktree and branch",
       "implement requested log presentation and necessary telemetry",
       "commit and push task branch",
-      "create dedicated PR"
+      "create dedicated PR",
+      "mark PR #7 ready and merge into master",
+      "fast-forward primary worktree master to the merged origin/master"
     ],
     "design_approval": "direct detailed change request; implementation choices documented in design"
   },
@@ -42,10 +46,10 @@
       "bounded allowlisted usage and streaming telemetry",
       "legacy missing-value compatibility",
       "version 1.0.2",
-      "tests/build/browser verification/independent review"
+      "tests/build/browser verification/independent review",
+      "Merge PR #7 and synchronize primary master under explicit 2026-11-20 authorization"
     ],
     "exclude": [
-      "merge",
       "push master",
       "publish/deploy",
       "delete branches/worktrees",
@@ -68,11 +72,25 @@
     "production_build": "PASS",
     "independent_review": "Three P2 findings and release dependency check fixed with regression evidence",
     "production_audit": "0 vulnerabilities",
-    "runtime_tests": "72/72",
+    "runtime_tests": "75/75 (2026-11-20, transient Windows lock regression included)",
     "native_installer": "NOT_RUN",
     "provider": "NOT_RUN",
     "browser": "PASS 1440/768/390 fixture mode",
-    "desktop_tests": "61/61"
+    "desktop_tests": "61/61 (2026-11-20)",
+    "native_unpacked": "PASS 2026-11-20: Windows x64 package 1.0.2.0 launched, responsive named window; gateway/control health OK and owned by PID 28860",
+    "stream_stress": "10/10 runs (30 tests) under concurrent full-suite load"
   },
-  "pull_request": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/7"
+  "pull_request": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/7",
+  "revisions": [
+    {
+      "scope": "Commit integration record, ready/merge PR #7, synchronize primary master. Keep task worktree, branch and running Desktop.",
+      "request": "提交合并pr，任务工作树合并主工作树。",
+      "date": "2026-11-20"
+    },
+    {
+      "evidence": "Premerge request-logs integration failed persistently for its second record under concurrent test load; instrumented store.update identified EPERM on config.json temporary-file rename.",
+      "date": "2026-11-20",
+      "scope": "Fix reproduced transient Windows EPERM during atomic config rename before merging; bounded rename-only retry, no mutator replay or schema change."
+    }
+  ]
 }

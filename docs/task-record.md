@@ -307,3 +307,8 @@
 - 调用日志改名请求日志；时间/请求 ID、入站/完整协议、Token 摘要/明细分层展示，新增流/非流与首字/总耗时；真实 Gateway usage 采集和旧日志兼容同步完成，版本 1.0.2。
 - Runtime 72/72、Desktop 61/61、生产构建、生产依赖 audit 与三尺寸浏览器检查通过；独立审查问题均有回归修复。
 - [设计](superpowers/specs/2026-11-19-request-logs-design.md)、[计划](superpowers/plans/2026-11-19-request-logs-1.0.2.md)、[证据/审查/限制/回退](tasks/2026-11-19-request-logs.md)。真实 provider、原生安装发布、Owner 最终验收 NOT_RUN/pending；不沿用 PR #6 合并或清理授权。
+
+### PR #7 集成授权（2026-11-20）
+
+- 用户授权提交并合并 PR #7，将任务成果同步到主工作树 master；任务分支、worktree、运行中的 Desktop 和本地证据保留。
+- Windows x64 1.0.2 解包版已实际启动，窗口响应及两项 health 正常；NSIS、真实 provider、Owner 最终验收仍为未执行/pending。集成验证及结果入口见 [任务记录](tasks/2026-11-19-request-logs.md)。
