@@ -270,4 +270,4 @@
 - 修复后独立复审：全部初次 Important/Minor 均已解决；无剩余 Critical/Important/Minor 发现，审查接受。Electron 窗口真实启动及真实 Provider 调用仍为 `NOT_RUN`。
 - 最终验证：Desktop 45/45，Runtime 59/59，`npm run build` 通过；新增集成用例覆盖 Chat/Res/Mes 入站、日志落盘、无永久 client key、失败请求关联 metadata、拒绝与 refusal 文本、256 token 输出预算、禁用/未知 route、prompt 上限、每分钟 10 次限流、响应体超时槽位释放、客户端断连取消上游请求与 bounded server shutdown。Taste App lint 0 FAIL / 4 WARN（共享 control/modal 阴影）；CRLF 感知 diff check 通过。未触发真实第三方 provider 请求。
 - 视觉检查：交互窗口在 1440px 与 390px 显示模拟 IPC 的 `OK` 响应，检查了提示词编辑、费用提示、状态/request ID/耗时，无截图覆盖行为；不代表真实 provider 已验收。
-- PR #5 base 为 PR #4 分支；本轮 route-test 实现尚未提交或推送。Owner 验收仍 pending。
+- PR #5 base 为 PR #4 分支；本轮实现提交 `4caa5a1` 已推送，PR 标题为 `feat: refine Desktop UI and add route testing`。GitHub CI 状态以 PR 实时页面为准；Owner 验收仍 pending。
