@@ -1,11 +1,12 @@
 import { WorkspaceState } from "../components/WorkspaceState";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { EmptyResult, FixtureNotice, PageHeader, SearchField } from "../components/PageHeader";
 import { Button } from "../components/Button";
 import { SegmentedControl } from "../components/SegmentedControl";
 import { Modal } from "../components/Modal";
 import { RequestDuration, RequestProtocol, RequestTime, RequestTokenSummary, TokenDetails } from "../components/RequestLogCells";
 import { formatDuration, formatRequestTime, requestType } from "../domain/request-log";
+import { requestLogDateRanges, selectRequestLogs, type RequestLogDateRange } from "../domain/request-log-filter";
 import { useWorkspace } from "../data/use-workspace";
 import type { CallLog } from "../domain/types";
 import "../styles/request-logs.css";
@@ -13,24 +14,30 @@ import "../styles/request-logs.css";
 export function LogsPage() {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("全部");
+  const [dateRange, setDateRange] = useState<RequestLogDateRange>("实时");
   const [selectedLog, setSelectedLog] = useState<CallLog | null>(null);
-  const { data, error, loading } = useWorkspace();
-  const logs = useMemo(() => data.logs.filter((log) => {
-    const textMatches = `${log.id} ${log.model} ${log.credential} ${log.upstream} ${log.direction} ${requestType(log)} ${log.error ?? ""}`.toLowerCase().includes(query.trim().toLowerCase());
-    return textMatches && (status === "全部" || log.status.startsWith(status));
-  }), [data.logs, query, status]);
-  const hasFilter = query.length > 0 || status !== "全部";
+  const { data, error, loading, refresh, refreshing, refreshError } = useWorkspace(undefined, { pollIntervalMs: 1500 });
+  const logs = selectRequestLogs(data.logs, { query, status, dateRange });
+  const hasFilter = query.length > 0 || status !== "全部" || dateRange !== "实时";
 
-  if (loading || error) return <WorkspaceState title="请求日志" loading={loading} error={error} />;
+  const refreshAction = <Button aria-label="刷新请求日志" aria-busy={refreshing} disabled={refreshing} onClick={refresh}>{refreshing ? "刷新中…" : "刷新"}</Button>;
+
+  if (loading) return <WorkspaceState title="请求日志" loading={loading} error={error} />;
+  if (error) return <div className="page-content">
+    <PageHeader title="请求日志" description="查看请求摘要、Token 用量与响应耗时。" action={refreshAction} />
+    <div className="workspace-error" role="alert"><p>请求日志读取失败：{error}</p><p className="helper-text">将自动重试，也可点击刷新。</p></div>
+  </div>;
 
   return (
     <div className="page-content">
-      <PageHeader title="请求日志" description="查看请求摘要、Token 用量与响应耗时。" />
+      <PageHeader title="请求日志" description="查看请求摘要、Token 用量与响应耗时。" action={refreshAction} />
+      {refreshError && <p className="action-feedback" role="alert">刷新失败：{refreshError}。当前保留上次读取的日志，将自动重试。</p>}
       <FixtureNotice live={data.meta.live}>{data.meta.live ? "本机运行时日志 · 正文已脱敏" : "示例日志 · 非运行时记录"}</FixtureNotice>
       <div className="toolbar"><SearchField label="搜索请求日志" value={query} onChange={setQuery} />
         <SegmentedControl ariaLabel="按状态筛选" value={status} options={["全部", "成功", "失败"]} onChange={setStatus} />
+        <SegmentedControl ariaLabel="按日期筛选" value={dateRange} options={[...requestLogDateRanges]} onChange={(value) => setDateRange(value as RequestLogDateRange)} />
         <span className="result-count">{logs.length} 条{data.meta.live ? "" : "示例"}</span>
-        {hasFilter && <Button variant="tertiary" size="small" aria-label="清除筛选" onClick={() => { setQuery(""); setStatus("全部"); }}>清除筛选</Button>}
+        {hasFilter && <Button variant="tertiary" size="small" aria-label="清除筛选" onClick={() => { setQuery(""); setStatus("全部"); setDateRange("实时"); }}>清除筛选</Button>}
       </div>
       {logs.length ? <div className="table-scroll" role="region" aria-label="请求日志列表" tabIndex={0}><table className="logs-table">
         <thead><tr><th scope="col">请求时间</th><th scope="col">模型</th><th scope="col">入口凭证</th><th scope="col">入站</th><th scope="col">类型</th><th scope="col" className="numeric">Token</th><th scope="col">结果</th><th scope="col" className="numeric">耗时</th><th scope="col"><span className="sr-only">操作</span></th></tr></thead>

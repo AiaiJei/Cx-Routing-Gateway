@@ -312,3 +312,21 @@
 
 - 用户授权提交并合并 PR #7，将任务成果同步到主工作树 master；任务分支、worktree、运行中的 Desktop 和本地证据保留。
 - Windows x64 1.0.2 解包版已实际启动，窗口响应及两项 health 正常；NSIS、真实 provider、Owner 最终验收仍为未执行/pending。集成验证及结果入口见 [任务记录](tasks/2026-11-19-request-logs.md)。
+
+## 请求日志刷新 1.0.3（2026-11-20）
+
+- 基于 PR #7 合并提交 `272e443`，独立分支 `codex/request-logs-refresh-1.0.3`，仓内同名工作树。
+- 日志页新增刷新按钮和 1500 ms 轮询；后台读取保留筛选/详情/已有数据，失败可恢复，隐藏暂停、返回立即刷新，防止并发读取。
+- Desktop 74/74、Runtime 75/75、TypeScript/生产构建与独立审查通过。生产构建受控浏览器数据测试中新日志 1556 ms 后出现；1440/768/390 布局检查通过。
+- [设计](superpowers/specs/2026-11-20-request-log-refresh-design.md)、[计划](superpowers/plans/2026-11-20-request-log-refresh.md)、[证据与限制](tasks/2026-11-20-request-log-refresh.md)。原生 Electron 耗时、安装器、真实 provider、Owner 验收未执行；本任务授权止于专属 PR。
+
+### PR #8 追加：排序与日期筛选
+
+- 用户要求最新日志排第一，新增实时/今日/近7天/近30天。继续 1.0.3，展示层按时间倒序并复用共享分段控件；日期范围按本机日历，近7/30天含今天，均保留自动刷新。
+- Desktop 88/88、Runtime 75/75、生产构建通过；独立审查发现的午夜夏令时边界已有 RED→GREEN 回归修复。三尺寸浏览器通过；包含最终修复的 Windows x64 Desktop 已重新打包并启动，现有数据保留、服务健康正常。原生日期控件自动操作 PARTIAL；详细边界见任务记录。
+
+### PR #8 集成与历史工作树清理授权
+
+- 2026-11-20 用户授权提交合并 PR #8、同步主工作树并移除历史任务工作树。合并前重新运行 Desktop 88/88、Runtime 75/75 通过。
+- 六个 linked task worktree 纳入清理；先保留历史分支、未提交修改、构建成果和本地证据，再移除目录。未合并的 PR #1 只归档工作树，不合并/关闭 PR。
+- 当前 Desktop 包迁至主工作树 `apps/desktop/release/pr8-1.0.3/` 后运行；清理结果及可恢复档案放在 `.worktree/archives/2026-11-20-pr8-integration/`。用户数据、现有归档和其他仓库内容保留。

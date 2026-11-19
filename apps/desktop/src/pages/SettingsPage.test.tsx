@@ -7,7 +7,7 @@ import { defaultWorkspaceClient } from "../data/workspace-client";
 describe("SettingsPage", () => {
   it("shows the installed product version in the desktop application section", async () => {
     render(<SettingsPage />);
-    expect(await screen.findByText("版本 1.0.2")).toBeVisible();
+    expect(await screen.findByText("版本 1.0.3")).toBeVisible();
     expect(screen.getByRole("heading", { name: "桌面应用" })).toBeVisible();
   });
   it("identifies runtime-dependent settings as unavailable and read-only", async () => {

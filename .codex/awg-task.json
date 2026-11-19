@@ -1,96 +1,101 @@
 {
-  "contract_version": 1,
-  "project": "Cx-Routing Gateway",
-  "repository": "AiaiJei/Cx-Routing-Gateway",
-  "task_id": "CXRG-REQUEST-LOGS-2026-11-19",
-  "title": "Request logs 1.0.2",
-  "status": "active",
+  "title": "Request log refresh, latest-first order and date filters 1.0.3",
   "stage": "integration-authorized",
-  "branch": "codex/request-logs-1.0.2",
-  "base": "master",
-  "base_sha": "6acebc964b7f4f331ec5827819f4bf923829fd5f",
-  "product_version": "1.0.2",
-  "authorized_paths": [
-    ".codex/awg-task.json",
-    "docs/tasks/**",
-    "docs/superpowers/specs/2026-11-19-request-logs-design.md",
-    "docs/superpowers/plans/2026-11-19-request-logs-1.0.2.md",
-    "docs/task-record.md",
-    "apps/desktop/src/**",
-    "apps/desktop/package.json",
-    "apps/desktop/package-lock.json",
-    "services/gateway/src/**",
-    "tests/runtime/request-metrics.test.mjs",
-    "tests/runtime/request-logs.test.mjs",
-    ".task-evidence/**",
-    "tests/runtime/release-manifest.test.mjs",
-    "scripts/verify-release.mjs",
-    "packages/shared/src/config-store.mjs",
-    "tests/runtime/config-store.test.mjs"
-  ],
   "authorization": {
-    "source": "2026-11-19 user request: increment version by one from PR #6, establish dedicated PR, rename request logs and add popovers/type/tokens/first-token duration",
     "operations": [
-      "isolated worktree and branch",
-      "implement requested log presentation and necessary telemetry",
-      "commit and push task branch",
+      "isolated branch/worktree",
+      "implement and verify",
+      "commit/push task branch",
       "create dedicated PR",
-      "mark PR #7 ready and merge into master",
-      "fast-forward primary worktree master to the merged origin/master"
+      "merge PR #8 after checks",
+      "fast-forward primary master",
+      "archive and remove current and historical linked task worktrees",
+      "relocate current unpacked Desktop to primary tree and relaunch"
     ],
-    "design_approval": "direct detailed change request; implementation choices documented in design"
+    "source": "2026-11-20 user request: base on PR #7, increment version, add refresh button and polling within 1–2 seconds, create dedicated PR",
+    "design_approval": "Direct specific feature request; routine implementation choices stated before implementation"
   },
+  "project": "Cx-Routing Gateway",
+  "product_version": "1.0.3",
+  "rollback": "Revert merged PR through an authorized change; restore worktree from preserved branch/history bundle plus verified local archive and patches. Desktop prior package archived.",
+  "acceptance": [
+    "Version 1.0.3",
+    "Manual refresh loads latest logs",
+    "Visible log page polls every 1500 ms without overlapping reads",
+    "Preserve filters/details/rows; recover from failure",
+    "Pause hidden/unmounted pages; refresh on return",
+    "Full tests/build, browser and independent review",
+    "Dedicated PR from merged PR #7",
+    "Newest request timestamp first, stable ties, invalid times last",
+    "Realtime/today/last7/last30 calendar filters combine with status/search, reset and polling"
+  ],
+  "branch": "codex/request-logs-refresh-1.0.3",
+  "previous_contract": "docs/tasks/2026-11-20-pr7-contract.json",
+  "status": "active",
+  "repository": "AiaiJei/Cx-Routing-Gateway",
+  "base": "master",
   "scope": {
-    "include": [
-      "request log UI and accessible disclosures",
-      "bounded allowlisted usage and streaming telemetry",
-      "legacy missing-value compatibility",
-      "version 1.0.2",
-      "tests/build/browser verification/independent review",
-      "Merge PR #7 and synchronize primary master under explicit 2026-11-20 authorization"
-    ],
     "exclude": [
-      "push master",
       "publish/deploy",
-      "delete branches/worktrees",
-      "real provider calls",
-      "request/response body persistence",
-      "protocol transformation redesign"
+      "real provider requests",
+      "backend/auth/storage changes",
+      "delete local/remote branches",
+      "merge unrelated PR #1"
     ]
   },
-  "acceptance": [
-    "new PR based on merged PR #6",
-    "all requested table fields and disclosure interactions",
-    "measured stream/token metadata survives Gateway → store → control/IPC → UI",
-    "historical missing data stays unknown",
-    "regressions/build and independent review recorded"
+  "authorized_paths": [
+    ".codex/awg-task.json",
+    "apps/desktop/src/data/use-workspace*",
+    "apps/desktop/src/pages/LogsPage*",
+    "apps/desktop/package.json",
+    "apps/desktop/package-lock.json",
+    "docs/superpowers/specs/2026-11-20-request-log-refresh-design.md",
+    "docs/superpowers/plans/2026-11-20-request-log-refresh.md",
+    "docs/tasks/2026-11-20-*",
+    "docs/tasks/evidence/request-log-refresh-1.0.3/**",
+    "docs/task-record.md",
+    ".task-evidence/**",
+    "apps/desktop/src/pages/SettingsPage.test.tsx",
+    "tests/runtime/release-manifest.test.mjs",
+    "apps/desktop/src/domain/request-log-filter*"
   ],
-  "rollback": "Revert task commits through an authorized change; optional metrics do not require schema migration. Keep task worktree and evidence.",
-  "previous_contract": "docs/tasks/2026-11-19-pr6-contract.json",
+  "contract_version": 1,
   "owner_acceptance": "pending",
-  "verification": {
-    "production_build": "PASS",
-    "independent_review": "Three P2 findings and release dependency check fixed with regression evidence",
-    "production_audit": "0 vulnerabilities",
-    "runtime_tests": "75/75 (2026-11-20, transient Windows lock regression included)",
-    "native_installer": "NOT_RUN",
-    "provider": "NOT_RUN",
-    "browser": "PASS 1440/768/390 fixture mode",
-    "desktop_tests": "61/61 (2026-11-20)",
-    "native_unpacked": "PASS 2026-11-20: Windows x64 package 1.0.2.0 launched, responsive named window; gateway/control health OK and owned by PID 28860",
-    "stream_stress": "10/10 runs (30 tests) under concurrent full-suite load"
-  },
-  "pull_request": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/7",
+  "base_sha": "272e4439967fc50455a01abb8adfd0dbb7a1773e",
+  "task_id": "CXRG-LOG-REFRESH-2026-11-20",
   "revisions": [
     {
-      "scope": "Commit integration record, ready/merge PR #7, synchronize primary master. Keep task worktree, branch and running Desktop.",
-      "request": "提交合并pr，任务工作树合并主工作树。",
-      "date": "2026-11-20"
+      "evidence": "Full suites still expected 1.0.2. Runtime build-path test also ran before dist existed; rerun after successful build.",
+      "date": "2026-11-20",
+      "scope": "Synchronize Settings and release-manifest test fixtures with authorized 1.0.3 version bump"
     },
     {
-      "evidence": "Premerge request-logs integration failed persistently for its second record under concurrent test load; instrumented store.update identified EPERM on config.json temporary-file rename.",
       "date": "2026-11-20",
-      "scope": "Fix reproduced transient Windows EPERM during atomic config rename before merging; bounded rename-only retry, no mutator replay or schema change."
+      "request": "优化日志记录展示顺序，第一条为最新；新增日期筛选：实时、今日、近7天、近30天",
+      "acceptance": "Newest first; calendar date filters combine with search/status, reset to realtime, polling retains selected filter; no persistence migration.",
+      "scope": "Continue PR #8 / version 1.0.3. Pure view sorting/date filtering and tests; rebuild and relaunch Desktop using existing data after verification."
+    },
+    {
+      "archive": ".worktree/archives/2026-11-20-pr8-integration",
+      "premerge_tests": "Desktop 88/88; Runtime 75/75; existing CI successful on 612c51a",
+      "scope": "Merge PR #8, fast-forward primary master, preserve runtime app/config, archive six linked task worktrees then remove. Unmerged PR #1 branch and dirty test retained in local archive; not merged or closed.",
+      "request": "提交合并PR#，任务工作树合并到主工作树并移除历史以往的任务工作树",
+      "date": "2026-11-20"
     }
-  ]
+  ],
+  "verification": {
+    "installer": "NOT_RUN",
+    "desktop": "88/88",
+    "native_electron_latency": "NOT_RUN",
+    "provider": "NOT_RUN",
+    "owner": "pending",
+    "browser": "PASS 1440/768/390; today/week/month/realtime 1/2/3/4 fixture rows; reset/keyboard and newest-first verified",
+    "runtime": "75/75",
+    "independent_review": "P2 midnight-DST boundary reproduced and fixed with two RED-to-GREEN tests; no deferred code findings",
+    "production_build": "PASS",
+    "production_audit": "0 vulnerabilities",
+    "date_timezone_tests": "UTC and America/New_York 24/24 each; ordinary suite includes explicit America/Santiago midnight-DST tests",
+    "native_unpacked": "PASS final 1.0.3.0 x64 build and launch, window responds and both health endpoints OK; native date interaction automation PARTIAL"
+  },
+  "pull_request": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/8"
 }
