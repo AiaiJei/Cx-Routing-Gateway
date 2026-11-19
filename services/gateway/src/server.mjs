@@ -381,6 +381,7 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
       const payload = route.outboundProtocol === inbound ? { ...input, model: route.modelId } : outboundBody(route.outboundProtocol, normalized, route.modelId);
       const upstreamResponse = await fetchWithTimeout(upstreamUrl(upstream.baseUrl, outboundPath), { method: 'POST', headers, body: JSON.stringify(payload) }, addresses);
       if (upstreamResponse.status >= 300) {
+        await upstreamResponse.body?.cancel().catch(() => {});
         recordOutcome(policy.statusClasses.includes(Math.floor(upstreamResponse.status / 100)));
         await appendUsage(store, { requestId, createdAt: new Date().toISOString(), durationMs: Date.now() - startedAt, inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, modelId: route.modelId, status: 'failed', errorCode: 'upstream_error', upstreamStatus: upstreamResponse.status });
         return send(res, 502, { error: 'upstream_error', requestId }, requestId);

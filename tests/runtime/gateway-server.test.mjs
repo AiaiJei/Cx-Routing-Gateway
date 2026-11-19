@@ -498,6 +498,22 @@ test('gateway converts multiple function calls and result blocks in one turn', a
   assert.equal((await second.json()).choices[0].message.content, 'both tools accepted');
 });
 
+test('gateway closes an upstream error body when returning a sanitized failure', async (t) => {
+  let closeBody;
+  let upstreamResponse;
+  const bodyClosed = new Promise(resolve => { closeBody = resolve; });
+  const upstream = http.createServer((_req, res) => { upstreamResponse = res; res.on('close', closeBody); res.writeHead(503); res.write('partial'); });
+  const upstreamPort = await listen(upstream); t.after(() => { upstreamResponse?.destroy(); upstream.close(); });
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-upstream-error-close-'));
+  const store = new ConfigStore(path.join(dir, 'config.json')); const vault = new SecretVault(path.join(dir, 'secrets.json'), 'key');
+  await store.update(config => ({ ...config, upstreams: [{ id: 'u', baseUrl: `http://127.0.0.1:${upstreamPort}`, trustedPrivateNetwork: true, enabled: true }], routes: [{ id: 'r', alias: 'm', inboundProtocol: 'Chat', outboundProtocol: 'Chat', upstreamId: 'u', modelId: 'm', enabled: true }], clientKeys: [{ id: 'k', keyHash: crypto.createHash('sha256').update('client').digest('hex'), enabled: true }] }));
+  const gateway = createGatewayServer({ store, vault }); await listen(gateway); t.after(() => gateway.close());
+  const response = await fetch(`http://127.0.0.1:${gateway.address().port}/v1/chat/completions`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer client' }, body: JSON.stringify({ model: 'm', messages: [{ role: 'user', content: 'hello' }] }) });
+  assert.equal(response.status, 502);
+  const closed = await Promise.race([bodyClosed.then(() => true), new Promise(resolve => setTimeout(() => resolve(false), 500))]);
+  assert.equal(closed, true, 'upstream response stream must be closed');
+});
+
 test('gateway connects to the validated DNS address and preserves the upstream host', async (t) => {
   let receivedHost;
   const upstream = http.createServer((req, res) => { receivedHost = req.headers.host; res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ choices: [{ message: { content: 'approved' } }] })); });
