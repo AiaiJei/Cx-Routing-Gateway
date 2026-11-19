@@ -26,16 +26,52 @@ async function selectModels(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("RoutesPage", () => {
+  it("does not offer real route tests in fixture preview mode", async () => {
+    render(<RoutesPage />);
+    await screen.findByText("浏览器预览路由");
+    expect(screen.queryByRole("button", { name: /^测试调用/ })).not.toBeInTheDocument();
+  });
+
   it("shows one model name for a route with multiple upstreams", async () => {
     const data = liveWorkspace();
     data.routes = [{ id: "multi", alias: "northstar-fast", inboundProtocol: "Chat", outboundProtocol: "Chat", enabled: true, targets: [{ upstreamId: "up-northstar", upstreamModel: "northstar-fast" }, { upstreamId: "up-lantern", upstreamModel: "northstar-fast" }] }];
     vi.spyOn(defaultWorkspaceClient, "getWorkspace").mockResolvedValue(data);
     render(<RoutesPage />);
+    expect(await screen.findByText("Res 入站 → Chat 出站 → Res 响应")).toBeVisible();
+    expect(screen.getByRole("columnheader", { name: "客户端协议 / 入站" })).toBeVisible();
+    expect(screen.getByRole("columnheader", { name: "上游协议 / 出站" })).toBeVisible();
+    expect(screen.getByText("本机运行时路由")).toBeVisible();
     const row = await screen.findByRole("row", { name: /northstar-fast/ });
     const cells = within(row).getAllByRole("cell");
     expect(cells[0]).toHaveTextContent(/^northstar-fast$/);
+    expect(cells[1].querySelector(".protocol-chat")).not.toBeNull();
     expect(cells[2]).toHaveTextContent("1. Northstar AI");
     expect(cells[2]).toHaveTextContent("2. Lantern Labs");
+  });
+
+  it("opens an interactive real-request dialog for an enabled runtime route", async () => {
+    const user = userEvent.setup();
+    const data = liveWorkspace();
+    data.routes = [{ id: "route-fast", alias: "gateway-fast", inboundProtocol: "Chat", outboundProtocol: "Chat", enabled: true, targets: [{ upstreamId: "up-northstar", upstreamModel: "northstar-fast" }] }];
+    vi.spyOn(defaultWorkspaceClient, "getWorkspace").mockResolvedValue(data);
+    const originalTestRoute = defaultWorkspaceClient.testRoute;
+    const testRoute = vi.fn(async () => ({ routeAlias: "gateway-fast", text: "OK", requestId: "req-route-test", durationMs: 123, status: 200 }));
+    defaultWorkspaceClient.testRoute = testRoute;
+    try {
+      render(<RoutesPage />);
+      await screen.findByText("本机运行时路由");
+      await user.click(screen.getByRole("button", { name: "测试调用 gateway-fast" }));
+      const dialog = screen.getByRole("dialog", { name: "测试调用 · gateway-fast" });
+      expect(dialog).toBeVisible();
+      const prompt = within(dialog).getByRole("textbox", { name: "发送内容" });
+      expect(prompt).toHaveValue("请回复OK");
+      await user.click(within(dialog).getByRole("button", { name: "发送测试请求" }));
+      expect(testRoute).toHaveBeenCalledWith("route-fast", "请回复OK");
+      expect(await within(dialog).findByText("OK")).toBeVisible();
+      expect(within(dialog).getByText("req-route-test")).toBeVisible();
+    } finally {
+      defaultWorkspaceClient.testRoute = originalTestRoute;
+    }
   });
 
   it("creates one route per selected model across upstreams with no alias input", async () => {

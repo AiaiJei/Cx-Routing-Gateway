@@ -101,6 +101,12 @@ ipcMain.handle("runtime:test-upstream", async (event, upstreamId) => {
   return response.json();
 });
 
+ipcMain.handle("runtime:test-route", async (event, routeId, prompt) => {
+  if (!trustedSender(event) || typeof routeId !== "string" || routeId.length > 100 || typeof prompt !== "string" || prompt.trim().length < 1 || prompt.length > 2000) throw new Error("Invalid route test request");
+  if (startupState !== "running" || typeof runtime?.testRoute !== "function") throw new Error("本机 Gateway 尚未就绪");
+  return runtime.testRoute(routeId, prompt);
+});
+
 ipcMain.handle("runtime:create-client-key", async (event, name, scope) => {
   if (!trustedSender(event) || typeof name !== "string" || !name.trim()) throw new Error("Invalid key name");
   const normalizedScope = Array.isArray(scope) ? scope.filter((item) => typeof item === "string" && item.trim()).slice(0, 100) : [];

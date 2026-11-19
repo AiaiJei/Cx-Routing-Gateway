@@ -108,10 +108,15 @@ function outboundBody(protocol, normalized, model) {
 }
 
 function extractText(protocol, body) {
-  if (protocol === 'Chat') return textParts(body.choices?.[0]?.message?.content);
+  if (protocol === 'Chat') {
+    const message = body.choices?.[0]?.message;
+    return textParts(message?.content) || (typeof message?.refusal === 'string' ? message.refusal : '');
+  }
   if (protocol === 'Mes') return textParts(body.content);
   const message = body.output?.find((item) => item.type === 'message');
-  return textParts(message?.content);
+  const content = textParts(message?.content);
+  if (content) return content;
+  return (message?.content || []).filter((item) => item.type === 'refusal').map((item) => item.refusal || item.text || '').join('');
 }
 
 function extractToolCalls(protocol, body) {
@@ -136,11 +141,18 @@ function inboundResponse(inboundProtocol, outboundProtocol, body, requestId) {
   return { id: body.id || `resp_${requestId}`, object: 'response', output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text }] }], status: 'completed', usage: body.usage };
 }
 
-async function fetchWithTimeout(url, options, addresses, timeoutMs = 30000) {
+async function fetchWithTimeout(url, options, addresses, timeoutMs = 30000, signal, onTimeout) {
   const target = new URL(url);
   const address = addresses[0];
   return new Promise((resolve, reject) => {
     let timedOut = false;
+    let settled = false;
+    let timer;
+    const cleanup = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', abortRequest);
+    };
+    const abortRequest = () => request.destroy(Object.assign(new Error('Gateway request was cancelled'), { code: 'request_aborted', statusCode: 499 }));
     const request = (target.protocol === 'https:' ? https : http).request(target, {
       method: options.method,
       headers: options.headers,
@@ -150,15 +162,24 @@ async function fetchWithTimeout(url, options, addresses, timeoutMs = 30000) {
         else callback(null, record.address, record.family);
       },
     }, (response) => {
-      clearTimeout(timer);
       const status = response.statusCode || 502;
       const headers = new Headers();
       for (let index = 0; index < response.rawHeaders.length; index += 2) headers.append(response.rawHeaders[index], response.rawHeaders[index + 1]);
+      response.once('end', cleanup);
+      response.once('close', cleanup);
       if ([204, 205, 304].includes(status)) { response.resume(); return resolve(new Response(null, { status, headers })); }
+      settled = true;
       resolve(new Response(Readable.toWeb(response), { status, headers }));
     });
-    const timer = setTimeout(() => { timedOut = true; request.destroy(); }, timeoutMs);
-    request.on('error', () => { clearTimeout(timer); reject(Object.assign(new Error(timedOut ? 'Upstream timeout' : 'Upstream unavailable'), { code: timedOut ? 'upstream_timeout' : 'upstream_error', statusCode: timedOut ? 504 : 502 })); });
+    timer = setTimeout(() => { timedOut = true; onTimeout?.(); request.destroy(Object.assign(new Error('Upstream timeout'), { code: 'upstream_timeout', statusCode: 504 })); }, timeoutMs);
+    request.on('error', (error) => {
+      cleanup();
+      if (settled) return;
+      settled = true;
+      reject(timedOut ? Object.assign(new Error('Upstream timeout'), { code: 'upstream_timeout', statusCode: 504 }) : error.code === 'request_aborted' ? error : Object.assign(new Error('Upstream unavailable'), { code: 'upstream_error', statusCode: 502 }));
+    });
+    if (signal?.aborted) abortRequest();
+    else signal?.addEventListener('abort', abortRequest, { once: true });
     request.end(options.body);
   });
 }
@@ -295,14 +316,19 @@ async function appendUsage(store, record) {
   } catch {}
 }
 
-export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, maxConcurrentRequests = 32, dnsLookup = dns.lookup, now = Date.now } = {}) {
+export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, maxConcurrentRequests = 32, upstreamTimeoutMs = 30_000, dnsLookup = dns.lookup, now = Date.now } = {}) {
   if (!store || !vault) throw new Error('Gateway server requires store and vault');
   const rateBuckets = new Map();
   const healthByRoute = new Map();
+  const routeTestCredentials = new Map();
+  const routeTestCalls = [];
   let inFlight = 0;
-  return http.createServer(async (req, res) => {
+  const server = http.createServer(async (req, res) => {
     const requestId = crypto.randomUUID();
     const startedAt = Date.now();
+    const requestController = new AbortController();
+    res.once('close', () => { if (!res.writableEnded) requestController.abort(); });
+    let upstreamTimedOut = false;
     let inbound;
     let route;
     let upstream;
@@ -342,7 +368,9 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
       const apiKey = keyFrom(req);
       const config = await store.read();
       const keyHash = apiKey && crypto.createHash('sha256').update(apiKey).digest('hex');
-      const credential = keyHash && config.clientKeys.find((item) => item.enabled && item.keyHash === keyHash);
+      const persistedCredential = keyHash && config.clientKeys.find((item) => item.enabled && item.keyHash === keyHash);
+      const temporaryCredential = keyHash && routeTestCredentials.get(keyHash);
+      const credential = persistedCredential || (temporaryCredential?.expiresAt > now() ? temporaryCredential : undefined);
       if (!credential) return send(res, 401, { error: 'unauthorized', requestId }, requestId);
       const timestamp = Date.now();
       const recent = (rateBuckets.get(keyHash) || []).filter((entry) => timestamp - entry < 60_000);
@@ -351,6 +379,7 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
       const input = await bodyOf(req);
       route = config.routes.find((item) => item.enabled && item.alias === input.model && item.inboundProtocol === inbound);
       if (!route) return send(res, 404, { error: 'route_not_found', requestId }, requestId);
+      if (credential.routeId && credential.routeId !== route.id) return send(res, 403, { error: 'forbidden', requestId }, requestId);
       if (Array.isArray(credential.scope) && credential.scope.length && !credential.scope.includes(route.alias)) return send(res, 403, { error: 'forbidden', requestId }, requestId);
       const availableTargets = (route.targets?.length ? route.targets : [{ upstreamId: route.upstreamId, modelId: route.modelId }]).map(target => ({ target, upstream: config.upstreams.find(item => item.enabled && item.id === target.upstreamId) })).filter(item => item.upstream);
       if (!availableTargets.length) return send(res, 502, { error: 'upstream_error', requestId }, requestId);
@@ -379,7 +408,7 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
       if (secret) headers[route.outboundProtocol === 'Mes' ? 'x-api-key' : 'authorization'] = route.outboundProtocol === 'Mes' ? secret : `Bearer ${secret}`;
       if (route.outboundProtocol === 'Mes') headers['anthropic-version'] = '2026-10-21';
       const payload = route.outboundProtocol === inbound ? { ...input, model: route.modelId } : outboundBody(route.outboundProtocol, normalized, route.modelId);
-      const upstreamResponse = await fetchWithTimeout(upstreamUrl(upstream.baseUrl, outboundPath), { method: 'POST', headers, body: JSON.stringify(payload) }, addresses);
+      const upstreamResponse = await fetchWithTimeout(upstreamUrl(upstream.baseUrl, outboundPath), { method: 'POST', headers, body: JSON.stringify(payload) }, addresses, upstreamTimeoutMs, requestController.signal, () => { upstreamTimedOut = true; });
       if (upstreamResponse.status >= 300) {
         await upstreamResponse.body?.cancel().catch(() => {});
         recordOutcome(policy.statusClasses.includes(Math.floor(upstreamResponse.status / 100)));
@@ -394,23 +423,74 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
         else await pipeConvertedStream(upstreamResponse, res, route.outboundProtocol, inbound, requestId);
         recordOutcome(false);
         await appendUsage(store, { requestId, createdAt: new Date().toISOString(), durationMs: Date.now() - startedAt, inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, modelId: route.modelId, status: 'completed' });
-        await store.update((value) => ({ ...value, clientKeys: value.clientKeys.map((item) => item.id === credential.id ? { ...item, lastUsedAt: new Date().toISOString() } : item) }));
+        if (!credential.temporary) await store.update((value) => ({ ...value, clientKeys: value.clientKeys.map((item) => item.id === credential.id ? { ...item, lastUsedAt: new Date().toISOString() } : item) }));
         return;
       }
       const upstreamBody = await readJson(upstreamResponse);
       recordOutcome(false);
       await appendUsage(store, { requestId, createdAt: new Date().toISOString(), durationMs: Date.now() - startedAt, inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, modelId: route.modelId, status: 'completed' });
-      await store.update((value) => ({ ...value, clientKeys: value.clientKeys.map((item) => item.id === credential.id ? { ...item, lastUsedAt: new Date().toISOString() } : item) }));
+      if (!credential.temporary) await store.update((value) => ({ ...value, clientKeys: value.clientKeys.map((item) => item.id === credential.id ? { ...item, lastUsedAt: new Date().toISOString() } : item) }));
       return send(res, 200, route.outboundProtocol === inbound ? upstreamBody : inboundResponse(inbound, route.outboundProtocol, upstreamBody, requestId), requestId);
     } catch (error) {
+      if (upstreamTimedOut) error = Object.assign(new Error('Upstream timeout'), { code: 'upstream_timeout', statusCode: 504 });
       if (upstreamStarted && (error.code === 'upstream_error' || error.code === 'upstream_timeout' || !error.statusCode)) recordOutcome(true);
       if (route && upstream) await appendUsage(store, { requestId, createdAt: new Date().toISOString(), durationMs: Date.now() - startedAt, inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, modelId: route.modelId, status: error.statusCode === 400 ? 'rejected' : 'failed', errorCode: error.code || 'gateway_error' });
+      if (requestController.signal.aborted || res.destroyed) return;
       if (res.headersSent) return res.destroy();
       return send(res, error.statusCode || 500, { error: error.code || 'internal_error', message: error.statusCode ? error.message : undefined, requestId }, requestId);
     } finally {
       if (acquiredSlot) inFlight -= 1;
     }
   });
+  server.testRoute = async (routeId, prompt) => {
+    if (typeof routeId !== 'string' || !routeId || routeId.length > 100) throw new Error('无效的路由');
+    if (typeof prompt !== 'string' || !prompt.trim() || prompt.length > 2000) throw new Error('测试内容需为 1 至 2000 个字符');
+    const config = await store.read();
+    const route = config.routes.find((item) => item.id === routeId && item.enabled);
+    if (!route) throw new Error('路由不存在或已停用');
+    const timestamp = now();
+    while (routeTestCalls.length && timestamp - routeTestCalls[0] >= 60_000) routeTestCalls.shift();
+    if (routeTestCalls.length >= 10) throw new Error('真实路由测试每分钟最多 10 次');
+    routeTestCalls.push(timestamp);
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('Gateway 尚未启动');
+
+    const key = `cxrg_test_${crypto.randomBytes(32).toString('base64url')}`;
+    const keyHash = crypto.createHash('sha256').update(key).digest('hex');
+    routeTestCredentials.set(keyHash, { id: `route-test-${crypto.randomUUID()}`, name: '临时路由测试', scope: [route.alias], routeId: route.id, enabled: true, temporary: true, expiresAt: timestamp + 60_000 });
+    const endpoint = { Res: '/v1/responses', Mes: '/v1/messages', Chat: '/v1/chat/completions' }[route.inboundProtocol];
+    const text = prompt.trim();
+    const body = route.inboundProtocol === 'Res'
+      ? { model: route.alias, input: text, max_output_tokens: 256 }
+      : route.inboundProtocol === 'Mes'
+        ? { model: route.alias, max_tokens: 256, messages: [{ role: 'user', content: text }] }
+        : { model: route.alias, max_completion_tokens: 256, messages: [{ role: 'user', content: text }] };
+    const startedAt = now();
+    try {
+      const response = await fetch(`http://127.0.0.1:${address.port}${endpoint}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(35_000),
+      });
+      const requestId = response.headers.get('x-request-id') || '';
+      const result = await response.json().catch(() => ({}));
+      const durationMs = Math.max(0, now() - startedAt);
+      if (!response.ok) {
+        const errors = { all_upstreams_unavailable: '所有上游当前均不可用', upstream_error: '上游请求失败，请检查上游状态和日志', upstream_timeout: '上游响应超时', unsupported_feature: '当前请求包含不支持的协议特性', route_not_found: '路由未匹配到此请求协议' };
+        return { routeAlias: route.alias, text: '', requestId, durationMs, status: response.status, error: errors[result.error] || `Gateway 请求失败（${response.status}）` };
+      }
+      const resultText = extractText(route.inboundProtocol, result);
+      return { routeAlias: route.alias, text: typeof resultText === 'string' ? resultText : '', requestId, durationMs, status: response.status };
+    } catch (error) {
+      if (error instanceof Error && error.name === 'TimeoutError') throw new Error('测试请求超时（35 秒）');
+      throw error;
+    } finally {
+      routeTestCredentials.delete(keyHash);
+      rateBuckets.delete(keyHash);
+    }
+  };
+  return server;
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

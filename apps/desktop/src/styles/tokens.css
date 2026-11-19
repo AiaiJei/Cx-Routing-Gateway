@@ -1,27 +1,37 @@
 :root {
   font-family: "Geist Variable", "Microsoft YaHei UI", system-ui, sans-serif;
-  color: var(--text);
-  background: var(--ground);
+  color: #1c1c1e;
+  background: #f2f2f7;
   font-optical-sizing: auto;
   line-height: 1.5;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   font-variant-numeric: tabular-nums;
 
-  --ground: #ffffff;
+  --ground: #f2f2f7;
   --surface: #ffffff;
-  --raised: #fafafa;
-  --active: #f4f4f5;
-  --border: #eaeaea;
-  --control: #d4d4d8;
-  --text: #171717;
-  --muted: #666666;
-  --accent: #0070f3;
-  --accent-soft: #f0f6ff;
-  --accent-border: #cfe1ff;
-  --positive: #16803c;
-  --negative: #d1242f;
-  --warning: #9a6700;
+  --raised: #f7f7fa;
+  --active: #e5e5ea;
+  --border: #e5e5ea;
+  --control: #c7c7cc;
+  --text: #1c1c1e;
+  --muted: #636366;
+  --accent: #0066cc;
+  --accent-soft: #eaf3ff;
+  --accent-border: #b6d7ff;
+  --accent-hover: #0057b8;
+  --positive: #1f6b2f;
+  --positive-soft: #e9f7ed;
+  --negative: #c52232;
+  --negative-soft: #fff0f1;
+  --warning: #8a5d00;
+  --warning-soft: #fff4d6;
+  --protocol-res: #5856d6;
+  --protocol-res-soft: #f0efff;
+  --protocol-mes: #007a73;
+  --protocol-mes-soft: #e6f5f2;
+  --protocol-chat: #0066cc;
+  --protocol-chat-soft: #eaf3ff;
   --font-xs: 12px;
   --font-sm: 13px;
   --font-body: 14px;
@@ -29,7 +39,7 @@
   --font-title: 22px;
   --font-metric: 24px;
   --radius-card: 8px;
-  --radius-control: 6px;
+  --radius-control: 8px;
   --radius-sheet: 16px;
   --sheet-inset: 8px;
   --sidebar-width: 228px;
@@ -55,4 +65,4 @@ button, input, select, textarea { font: inherit; }
   outline-offset: 2px;
 }
 
-::selection { background: #d9eaff; }
+::selection { background: var(--accent-soft); }

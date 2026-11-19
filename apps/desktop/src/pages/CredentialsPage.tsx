@@ -48,9 +48,12 @@ export function CredentialsPage() {
       {message && <p className="action-feedback" role="status">{message}</p>}
       <div className="table-scroll"><table>
         <thead><tr><th>名称</th><th>凭证预览</th><th>模型范围</th><th>创建时间</th><th>最近使用</th><th>状态</th></tr></thead>
-        <tbody>{credentials.map((credential) => <tr key={credential.id}>
-          <td><strong>{credential.label}</strong></td><td><code>{credential.preview}</code></td><td>{credential.scope}</td><td>{credential.createdAt}</td><td>{credential.lastUsed}</td><td>{credential.status}{data.meta.live && <span className="row-actions"><Button variant="tertiary" size="small" onClick={() => void rotateCredential(credential.id)}>轮换</Button><Button variant="danger" size="small" onClick={() => void revokeCredential(credential.id)}>撤销</Button></span>}</td>
-        </tr>)}</tbody>
+        <tbody>{credentials.map((credential) => {
+          const statusTone = credential.status === "已撤销" ? "status-negative" : credential.status === "运行时" ? "status-positive" : "status-neutral";
+          return <tr key={credential.id}>
+            <td><strong>{credential.label}</strong></td><td><code>{credential.preview}</code></td><td>{credential.scope}</td><td>{credential.createdAt}</td><td>{credential.lastUsed}</td><td><span className={`status-badge ${statusTone}`}>{credential.status}</span>{data.meta.live && <span className="row-actions"><Button variant="tertiary" size="small" onClick={() => void rotateCredential(credential.id)}>轮换</Button><Button variant="danger" size="small" onClick={() => void revokeCredential(credential.id)}>撤销</Button></span>}</td>
+          </tr>;
+        })}</tbody>
       </table></div>
       <section className="endpoint-block credential-endpoint"><span className="field-label">本机接入 URL</span><code>{data.gateway.url}</code><span className="helper-text">{data.meta.live ? "Gateway 由 Desktop 本地运行时提供。" : "仅为界面示例；当前无 Gateway 服务监听。"}</span></section>
     </div>

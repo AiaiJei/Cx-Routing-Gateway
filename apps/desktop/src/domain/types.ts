@@ -40,6 +40,15 @@ export type CallLog = {
   error?: string;
 };
 
+export type RouteTestResult = {
+  routeAlias: string;
+  text: string;
+  requestId: string;
+  durationMs: number;
+  status: number;
+  error?: string;
+};
+
 export type AccessCredential = {
   id: string;
   label: string;

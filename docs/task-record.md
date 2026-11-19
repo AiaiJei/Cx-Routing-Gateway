@@ -76,6 +76,40 @@
 - 主工作树合并后验证：`npm test` 19/19 通过；`npm run build` 通过；Electron 主进程和 preload 语法检查通过；`git diff --check` 通过。
 - 任务 worktree `.worktree/desktop-frontend-phase1` 保留为宿主管理目录，未强制删除；主工作树原有未跟踪治理目录保持不变。
 
+## iOS 风格前端精修（2026-11-19）
+
+- 任务 ID：`CXRG-FE-IOS-HIG-2026-11-19`；项目/仓库：Cx-Routing Gateway / `AiaiJei/Cx-Routing-Gateway`。
+- 用户要求依据 Apple Human Interface Guidelines 精修现有前端，增加有语义的色彩变化；补充要求：移除左侧菜单栏站点标题，并在每个导航路由标题前增加对应 SVG 标识。
+- 隔离：`codex/desktop-frontend-ios-hig`，worktree `.worktree/desktop-frontend-ios-hig`，基于 `master` 的 `e0f3fda`。已有未跟踪目录和其他 worktree 保持不动。
+- 范围：沿用 React/Vite/Electron、现有六页和数据边界；采用共享语义颜色与分组控件样式；不增加运行时、网络、持久化或依赖迁移。
+- 合同、设计与计划：`.codex/awg-task.json`、`docs/superpowers/specs/2026-11-19-desktop-ios-hig-design.md`、`docs/superpowers/plans/2026-11-19-desktop-ios-hig.md`。
+- 回退：撤销该专属 PR；无持久化运行时副作用。
+- 实现：移除侧栏品牌标题；六个导航项前加入 SVG；增加 Res/Mes/Chat 协议色、状态色、日志分段筛选、分组表面、聚焦样式与移动端标题操作单行处理。
+- TDD：导航/分段控件、协议/状态徽标、宽表格滚动边界、凭证页标题操作均先验证失败，再实现通过。
+- 验证：`npm ci` 完成并报告 0 项漏洞；`npm test` 23/23 通过；`npm run build` 通过；Taste App lint 0 FAIL / 0 WARN；`git diff --check` 通过。
+- 视觉检查：开发态检查总览、上游、路由、日志、凭证、设置；生产预览在 1440/768/390px 检查总览与日志，页面横向溢出为 0。路由及状态颜色对比检查通过；移动总览仍有约 46% 文本低于 13px，源于紧凑辅助标签；少量 fixture 行造成页面留白，保留真实数据规模。
+- 运行证据：开发服务器为 `http://127.0.0.1:4173/`；生产预览检查使用 `http://127.0.0.1:4174/`。原生 Electron 窗口启动 `NOT_RUN`；Owner 最终验收仍 pending。
+- 独立审查：只读范围 `e0f3fda..1b88d1b`，无 Critical/Important。Minor 关注 `ProtocolFlow` 的 `aria-label`；Chromium Accessibility Tree 实测该 `generic` 节点名称为完整的 `Res → Chat → Res`，因此无需代码改动。
+- PR：#5，`https://github.com/AiaiJei/Cx-Routing-Gateway/pull/5`，分支 `codex/desktop-frontend-ios-hig` → `master`；PR #4 已被另一任务占用，未改动。未合并，Owner acceptance 仍 pending。
+- 视觉产物：截图与检查报告保留在 worktree 的 `.taste-skill/`，已纳入本任务授权路径，未加入 PR 文件。
+- 能力：已读取 AWG 治理、头脑风暴、计划、worktree、TDD、Taste App Screens、验证、代码审查及接收审查技能；Repo Map 未调用（入口和调用链已由源代码、测试覆盖）；AWG runtime 是否激活不作推断。
+
+### 基于 PR #4 的迁移（2026-11-19）
+
+- Owner 澄清：本次 Desktop UI 精修以 PR #4 `codex/project-stage0-contract` 为基底；此前 PR #5 以 `master` 为 base 的状态已迁移，不覆盖 PR #4 工作树或其未跟踪文件。
+- 迁移基点：PR #4 head `480f54cf490cdb58de9a48be891d61135d594ecc`；当前分支 `codex/desktop-frontend-ios-hig` 将改为以 `codex/project-stage0-contract` 为 base。
+- 冲突处理：保留 PR #4 的 RuntimeIndicator、真实运行时凭证/上游/路由/设置行为、多模型选择、优先级故障切换、Electron supervisor 与安全边界；重新叠加本任务的 SVG 导航、iOS/HIG 语义色彩、协议徽标、分段日志筛选、分组表面和响应式边界。
+- 迁移验证：Desktop 37/37、Runtime 55/55、`npm run build` 通过；Desktop production asset 相对路径测试通过。依赖按 PR #4 lockfile 重装后审计报告 6 项 moderate，未执行破坏性修复。
+- Taste App lint：0 FAIL、4 WARN（PR #4 共享 Geist 输入/菜单/按钮阴影与弹窗阴影）；PR #4 既有 CRLF 文件导致普通 `git diff --check` 行尾提示，迁移代码逻辑未新增该类运行时问题。
+- 当前 PR：#5 将改为以 PR #4 分支为 base；PR #4 保持 OPEN，未合并、未修改其工作树。
+
+### 交互式真实路由测试（2026-11-19）
+
+- 用户要求在每条启用路由的状态/操作区增加入口；点击后打开交互窗口，预填并发送 `请回复OK`，显示模型响应、请求 ID、耗时或错误。
+- 实现：新增 `RouteTestDialog`，允许编辑最多 2000 字提示词，列出协议和目标优先级，显示加载/响应/错误状态，并明确提示真实上游调用可能产生费用。
+- 安全边界：Electron IPC 仅接受可信应用文档；Gateway 只为该启用路由创建 60 秒内存测试凭证，scope 限定模型且绑定 route ID，请求结束后删除；凭证不传入 renderer、不写配置或密钥库。测试调用通过 Gateway 原有认证、路由、协议转换、优先级故障切换和调用日志；每个 Gateway 进程限制真实路由测试为 10 次/分钟，输出预算上限为 256 tokens。
+- 运行时适配：Electron 开发模式与打包模式均使用进程内 supervisor，使主进程可调用 Gateway 的内部 route-test 方法；非 Electron Node 模式仍保留子进程 supervisor，原有 Runtime 测试接口保持兼容。
+- 验证：Desktop 41/41、Runtime 56/56、生产构建通过；Gateway 集成测试覆盖 Res/Mes/Chat 入站到 Chat 上游、真实日志写入、无凭证落盘、禁用/未知路由拒绝、提示词长度及每分钟 10 次 route-test 限流；对话框/页面测试覆盖默认提示、响应元信息、错误和预览模式隐藏入口。宽屏/手机对话框布局用模拟 IPC 做视觉检查；未调用真实第三方 Provider。
 ## 项目阶段 0 合同任务（2026-11-18）
 
 - 任务 ID：`CXRG-PHASE0-2026-11-18`；项目/仓库：Cx-Routing Gateway / `AiaiJei/Cx-Routing-Gateway`。
@@ -225,3 +259,23 @@
 - 审查中提出“编辑路由无法删除备用目标”；根据实际路径，原路由从 retained 中移除后按新 selection 保存，新增 API 回归已确认可删除，故不作为缺陷修复。
 - PR CI 首次运行在干净检出缺少 Desktop 构建和发布产物，运行时两项测试失败。CI 现先构建 Desktop，release manifest 测试使用独立模拟产物并检查缺失文件；本地 Runtime 54/54 通过，CI 结果以远端实际运行为准。
 - 独立复审确认地址绑定与路由删除回归，并发现非成功响应体未关闭；新增回归先失败后通过，Gateway 现在取消上游错误响应流，本地 Runtime 55/55 通过。
+
+## PR #5 交互式真实路由测试（2026-11-19）
+
+- 用户补充：路由操作入口应打开可交互窗口；提示内容默认 `请回复OK`，允许编辑并查看真实响应结果。
+- UI：启用的运行时路由显示“测试调用”入口；窗口列出入站/出站协议与上游优先级，支持编辑提示词，展示发送状态、模型文本、HTTP 状态、请求 ID、耗时和错误。提示真实上游请求可能产生费用；浏览器 fixture 模式不展示真实调用入口。
+- 链路：通过 renderer → preload IPC → Electron main → Gateway 内部 route-test 方法；Gateway 以随机 route-scoped、内存临时凭证调用标准入站端点，复用认证、路由、协议转换、failover 和 usage logging。请求结束后删除临时凭证，不写入 config/vault、不向 renderer 提供 key。
+- Electron 开发与打包模式均使用 in-process runtime supervisor，使 main process 能调用 Gateway 内部 route-test 方法；普通 Node 子进程模式与原 supervisor 测试不变。
+- 初次独立审查（head `09a88af`）提出三项 Important：响应体 deadline 后关闭 Gateway 请求并释放容量；发送中阻止弹窗关闭以免重复计费；Modal focus trap/restore。Minor 要求失败结果保留请求 ID/HTTP 状态/耗时。上述项均新增回归测试并修复；失败上游详情保持脱敏。
+- 修复后独立复审：全部初次 Important/Minor 均已解决；无剩余 Critical/Important/Minor 发现，审查接受。Electron 窗口真实启动及真实 Provider 调用仍为 `NOT_RUN`。
+- 最终验证：Desktop 45/45，Runtime 59/59，`npm run build` 通过；新增集成用例覆盖 Chat/Res/Mes 入站、日志落盘、无永久 client key、失败请求关联 metadata、拒绝与 refusal 文本、256 token 输出预算、禁用/未知 route、prompt 上限、每分钟 10 次限流、响应体超时槽位释放、客户端断连取消上游请求与 bounded server shutdown。Taste App lint 0 FAIL / 4 WARN（共享 control/modal 阴影）；CRLF 感知 diff check 通过。未触发真实第三方 provider 请求。
+- 视觉检查：交互窗口在 1440px 与 390px 显示模拟 IPC 的 `OK` 响应，检查了提示词编辑、费用提示、状态/request ID/耗时，无截图覆盖行为；不代表真实 provider 已验收。
+- PR #5 base 为 PR #4 分支；本轮实现提交 `4caa5a1` 已推送，PR 标题为 `feat: refine Desktop UI and add route testing`。GitHub CI 状态以 PR 实时页面为准；Owner 验收仍 pending。
+
+### 集成授权修订（2026-11-19）
+
+- 用户明确授权提交并合并 PR #5，将任务成果同步到主工作树，并在合并后移除任务工作树；此授权扩展原合同排除的合并/清理范围。
+- PR #4 已合并至 `master`（当前合并提交 `41b2a39`），因此 PR #5 应以 `master` 为目标；本次不授权直接推送 `master`、删除任务分支、发布或部署，Owner acceptance 仍单独 pending。
+- 当前 PR #5 head 为 `306c2dc`。任务工作树唯一未跟踪内容为 `.taste-skill/`，应在移除工作树前保留归档副本，不加入产品提交。
+- 新鲜验证：Runtime 59/59、Desktop 45/45、Desktop 生产构建通过；GitHub runtime/desktop 检查通过。`npm run verify:all` 最终因本地缺少 `apps/desktop/release/win-unpacked/Cx-Routing Gateway.exe` 在 release manifest 步骤退出 1；release/package smoke 本次未运行。
+- 集成状态：进行中，尚未改 PR base、合并远端 PR、更新本地主工作树或移除任务工作树。

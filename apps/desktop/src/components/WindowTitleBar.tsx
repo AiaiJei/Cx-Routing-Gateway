@@ -20,7 +20,7 @@ export function WindowTitleBar() {
       </div>
       <div className="window-controls" aria-label="窗口控制">
         <button type="button" aria-label="最小化窗口" onClick={() => window.desktopControls?.minimize()}>−</button>
-        <button type="button" aria-label={maximized ? "还原窗口" : "最大化窗口"} onClick={toggleMaximize}>{maximized ? "❐" : "□"}</button>
+        <button type="button" aria-label={maximized ? "还原窗口" : "最大化窗口"} onClick={toggleMaximize}><span className={`window-maximize-mark${maximized ? " is-maximized" : ""}`} aria-hidden="true" /></button>
         <button className="window-close" type="button" aria-label="关闭窗口" onClick={() => window.desktopControls?.close()}>×</button>
       </div>
     </header>

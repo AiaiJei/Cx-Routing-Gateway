@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { EmptyResult, FixtureNotice, PageHeader, SearchField } from "../components/PageHeader";
-import { Modal } from "../components/Modal";
 import { Button } from "../components/Button";
+import { Modal } from "../components/Modal";
 import { TextField } from "../components/TextField";
 import { defaultWorkspaceClient } from "../data/workspace-client";
 import { useWorkspace } from "../data/use-workspace";
@@ -49,10 +49,7 @@ export function UpstreamsPage() {
     setFeedback(data.meta.live ? "正在测试连接…" : "正在准备演示测试…");
     try {
       const result = await defaultWorkspaceClient.simulateUpstreamTest(id);
-      if (data.meta.live) {
-        const refreshed = await defaultWorkspaceClient.getWorkspace();
-        setUpstreams(refreshed.upstreams);
-      }
+      if (data.meta.live) setUpstreams((await defaultWorkspaceClient.getWorkspace()).upstreams);
       setFeedback(result.message);
     } catch (caught) {
       setFeedback(caught instanceof Error ? caught.message : "连通测试失败");
@@ -88,13 +85,16 @@ export function UpstreamsPage() {
       </form></Modal>}
       {visibleUpstreams.length ? <div className="table-scroll"><table>
         <thead><tr><th>服务</th><th>Base URL</th><th>模型</th><th>状态</th><th><span className="sr-only">操作</span></th></tr></thead>
-        <tbody>{visibleUpstreams.map((upstream) => <tr key={upstream.id}>
-          <td><strong>{upstream.name}</strong><span className="cell-subtext">凭证引用：{upstream.credentialLabel}</span></td>
-          <td><code className="url-cell">{upstream.baseUrl}</code></td>
-          <td>{upstream.models.length} 个{data.meta.live ? "已发现" : "示例"}模型</td>
-          <td><span className={`status-text${upstream.status === "已连接" ? " status-success" : ""}`}>{upstream.status}</span></td>
-          <td><div className="table-actions"><Button variant={data.meta.live ? "accent" : "secondary"} size="small" aria-label={`测试 ${upstream.name}`} disabled={testingId === upstream.id} onClick={() => void testConnection(upstream.id)}>{testingId === upstream.id ? "测试中…" : data.meta.live ? "测试" : "模拟测试"}</Button>{data.meta.live && <Button variant="danger" size="small" onClick={() => void deleteUpstream(upstream.id)}>删除</Button>}</div></td>
-        </tr>)}</tbody>
+        <tbody>{visibleUpstreams.map((upstream) => {
+          const statusTone = upstream.status === "已连接" ? "status-positive" : /失败|错误/.test(upstream.status) ? "status-negative" : upstream.status === "待测试" ? "status-warning" : "status-neutral";
+          return <tr key={upstream.id}>
+            <td><strong>{upstream.name}</strong><span className="cell-subtext">凭证引用：{upstream.credentialLabel}</span></td>
+            <td><code className="url-cell">{upstream.baseUrl}</code></td>
+            <td>{upstream.models.length} 个{data.meta.live ? "已发现" : "预览"}模型</td>
+            <td><span className={`status-badge ${statusTone}`}>{upstream.status}</span></td>
+            <td><div className="table-actions"><Button variant={data.meta.live ? "accent" : "secondary"} size="small" aria-label={`测试 ${upstream.name}`} disabled={testingId === upstream.id} onClick={() => void testConnection(upstream.id)}>{testingId === upstream.id ? "测试中…" : data.meta.live ? "测试" : "模拟测试"}</Button>{data.meta.live && <Button variant="danger" size="small" onClick={() => void deleteUpstream(upstream.id)}>删除</Button>}</div></td>
+          </tr>;
+        })}</tbody>
       </table></div> : <EmptyResult>没有匹配的上游服务</EmptyResult>}
       <p className="helper-text page-footnote">{data.meta.live ? "连通测试通过本机控制 API 执行；模型发现结果会写回运行时。" : "连通测试、模型同步及凭证保存尚未连接本机 Gateway。"}</p>
     </div>

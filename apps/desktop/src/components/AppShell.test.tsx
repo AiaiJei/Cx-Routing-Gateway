@@ -14,16 +14,25 @@ describe("AppShell", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole("link", { name: /Cx-Routing Gateway/ })).toBeVisible();
-    for (const label of ["总览", "上游服务", "模型路由", "调用日志", "接入凭证", "设置"]) {
-      expect(screen.getByRole("link", { name: label })).toBeVisible();
+    expect(screen.getByTestId("window-title")).toHaveTextContent("Cx-Routing Gateway");
+    expect(screen.queryByRole("link", { name: /Cx-Routing Gateway/ })).not.toBeInTheDocument();
+    const destinations = ["总览", "上游服务", "模型路由", "调用日志", "接入凭证", "设置"];
+    for (const label of destinations) {
+      const link = screen.getByRole("link", { name: label });
+      expect(link).toBeVisible();
+      const icon = link.querySelector("svg");
+      expect(icon).toHaveAttribute("aria-hidden", "true");
+      expect(link.firstElementChild).toBe(icon);
     }
+    expect(screen.getByRole("navigation", { name: "主导航" }).querySelectorAll("svg")).toHaveLength(6);
     expect(screen.getByRole("heading", { name: "总览" })).toBeVisible();
     expect(screen.getByRole("link", { name: "跳到主要内容" })).toHaveAttribute("href", "#main-content");
     expect(screen.getByRole("banner", { name: "窗口标题栏" })).toBeVisible();
     expect(screen.getByTestId("window-title")).toHaveAttribute("data-window-title", "true");
     expect(screen.getByRole("button", { name: "最小化窗口" })).toBeVisible();
-    expect(screen.getByRole("button", { name: "最大化窗口" })).toBeVisible();
+    const maximize = screen.getByRole("button", { name: "最大化窗口" });
+    expect(maximize).toBeVisible();
+    expect(maximize.querySelector(".window-maximize-mark")).toBeVisible();
     expect(screen.getByRole("button", { name: "关闭窗口" })).toBeVisible();
   });
 

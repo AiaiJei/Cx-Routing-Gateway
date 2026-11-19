@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { LogsPage } from "./LogsPage";
+import "../styles/app.css";
 
 describe("LogsPage", () => {
   it("filters sample logs and resets the filter", async () => {
@@ -18,8 +19,11 @@ describe("LogsPage", () => {
   it("filters sample logs by status", async () => {
     const user = userEvent.setup();
     render(<LogsPage />);
-    await user.click(screen.getByRole("combobox", { name: "按状态筛选" }));
-    await user.click(screen.getByRole("option", { name: "失败" }));
+    expect(screen.getByText("失败（模拟）")).toHaveClass("status-badge", "status-negative");
+    const failed = screen.getByRole("button", { name: "失败" });
+    expect(failed).toHaveAttribute("aria-pressed", "false");
+    await user.click(failed);
+    expect(failed).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByText("req-29ab10ce")).toBeVisible();
     expect(screen.queryByText("req-7d3a9f21")).not.toBeInTheDocument();
   });
@@ -29,6 +33,13 @@ describe("LogsPage", () => {
     render(<LogsPage />);
     await user.type(screen.getByRole("searchbox", { name: "搜索调用日志" }), "absent");
     expect(screen.getByText("没有匹配的调用记录")).toBeVisible();
+  });
+
+  it("contains a wide log table within its horizontal scroll region", () => {
+    const { container } = render(<LogsPage />);
+    const tableViewport = container.querySelector(".table-scroll");
+    expect(tableViewport).not.toBeNull();
+    expect(getComputedStyle(tableViewport!).contain).toContain("paint");
   });
 
   it("opens a redacted detail view without exposing request or response bodies", async () => {

@@ -1,10 +1,20 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CredentialsPage } from "./CredentialsPage";
 import { defaultWorkspaceClient } from "../data/workspace-client";
+import "../styles/app.css";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("CredentialsPage", () => {
+  it("keeps the header action label on one line", () => {
+    render(<CredentialsPage />);
+    expect(getComputedStyle(screen.getByRole("button", { name: "演示创建凭证" })).whiteSpace).toBe("nowrap");
+  });
+
   it("only displays masked examples and labels local actions as demonstrations", async () => {
     const user = userEvent.setup();
     render(<CredentialsPage />);
@@ -19,9 +29,7 @@ describe("CredentialsPage", () => {
     const liveWorkspace = {
       meta: { source: "runtime", live: true },
       gateway: { state: "运行中", url: "http://127.0.0.1:4318", metrics: undefined },
-      upstreams: [], routes: [], logs: [],
-      credentials: [],
-      settings: [],
+      upstreams: [], routes: [], logs: [], credentials: [], settings: [],
     } as any;
     let rotatedId = "";
     Object.assign(defaultWorkspaceClient, {

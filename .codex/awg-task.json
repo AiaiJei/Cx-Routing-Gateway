@@ -2,118 +2,55 @@
   "contract_version": 1,
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
-  "task_id": "CXRG-PHASE0-2026-11-18",
-  "title": "Project protocol contract and runtime foundation",
-  "supersedes": "CXRG-FE-PHASE1-2026-11-18 (merged as PR #3); phase-0 contract revision",
+  "task_id": "CXRG-FE-IOS-HIG-2026-11-19",
+  "title": "Desktop iOS-inspired refinement on PR #4",
   "status": "active",
-  "branch": "codex/project-stage0-contract",
-  "base": "master",
+  "branch": "codex/desktop-frontend-ios-hig",
+  "base": "codex/project-stage0-contract",
   "authorized_paths": [
     ".codex/awg-task.json",
-    "README.md",
-    "docs/architecture.md",
-    "docs/acceptance-checklist.md",
-    "apps/desktop/electron/**",
-    "apps/desktop/src/**",
-    "apps/desktop/README.md",
-    "apps/desktop/package.json",
-    "apps/desktop/package-lock.json",
-    "apps/desktop/electron-builder.yml",
-    "docs/superpowers/specs/2026-11-18-project-phase0-contract-design.md",
-    "docs/superpowers/plans/2026-11-18-project-phase0-contract.md",
+    "docs/superpowers/specs/2026-11-19-desktop-ios-hig-design.md",
+    "docs/superpowers/plans/2026-11-19-desktop-ios-hig.md",
     "docs/task-record.md",
-    "package.json",
-    "scripts/runtime-health.mjs",
-    "scripts/verify-release.mjs",
-    "scripts/restore-config.mjs",
-    "scripts/check-update.mjs",
-    "scripts/doctor.mjs",
-    "scripts/verify-all.mjs",
-    "scripts/smoke-packaged.mjs",
-    ".github/workflows/**",
-    "deploy/**",
-    "packages/shared/**",
-    "services/local-control/**",
-    "services/gateway/**",
-    "tests/runtime/**"
+    ".taste-skill/**",
+    "apps/desktop/src/**",
+    "apps/desktop/electron/main.cjs",
+    "apps/desktop/electron/preload.cjs",
+    "apps/desktop/electron/runtime-supervisor.cjs",
+    "services/gateway/src/server.mjs",
+    "tests/**"
   ],
   "scope": {
     "include": [
-      "Pin Res, Mes, and Chat protocol definitions and versioning evidence",
-      "Define a 3-by-3 inbound/outbound protocol capability matrix and failure semantics",
-      "Draft normalized domain and local control/data-plane interface contracts",
-      "Record Desktop and Gateway lifecycle, listener, single-instance, and startup decisions",
-      "Threat model credentials, local control access, SSRF, request limits, and logs",
-      "Prepare independently reviewable acceptance criteria for later implementation stages",
-      "Correct stale README and architecture-tree statements about Desktop frontend availability",
-      "Implement runnable local configuration and encrypted secret storage",
-      "Implement loopback control API for upstreams, routes, and client keys",
-      "Implement authenticated Gateway routing with native forwarding and TextCore-1 conversion",
-      "Add runtime tests for persistence, control plane, authentication, routing, and conversion",
-      "Add local health and backup/rollback operational entrypoints"
+      "Build on PR #4 at 480f54cf490cdb58de9a48be891d61135d594ecc",
+      "Refine the existing Desktop renderer with iOS-inspired semantic colors, grouped surfaces, and controls",
+      "Remove the sidebar product title while retaining product identity in the native title bar and workspace header",
+      "Add a corresponding decorative SVG icon to each of the six navigation destinations",
+      "Add an interactive route test dialog that sends a user-editable prompt through the selected route's real Gateway path",
+      "Use an in-memory route-scoped test credential that is removed after one request and is never persisted or exposed to the renderer",
+      "Clearly disclose that real upstream test calls may incur provider charges",
+      "Preserve PR #4 runtime-backed interactions, multi-upstream priority routing, and explicit fixture/runtime states",
+      "Store generated visual verification screenshots and reports under .taste-skill/ without including them in the product change",
+      "Record the user's scope extension, retarget PR #5 to master after PR #4 merged, and merge PR #5 when required checks permit",
+      "Synchronize the main worktree with the merged PR #5 result",
+      "Remove the PR #5 task worktree after preserving untracked verification artifacts"
     ],
     "exclude": [
-      "Desktop IPC integration beyond the current runtime bridge, complex tool-result chains, migrations, deployment, and release",
-      "Merge, push, release, and deployment"
+      "Changes to PR #4 route matching, protocol conversion, upstream failover policy, persistent storage schema, or external provider profiles",
+      "Release/deployment, force-pushing master, deleting task branches, or changes to other worktrees"
     ]
   },
   "acceptance": [
-    "Owner-approved protocol identities, API versions, and scope are recorded with official references",
-    "All nine protocol directions have explicit capability and unsupported-feature behavior",
-    "Domain, control-plane, data-plane, lifecycle, and security contracts are reviewable",
-    "Architecture decisions identify unresolved items and their owners; no decision is inferred from static code",
-    "README distinguishes the runnable fixture-backed Desktop UI from unimplemented Gateway/backend runtime",
-    "Architecture tree distinguishes implemented Desktop shell from unimplemented Gateway services",
-    "Document links, JSON contract, and Git diff checks pass",
-    "Independent review findings are addressed or explicitly reported",
-    "Runtime foundation tests pass with no external provider dependency"
+    "All six screens are navigable, each navigation item has its SVG icon, and the sidebar has no site title",
+    "Semantic system colors, protocol distinctions, and grouped controls are applied consistently",
+    "PR #4 runtime-backed interactions and fixture/runtime disclosure remain intact",
+    "Real route tests run through the Gateway path with route-scoped in-memory authorization and no persisted test credentials",
+    "The test dialog discloses that upstream provider charges may apply",
+    "Responsive and keyboard accessibility checks are recorded",
+    "Desktop tests, production build, visual checks, and independent review are recorded",
+    "No Critical or Important review findings remain; Owner acceptance is recorded separately",
+    "PR #5 is merged to master, the main worktree reflects the merge, and the task worktree is removed with untracked artifacts preserved"
   ],
-  "rollback": "Revert only this contract revision, runtime foundation files, planning documents, task record, and Desktop status corrections; preserve all unrelated worktree content.",
-  "owner_acceptance": "pending",
-  "revisions": [
-    {
-      "id": "desktop-route-selection-and-status",
-      "request": "全局下拉标识优化；模型多选；路由表单移除模型别名；解释并修复运行时未接入提示",
-      "scope": [
-        "CustomSelect SVG indicator and accessible multi-selection",
-        "Model-name based transactional batch route save via preload/control API",
-        "RuntimeIndicator using supervisor status, including errors"
-      ],
-      "verification": [
-        "Desktop 31 tests",
-        "Runtime 48 tests",
-        "Packaged Electron UI at 1440x900 and 960x720"
-      ],
-      "rollback": "Revert this revision of CustomSelect/RoutesPage/RuntimeIndicator and batch API/IPC wiring; preserve existing route records and legacy client call names."
-    },
-    {
-      "id": "multi-upstream-priority-failover",
-      "request": "同名模型支持多个上游，并可设置优先级、连续失败阈值及计入的 4xx/5xx 状态类别。",
-      "scope": ["Transactional route grouping and priority editing", "Gateway failover on subsequent requests with 60-second recovery cooldown", "Concurrency and existing single-target compatibility verification"],
-      "verification": ["Control and Gateway integration tests", "Desktop route form tests and production build", "Report packaged and independent review evidence separately"],
-      "rollback": "Revert this revision's route selection, failover and related tests; preserve existing configuration and all prior worktree changes."
-    },
-    {
-      "id": "priority-failover-scope-clarification",
-      "request": "优先级用于上游不可用或维护时由备用上游接替；不需要考虑异构上游协议能力适配问题。",
-      "scope": ["Keep the configured route outbound protocol for all targets", "Exclude per-target protocol capability validation and adaptation from this priority feature"],
-      "verification": ["Rerun local priority failover integration and route form tests", "Preserve actual external provider and Owner acceptance status"],
-      "rollback": "Revert only this scope clarification and associated documentation; preserve all code, configuration and earlier task records."
-    },
-    {
-      "id": "route-model-display-once",
-      "request": "模型路由列表仅展示一个模型名称，避免多上游同名重复。",
-      "scope": ["Display the first target model once per route", "Preserve legacy call-name hint and upstream priority display"],
-      "verification": ["Route page regression test and Desktop build", "Check the latest Desktop where feasible"],
-      "rollback": "Revert this display-only route cell change and its test; preserve route data and other task work."
-    },
-    {
-      "id": "integration-pr-local-master",
-      "request": "创建 PR，提交并推送任务分支，将任务工作树成果合入本地主工作树。",
-      "scope": ["Commit and push task source, tests and records", "Create a pull request against remote master", "Merge the task branch into the local master worktree"],
-      "exclude": ["Merge the pull request on GitHub", "Push local master", "Release, deploy, delete worktrees or remove temporary files"],
-      "verification": ["Runtime and Desktop tests, Desktop build", "Independent review and local integration verification"],
-      "rollback": "Revert the integration commit or restore the previous local branch reference without removing task records or existing untracked files."
-    }
-  ]
+  "rollback": "Revert only this refinement's commits while preserving the PR #4 base and its runtime changes.",
+  "owner_acceptance": "pending"
 }

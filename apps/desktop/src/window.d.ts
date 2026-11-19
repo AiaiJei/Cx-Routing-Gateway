@@ -9,6 +9,7 @@ declare global {
       getWorkspace: () => Promise<unknown>;
       getStatus: () => Promise<{ state: string; failure?: unknown }>;
       testUpstream: (id: string) => Promise<unknown>;
+      testRoute: (routeId: string, prompt: string) => Promise<import("./domain/types").RouteTestResult>;
       createClientKey: (name: string, scope?: string[]) => Promise<unknown>;
       rotateClientKey: (id: string) => Promise<unknown>;
       revokeClientKey: (id: string) => Promise<unknown>;
