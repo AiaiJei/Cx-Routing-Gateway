@@ -14,18 +14,25 @@ export function LogsPage() {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("全部");
   const [selectedLog, setSelectedLog] = useState<CallLog | null>(null);
-  const { data, error, loading } = useWorkspace();
+  const { data, error, loading, refresh, refreshing, refreshError } = useWorkspace(undefined, { pollIntervalMs: 1500 });
   const logs = useMemo(() => data.logs.filter((log) => {
     const textMatches = `${log.id} ${log.model} ${log.credential} ${log.upstream} ${log.direction} ${requestType(log)} ${log.error ?? ""}`.toLowerCase().includes(query.trim().toLowerCase());
     return textMatches && (status === "全部" || log.status.startsWith(status));
   }), [data.logs, query, status]);
   const hasFilter = query.length > 0 || status !== "全部";
 
-  if (loading || error) return <WorkspaceState title="请求日志" loading={loading} error={error} />;
+  const refreshAction = <Button aria-label="刷新请求日志" aria-busy={refreshing} disabled={refreshing} onClick={refresh}>{refreshing ? "刷新中…" : "刷新"}</Button>;
+
+  if (loading) return <WorkspaceState title="请求日志" loading={loading} error={error} />;
+  if (error) return <div className="page-content">
+    <PageHeader title="请求日志" description="查看请求摘要、Token 用量与响应耗时。" action={refreshAction} />
+    <div className="workspace-error" role="alert"><p>请求日志读取失败：{error}</p><p className="helper-text">将自动重试，也可点击刷新。</p></div>
+  </div>;
 
   return (
     <div className="page-content">
-      <PageHeader title="请求日志" description="查看请求摘要、Token 用量与响应耗时。" />
+      <PageHeader title="请求日志" description="查看请求摘要、Token 用量与响应耗时。" action={refreshAction} />
+      {refreshError && <p className="action-feedback" role="alert">刷新失败：{refreshError}。当前保留上次读取的日志，将自动重试。</p>}
       <FixtureNotice live={data.meta.live}>{data.meta.live ? "本机运行时日志 · 正文已脱敏" : "示例日志 · 非运行时记录"}</FixtureNotice>
       <div className="toolbar"><SearchField label="搜索请求日志" value={query} onChange={setQuery} />
         <SegmentedControl ariaLabel="按状态筛选" value={status} options={["全部", "成功", "失败"]} onChange={setStatus} />

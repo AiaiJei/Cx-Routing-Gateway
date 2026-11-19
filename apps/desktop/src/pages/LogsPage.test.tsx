@@ -1,7 +1,10 @@
-import { describe, expect, it } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { LogsPage } from "./LogsPage";
+import { defaultWorkspaceClient } from "../data/workspace-client";
+import { workspaceFixtures } from "../data/fixtures";
+import type { WorkspaceFixtures } from "../domain/types";
 import "../styles/app.css";
 
 describe("LogsPage", () => {
@@ -87,4 +90,84 @@ it("reveals request IDs, protocol direction and exact tokens through accessible 
   expect(tooltip).toHaveTextContent("推理");
   await user.keyboard("{Escape}");
   expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+});
+
+describe("request log refresh", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+  });
+  afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); });
+
+  async function tick(ms = 0) {
+    await act(async () => { await vi.advanceTimersByTimeAsync(ms); });
+  }
+  function liveSnapshot(): WorkspaceFixtures {
+    return { ...structuredClone(workspaceFixtures), meta: { live: true, source: "runtime" } };
+  }
+
+  it("manually refreshes while preserving filters, existing rows and the open detail", async () => {
+    const initial = liveSnapshot();
+    let resolve!: (data: WorkspaceFixtures) => void;
+    vi.spyOn(defaultWorkspaceClient, "getWorkspace").mockResolvedValueOnce(initial).mockReturnValue(new Promise((done) => { resolve = done; }));
+    render(<LogsPage />);
+    await tick();
+    fireEvent.change(screen.getByRole("searchbox", { name: "搜索请求日志" }), { target: { value: "req-" } });
+    fireEvent.click(screen.getByRole("button", { name: "失败" }));
+    const refresh = screen.getByRole("button", { name: "刷新请求日志" });
+    fireEvent.click(refresh);
+    expect(refresh).toBeDisabled();
+    expect(refresh).toHaveTextContent("刷新中");
+    fireEvent.click(screen.getByRole("button", { name: "查看 req-29ab10ce" }));
+    const dialog = screen.getByRole("dialog");
+    const updated = liveSnapshot();
+    updated.logs.unshift({ ...initial.logs.find((log) => log.id === "req-29ab10ce")!, id: "req-new-failure" });
+    await act(async () => resolve(updated));
+    expect(screen.getByRole("searchbox", { name: "搜索请求日志" })).toHaveValue("req-");
+    expect(screen.getByRole("button", { name: "失败" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "查看 req-new-failure" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "查看 req-7d3a9f21" })).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBe(dialog);
+    expect(refresh).toBeEnabled();
+  });
+
+  it("automatically displays the first new record from an empty list within 1500 ms", async () => {
+    let latest: WorkspaceFixtures = { ...liveSnapshot(), logs: [] };
+    vi.spyOn(defaultWorkspaceClient, "getWorkspace").mockImplementation(async () => latest);
+    render(<LogsPage />);
+    await tick();
+    expect(screen.getByText("没有匹配的请求记录")).toBeVisible();
+    latest = liveSnapshot();
+    await tick(1500);
+    expect(screen.getByRole("button", { name: "查看 req-7d3a9f21" })).toBeVisible();
+    expect(screen.queryByText("正在读取工作区…")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "刷新请求日志" })).toBeEnabled();
+  });
+
+  it("offers manual recovery after an initial failure without showing sample logs", async () => {
+    vi.spyOn(defaultWorkspaceClient, "getWorkspace").mockRejectedValueOnce(new Error("连接已断开")).mockResolvedValue(liveSnapshot());
+    render(<LogsPage />);
+    await tick();
+    expect(screen.getByRole("alert")).toHaveTextContent("连接已断开");
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "刷新请求日志" }));
+    await tick();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "查看 req-7d3a9f21" })).toBeVisible();
+  });
+
+  it("keeps rows and details through a failed poll and recovers at the next poll", async () => {
+    vi.spyOn(defaultWorkspaceClient, "getWorkspace").mockResolvedValueOnce(liveSnapshot()).mockRejectedValueOnce(new Error("连接已断开")).mockResolvedValue(liveSnapshot());
+    render(<LogsPage />);
+    await tick();
+    fireEvent.click(screen.getByRole("button", { name: "查看 req-7d3a9f21" }));
+    const dialog = screen.getByRole("dialog");
+    await tick(1500);
+    expect(screen.getByRole("alert")).toHaveTextContent("连接已断开");
+    expect(screen.getByRole("button", { name: "查看 req-7d3a9f21" })).toBeVisible();
+    expect(screen.getByRole("dialog")).toBe(dialog);
+    await tick(1500);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBe(dialog);
+  });
 });

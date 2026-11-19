@@ -312,3 +312,10 @@
 
 - 用户授权提交并合并 PR #7，将任务成果同步到主工作树 master；任务分支、worktree、运行中的 Desktop 和本地证据保留。
 - Windows x64 1.0.2 解包版已实际启动，窗口响应及两项 health 正常；NSIS、真实 provider、Owner 最终验收仍为未执行/pending。集成验证及结果入口见 [任务记录](tasks/2026-11-19-request-logs.md)。
+
+## 请求日志刷新 1.0.3（2026-11-20）
+
+- 基于 PR #7 合并提交 `272e443`，独立分支 `codex/request-logs-refresh-1.0.3`，仓内同名工作树。
+- 日志页新增刷新按钮和 1500 ms 轮询；后台读取保留筛选/详情/已有数据，失败可恢复，隐藏暂停、返回立即刷新，防止并发读取。
+- Desktop 74/74、Runtime 75/75、TypeScript/生产构建与独立审查通过。生产构建受控浏览器数据测试中新日志 1556 ms 后出现；1440/768/390 布局检查通过。
+- [设计](superpowers/specs/2026-11-20-request-log-refresh-design.md)、[计划](superpowers/plans/2026-11-20-request-log-refresh.md)、[证据与限制](tasks/2026-11-20-request-log-refresh.md)。原生 Electron 耗时、安装器、真实 provider、Owner 验收未执行；本任务授权止于专属 PR。
