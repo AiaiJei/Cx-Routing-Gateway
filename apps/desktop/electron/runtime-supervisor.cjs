@@ -33,10 +33,21 @@ function listenServer(server, port) {
   });
 }
 
-function closeServer(server) {
+function closeServer(server, graceMs = 3000) {
   return new Promise((resolve) => {
     if (!server || !server.listening) return resolve();
-    server.close(() => resolve());
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+      resolve();
+    };
+    const timer = setTimeout(() => {
+      server.closeIdleConnections?.();
+      server.closeAllConnections?.();
+    }, graceMs);
+    server.close(finish);
   });
 }
 
@@ -47,7 +58,7 @@ async function startRuntime({ dataDir, masterKey, controlPort = 4319, gatewayPor
   const env = { ...process.env, ...(process.versions.electron ? { ELECTRON_RUN_AS_NODE: '1' } : {}), CXRG_DATA_DIR: dataDir, CXRG_MASTER_KEY: masterKey, CXRG_CONTROL_TOKEN: controlToken, CXRG_CONTROL_PORT: String(controlPort), CXRG_GATEWAY_PORT: String(gatewayPort) };
   const entries = [path.join(root, 'services', 'local-control', 'src', 'server.mjs'), path.join(root, 'services', 'gateway', 'src', 'server.mjs')];
   const ports = [controlPort, gatewayPort];
-  if (process.versions.electron && !process.defaultApp) {
+  if (process.versions.electron) {
     const [{ ConfigStore }, { SecretVault }, { createControlServer }, { createGatewayServer }] = await Promise.all([
       import(pathToFileURL(path.join(root, 'packages', 'shared', 'src', 'config-store.mjs')).href),
       import(pathToFileURL(path.join(root, 'packages', 'shared', 'src', 'secret-vault.mjs')).href),
@@ -71,7 +82,7 @@ async function startRuntime({ dataDir, masterKey, controlPort = 4319, gatewayPor
       throw error;
     }
     state = 'running';
-    return { children: [], controlToken, getStatus: () => ({ state, failure }), stop: async () => { state = 'stopping'; await Promise.all([closeServer(gatewayServer), closeServer(controlServer)]); state = 'stopped'; } };
+    return { children: [], controlToken, testRoute: (routeId, prompt) => gatewayServer.testRoute(routeId, prompt), getStatus: () => ({ state, failure }), stop: async () => { state = 'stopping'; await Promise.all([closeServer(gatewayServer), closeServer(controlServer)]); state = 'stopped'; } };
   }
   const children = entries.map((entry, index) => {
     const child = spawn(process.execPath, [entry], { env, stdio: ['pipe', 'ignore', 'pipe'] });
@@ -91,4 +102,4 @@ async function startRuntime({ dataDir, masterKey, controlPort = 4319, gatewayPor
   return { children, controlToken, getStatus: () => ({ state, failure }), stop: async () => { state = 'stopping'; await stopChild(children[1]); await stopChild(children[0]); state = 'stopped'; } };
 }
 
-module.exports = { startRuntime };
+module.exports = { closeServer, startRuntime };

@@ -1,9 +1,10 @@
 import { workspaceFixtures } from "./fixtures";
-import type { WorkspaceFixtures } from "../domain/types";
+import type { RouteTestResult, WorkspaceFixtures } from "../domain/types";
 
 export type WorkspaceClient = {
   getWorkspace(): Promise<WorkspaceFixtures>;
   simulateUpstreamTest(upstreamId: string): Promise<{ simulated: boolean; message: string }>;
+  testRoute?(routeId: string, prompt: string): Promise<RouteTestResult>;
   createClientKey?(name: string, scope?: string[]): Promise<{ id: string; key: string }>;
   rotateClientKey?(id: string): Promise<{ key: string }>;
   revokeClientKey?(id: string): Promise<{ enabled: boolean }>;
@@ -24,6 +25,9 @@ export const fixtureWorkspaceClient: WorkspaceClient = {
     const upstream = workspaceFixtures.upstreams.find((item) => item.id === upstreamId);
     if (!upstream) throw new Error("找不到该上游服务");
     return { simulated: true, message: `${upstream.name}：连通测试未执行，当前仅为界面演示` };
+  },
+  async testRoute() {
+    throw new Error("真实请求仅可在 Desktop 本机运行时发起。");
   },
 };
 
@@ -50,6 +54,7 @@ export const runtimeWorkspaceClient: WorkspaceClient = {
     const result = await window.desktopControls.testUpstream(upstreamId) as { ok: boolean; models?: string[] };
     return { simulated: false, message: result.ok ? `连通成功，发现 ${(result.models || []).length} 个模型` : "连通测试失败" };
   },
+  async testRoute(routeId, prompt) { if (!window.desktopControls) throw new Error("Desktop runtime unavailable"); return window.desktopControls.testRoute(routeId, prompt); },
   async createClientKey(name, scope) { if (!window.desktopControls) throw new Error("Desktop runtime unavailable"); return window.desktopControls.createClientKey(name, scope) as Promise<{ id: string; key: string }>; },
   async rotateClientKey(id) { if (!window.desktopControls) throw new Error("Desktop runtime unavailable"); return window.desktopControls.rotateClientKey(id) as Promise<{ key: string }>; },
   async revokeClientKey(id) { if (!window.desktopControls) throw new Error("Desktop runtime unavailable"); return window.desktopControls.revokeClientKey(id) as Promise<{ enabled: boolean }>; },

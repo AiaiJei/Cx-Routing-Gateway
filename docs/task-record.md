@@ -102,6 +102,14 @@
 - 迁移验证：Desktop 37/37、Runtime 55/55、`npm run build` 通过；Desktop production asset 相对路径测试通过。依赖按 PR #4 lockfile 重装后审计报告 6 项 moderate，未执行破坏性修复。
 - Taste App lint：0 FAIL、4 WARN（PR #4 共享 Geist 输入/菜单/按钮阴影与弹窗阴影）；PR #4 既有 CRLF 文件导致普通 `git diff --check` 行尾提示，迁移代码逻辑未新增该类运行时问题。
 - 当前 PR：#5 将改为以 PR #4 分支为 base；PR #4 保持 OPEN，未合并、未修改其工作树。
+
+### 交互式真实路由测试（2026-11-19）
+
+- 用户要求在每条启用路由的状态/操作区增加入口；点击后打开交互窗口，预填并发送 `请回复OK`，显示模型响应、请求 ID、耗时或错误。
+- 实现：新增 `RouteTestDialog`，允许编辑最多 2000 字提示词，列出协议和目标优先级，显示加载/响应/错误状态，并明确提示真实上游调用可能产生费用。
+- 安全边界：Electron IPC 仅接受可信应用文档；Gateway 只为该启用路由创建 60 秒内存测试凭证，scope 限定模型且绑定 route ID，请求结束后删除；凭证不传入 renderer、不写配置或密钥库。测试调用通过 Gateway 原有认证、路由、协议转换、优先级故障切换和调用日志；每个 Gateway 进程限制真实路由测试为 10 次/分钟，输出预算上限为 256 tokens。
+- 运行时适配：Electron 开发模式与打包模式均使用进程内 supervisor，使主进程可调用 Gateway 的内部 route-test 方法；非 Electron Node 模式仍保留子进程 supervisor，原有 Runtime 测试接口保持兼容。
+- 验证：Desktop 41/41、Runtime 56/56、生产构建通过；Gateway 集成测试覆盖 Res/Mes/Chat 入站到 Chat 上游、真实日志写入、无凭证落盘、禁用/未知路由拒绝、提示词长度及每分钟 10 次 route-test 限流；对话框/页面测试覆盖默认提示、响应元信息、错误和预览模式隐藏入口。宽屏/手机对话框布局用模拟 IPC 做视觉检查；未调用真实第三方 Provider。
 ## 项目阶段 0 合同任务（2026-11-18）
 
 - 任务 ID：`CXRG-PHASE0-2026-11-18`；项目/仓库：Cx-Routing Gateway / `AiaiJei/Cx-Routing-Gateway`。
@@ -251,3 +259,15 @@
 - 审查中提出“编辑路由无法删除备用目标”；根据实际路径，原路由从 retained 中移除后按新 selection 保存，新增 API 回归已确认可删除，故不作为缺陷修复。
 - PR CI 首次运行在干净检出缺少 Desktop 构建和发布产物，运行时两项测试失败。CI 现先构建 Desktop，release manifest 测试使用独立模拟产物并检查缺失文件；本地 Runtime 54/54 通过，CI 结果以远端实际运行为准。
 - 独立复审确认地址绑定与路由删除回归，并发现非成功响应体未关闭；新增回归先失败后通过，Gateway 现在取消上游错误响应流，本地 Runtime 55/55 通过。
+
+## PR #5 交互式真实路由测试（2026-11-19）
+
+- 用户补充：路由操作入口应打开可交互窗口；提示内容默认 `请回复OK`，允许编辑并查看真实响应结果。
+- UI：启用的运行时路由显示“测试调用”入口；窗口列出入站/出站协议与上游优先级，支持编辑提示词，展示发送状态、模型文本、HTTP 状态、请求 ID、耗时和错误。提示真实上游请求可能产生费用；浏览器 fixture 模式不展示真实调用入口。
+- 链路：通过 renderer → preload IPC → Electron main → Gateway 内部 route-test 方法；Gateway 以随机 route-scoped、内存临时凭证调用标准入站端点，复用认证、路由、协议转换、failover 和 usage logging。请求结束后删除临时凭证，不写入 config/vault、不向 renderer 提供 key。
+- Electron 开发与打包模式均使用 in-process runtime supervisor，使 main process 能调用 Gateway 内部 route-test 方法；普通 Node 子进程模式与原 supervisor 测试不变。
+- 初次独立审查（head `09a88af`）提出三项 Important：响应体 deadline 后关闭 Gateway 请求并释放容量；发送中阻止弹窗关闭以免重复计费；Modal focus trap/restore。Minor 要求失败结果保留请求 ID/HTTP 状态/耗时。上述项均新增回归测试并修复；失败上游详情保持脱敏。
+- 修复后独立复审：全部初次 Important/Minor 均已解决；无剩余 Critical/Important/Minor 发现，审查接受。Electron 窗口真实启动及真实 Provider 调用仍为 `NOT_RUN`。
+- 最终验证：Desktop 45/45，Runtime 59/59，`npm run build` 通过；新增集成用例覆盖 Chat/Res/Mes 入站、日志落盘、无永久 client key、失败请求关联 metadata、拒绝与 refusal 文本、256 token 输出预算、禁用/未知 route、prompt 上限、每分钟 10 次限流、响应体超时槽位释放、客户端断连取消上游请求与 bounded server shutdown。Taste App lint 0 FAIL / 4 WARN（共享 control/modal 阴影）；CRLF 感知 diff check 通过。未触发真实第三方 provider 请求。
+- 视觉检查：交互窗口在 1440px 与 390px 显示模拟 IPC 的 `OK` 响应，检查了提示词编辑、费用提示、状态/request ID/耗时，无截图覆盖行为；不代表真实 provider 已验收。
+- PR #5 base 为 PR #4 分支；本轮 route-test 实现尚未提交或推送。Owner 验收仍 pending。

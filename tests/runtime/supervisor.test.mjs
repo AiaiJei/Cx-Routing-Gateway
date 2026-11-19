@@ -4,7 +4,8 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import net from 'node:net';
-import { startRuntime } from '../../apps/desktop/electron/runtime-supervisor.cjs';
+import http from 'node:http';
+import { closeServer, startRuntime } from '../../apps/desktop/electron/runtime-supervisor.cjs';
 
 async function freePort() {
   const server = net.createServer();
@@ -39,4 +40,20 @@ test('runtime supervisor starts both local services and stops them through liven
   await runtime.stop();
   assert.equal(runtime.getStatus().state, 'stopped');
   await assert.rejects(fetch(`http://127.0.0.1:${gatewayPort}/health`));
+});
+
+test('in-process server shutdown force-closes a connection after the grace period', async (t) => {
+  const server = http.createServer((_req, res) => {
+    res.writeHead(200, { 'content-type': 'text/plain' });
+    res.flushHeaders();
+    res.write('waiting');
+  });
+  const port = await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server.address().port)));
+  t.after(() => { server.closeAllConnections(); server.close(); });
+  const response = await fetch(`http://127.0.0.1:${port}`);
+  const pendingBody = response.text();
+  const startedAt = Date.now();
+  await closeServer(server, 50);
+  assert.ok(Date.now() - startedAt < 1000, 'shutdown should finish shortly after the configured grace period');
+  await assert.rejects(pendingBody);
 });

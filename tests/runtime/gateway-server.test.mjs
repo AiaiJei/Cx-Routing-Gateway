@@ -55,6 +55,69 @@ test('gateway authenticates and forwards Chat requests through a configured rout
   assert.equal(typeof stateAfter.clientKeys[0].lastUsedAt, 'string');
 });
 
+test('gateway testRoute executes a route through normal auth, forwarding, and usage logging without persisting a client key', async (t) => {
+  const prompt = '请回复OK';
+  const upstream = http.createServer(async (req, res) => {
+    const body = JSON.parse(await new Promise((resolve) => { let data = ''; req.on('data', chunk => { data += chunk; }); req.on('end', () => resolve(data)); }));
+    assert.equal(body.model, 'mock-model');
+    assert.equal(body.max_completion_tokens, 256);
+    if (body.messages[0].content === 'fail-me') {
+      res.writeHead(429, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ error: { message: 'provider detail must remain private' } }));
+      return;
+    }
+    if (body.messages[0].content === 'refuse') {
+      res.setHeader('content-type', 'application/json');
+      res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content: null, refusal: 'I cannot help with that request.' } }] }));
+      return;
+    }
+    assert.equal(body.messages[0].content, prompt);
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content: [{ type: 'text', text: 'OK' }] }, finish_reason: 'stop' }] }));
+  });
+  const upstreamPort = await listen(upstream);
+  t.after(() => upstream.close());
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-route-test-'));
+  const store = new ConfigStore(path.join(dir, 'config.json'));
+  const vault = new SecretVault(path.join(dir, 'secrets.json'), 'test-master-key');
+  await store.update(config => ({ ...config,
+    upstreams: [{ id: 'test-upstream', name: 'Mock', baseUrl: `http://127.0.0.1:${upstreamPort}`, protocol: 'Chat', trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'], enabled: true }],
+    routes: ['Chat', 'Res', 'Mes'].map(protocol => ({ id: `test-route-${protocol}`, alias: `gateway-fast-${protocol}`, inboundProtocol: protocol, outboundProtocol: 'Chat', upstreamId: 'test-upstream', modelId: 'mock-model', enabled: true })),
+    clientKeys: [],
+  }));
+  const gateway = createGatewayServer({ store, vault });
+  const port = await listen(gateway);
+  t.after(() => gateway.close());
+
+  const results = await Promise.all(['Chat', 'Res', 'Mes'].map(protocol => gateway.testRoute(`test-route-${protocol}`, prompt)));
+  for (const result of results) {
+    assert.equal(result.text, 'OK');
+    assert.equal(result.status, 200);
+    assert.match(result.requestId, /^[0-9a-f-]{36}$/);
+    assert.equal(typeof result.durationMs, 'number');
+  }
+  assert.deepEqual(results.map(result => result.routeAlias), ['gateway-fast-Chat', 'gateway-fast-Res', 'gateway-fast-Mes']);
+  const failed = await gateway.testRoute('test-route-Chat', 'fail-me');
+  assert.equal(failed.status, 502);
+  assert.equal(failed.error, '上游请求失败，请检查上游状态和日志');
+  assert.match(failed.requestId, /^[0-9a-f-]{36}$/);
+  assert.equal('provider detail must remain private'.includes(failed.error), false);
+  const refused = await gateway.testRoute('test-route-Chat', 'refuse');
+  assert.equal(refused.text, 'I cannot help with that request.');
+  for (let index = 0; index < 5; index += 1) await gateway.testRoute('test-route-Chat', prompt);
+  const state = await store.read();
+  assert.equal(state.clientKeys.length, 0);
+  assert.equal(state.usage.length, 10);
+  assert.equal(state.usage[0].modelId, 'mock-model');
+  assert.equal(state.usage.find(entry => entry.status === 'failed')?.status, 'failed');
+  await assert.rejects(gateway.testRoute('test-route-Chat', prompt), /每分钟最多 10 次/);
+  await store.update(config => ({ ...config, routes: config.routes.map(route => route.id === 'test-route-Res' ? { ...route, enabled: false } : route) }));
+  await assert.rejects(gateway.testRoute('test-route-Res', prompt), /不存在或已停用/);
+  await assert.rejects(gateway.testRoute('missing-route', prompt), /不存在或已停用/);
+  await assert.rejects(gateway.testRoute('test-route-Chat', 'x'.repeat(2001)), /1 至 2000/);
+  assert.equal((await fetch(`http://127.0.0.1:${port}/v1/chat/completions`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model: 'gateway-fast', messages: [{ role: 'user', content: prompt }] }) })).status, 401);
+});
+
 test('gateway enforces the configured usage retention bound', async (t) => {
   const upstream = http.createServer((_req, res) => {
     res.setHeader('content-type', 'application/json');
@@ -584,4 +647,97 @@ test('gateway enforces a concurrent request limit', async (t) => {
   assert.equal((await second.json()).error, 'concurrency_limited');
   assert.equal((await request()).status, 429, 'a rejected request must not release the active request slot');
   assert.equal((await (await first).json()).choices[0].message.content, 'ok');
+});
+
+test('gateway aborts a stalled response body at the request deadline and releases its concurrency slot', async (t) => {
+  let upstreamCalls = 0;
+  const upstream = http.createServer((req, res) => {
+    upstreamCalls += 1;
+    res.setHeader('content-type', 'application/json');
+    if (upstreamCalls === 1) {
+      res.writeHead(200);
+      res.flushHeaders();
+      res.write('{"choices":');
+      return;
+    }
+    res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'recovered' } }] }));
+  });
+  const upstreamPort = await listen(upstream);
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-body-timeout-'));
+  const store = new ConfigStore(path.join(dir, 'config.json'));
+  const vault = new SecretVault(path.join(dir, 'secrets.json'), 'test-master-key');
+  const clientKey = `cxrg_${crypto.randomBytes(18).toString('base64url')}`;
+  const keyHash = crypto.createHash('sha256').update(clientKey).digest('hex');
+  await store.update(config => ({ ...config,
+    upstreams: [{ id: 'body-timeout-upstream', name: 'Slow body', baseUrl: `http://127.0.0.1:${upstreamPort}`, protocol: 'Chat', trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'], enabled: true }],
+    routes: [{ id: 'body-timeout-route', alias: 'body-timeout', inboundProtocol: 'Chat', outboundProtocol: 'Chat', upstreamId: 'body-timeout-upstream', modelId: 'body-timeout', enabled: true }],
+    clientKeys: [{ id: 'body-timeout-key', keyHash, scope: [], createdAt: new Date().toISOString(), enabled: true, name: 'body-timeout' }],
+  }));
+  const gateway = createGatewayServer({ store, vault, maxConcurrentRequests: 1, upstreamTimeoutMs: 80 });
+  const gatewayPort = await listen(gateway);
+  t.after(() => { gateway.closeAllConnections(); gateway.close(); upstream.closeAllConnections(); upstream.close(); });
+  const request = () => fetch(`http://127.0.0.1:${gatewayPort}/v1/chat/completions`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${clientKey}` }, body: JSON.stringify({ model: 'body-timeout', messages: [{ role: 'user', content: 'hello' }] }), signal: AbortSignal.timeout(1000) });
+
+  const timedOut = await request();
+  assert.equal(timedOut.status, 504);
+  assert.equal((await timedOut.json()).error, 'upstream_timeout');
+  const recovered = await request();
+  assert.equal(recovered.status, 200);
+  assert.equal((await recovered.json()).choices[0].message.content, 'recovered');
+  assert.equal(upstreamCalls, 2);
+  const state = await store.read();
+  assert.deepEqual(state.usage.map(entry => entry.status), ['failed', 'completed']);
+});
+
+test('gateway cancels the active upstream request when its client disconnects', async (t) => {
+  let upstreamCalls = 0;
+  let markFirstStarted;
+  let markFirstClosed;
+  const firstStarted = new Promise(resolve => { markFirstStarted = resolve; });
+  const firstClosed = new Promise(resolve => { markFirstClosed = resolve; });
+  const upstream = http.createServer((req, res) => {
+    upstreamCalls += 1;
+    res.setHeader('content-type', 'application/json');
+    if (upstreamCalls === 1) {
+      res.writeHead(200);
+      res.flushHeaders();
+      res.write('{"choices":');
+      res.once('close', markFirstClosed);
+      markFirstStarted();
+      return;
+    }
+    res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'after-disconnect' } }] }));
+  });
+  const upstreamPort = await listen(upstream);
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-client-disconnect-'));
+  const store = new ConfigStore(path.join(dir, 'config.json'));
+  const vault = new SecretVault(path.join(dir, 'secrets.json'), 'test-master-key');
+  const clientKey = `cxrg_${crypto.randomBytes(18).toString('base64url')}`;
+  const keyHash = crypto.createHash('sha256').update(clientKey).digest('hex');
+  await store.update(config => ({ ...config,
+    upstreams: [{ id: 'disconnect-upstream', name: 'Disconnect', baseUrl: `http://127.0.0.1:${upstreamPort}`, protocol: 'Chat', trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'], enabled: true }],
+    routes: [{ id: 'disconnect-route', alias: 'disconnect', inboundProtocol: 'Chat', outboundProtocol: 'Chat', upstreamId: 'disconnect-upstream', modelId: 'disconnect', enabled: true }],
+    clientKeys: [{ id: 'disconnect-key', keyHash, scope: [], createdAt: new Date().toISOString(), enabled: true, name: 'disconnect' }],
+  }));
+  const gateway = createGatewayServer({ store, vault, maxConcurrentRequests: 1, upstreamTimeoutMs: 10_000 });
+  const gatewayPort = await listen(gateway);
+  t.after(() => { gateway.closeAllConnections(); gateway.close(); upstream.closeAllConnections(); upstream.close(); });
+  const controller = new AbortController();
+  const firstRequest = fetch(`http://127.0.0.1:${gatewayPort}/v1/chat/completions`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${clientKey}` }, body: JSON.stringify({ model: 'disconnect', messages: [{ role: 'user', content: 'first' }] }), signal: controller.signal });
+  await firstStarted;
+  controller.abort();
+  await assert.rejects(firstRequest);
+  await Promise.race([firstClosed, new Promise((_, reject) => setTimeout(() => reject(new Error('upstream request was not cancelled')), 1000))]);
+  let recovered;
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    recovered = await fetch(`http://127.0.0.1:${gatewayPort}/v1/chat/completions`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${clientKey}` }, body: JSON.stringify({ model: 'disconnect', messages: [{ role: 'user', content: 'second' }] }) });
+    if (recovered.status !== 429) break;
+    await recovered.arrayBuffer();
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+  assert.equal(recovered.status, 200);
+  assert.equal((await recovered.json()).choices[0].message.content, 'after-disconnect');
+  assert.equal(upstreamCalls, 2);
+  const state = await store.read();
+  assert.deepEqual(state.usage.map(entry => entry.status), ['failed', 'completed']);
 });

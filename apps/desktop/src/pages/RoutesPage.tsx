@@ -4,6 +4,7 @@ import { Modal } from "../components/Modal";
 import { Button } from "../components/Button";
 import { CustomSelect } from "../components/CustomSelect";
 import { ProtocolBadge } from "../components/ProtocolBadge";
+import { RouteTestDialog } from "../components/RouteTestDialog";
 import { defaultWorkspaceClient } from "../data/workspace-client";
 import { useWorkspace } from "../data/use-workspace";
 import type { ModelRoute, Protocol } from "../domain/types";
@@ -12,6 +13,7 @@ export function RoutesPage() {
   const [message, setMessage] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [editingRoute, setEditingRoute] = useState<ModelRoute | null>(null);
+  const [testingRoute, setTestingRoute] = useState<ModelRoute | null>(null);
   const [selectedUpstreamIds, setSelectedUpstreamIds] = useState<string[]>([]);
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [inboundProtocol, setInboundProtocol] = useState<Protocol>("Res");
@@ -118,9 +120,13 @@ export function RoutesPage() {
           <td>{route.targets.map((target, index) => <span className="route-target" key={`${target.upstreamId}:${target.upstreamModel}`}>{route.targets.length > 1 && `${index + 1}. `}{upstreams.get(target.upstreamId) ?? "未匹配上游"}</span>)}{route.targets.length > 1 && <span className="cell-subtext">连续失败 {route.failover?.failureThreshold ?? 3} 次后切换 · {(route.failover?.statusClasses ?? [4, 5]).map(value => `${value}xx`).join(" / ")}</span>}</td>
           <td><ProtocolBadge protocol={route.outboundProtocol} /></td>
           <td><ProtocolBadge protocol={route.inboundProtocol}>{route.inboundProtocol} 响应</ProtocolBadge></td>
-          <td><span className={`status-badge ${data.meta.live && route.enabled ? "status-positive" : "status-neutral"}`}>{route.enabled ? (data.meta.live ? "已启用" : "已启用（预览）") : (data.meta.live ? "已停用" : "已停用（预览）")}</span>{data.meta.live && <span className="row-actions"><Button variant="tertiary" size="small" onClick={() => openForm(route)}>编辑</Button><Button variant="tertiary" size="small" onClick={() => void toggleRoute(route)}>{route.enabled ? "停用" : "启用"}</Button><Button variant="danger" size="small" onClick={() => void deleteRoute(route.id)}>删除</Button></span>}</td>
+          <td><span className={`status-badge ${data.meta.live && route.enabled ? "status-positive" : "status-neutral"}`}>{route.enabled ? (data.meta.live ? "已启用" : "已启用（预览）") : (data.meta.live ? "已停用" : "已停用（预览）")}</span>{data.meta.live && <span className="row-actions">{route.enabled && <Button variant="accent" size="small" aria-label={`测试调用 ${route.alias}`} onClick={() => setTestingRoute(route)}><svg className="route-test-play-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M5 3.8c0-.6.7-.9 1.2-.6l6 3.8a.7.7 0 0 1 0 1.2l-6 3.8a.7.7 0 0 1-1.2-.6z" fill="currentColor" /></svg>测试调用</Button>}<Button variant="tertiary" size="small" onClick={() => openForm(route)}>编辑</Button><Button variant="tertiary" size="small" onClick={() => void toggleRoute(route)}>{route.enabled ? "停用" : "启用"}</Button><Button variant="danger" size="small" onClick={() => void deleteRoute(route.id)}>删除</Button></span>}</td>
         </tr>)}</tbody>
       </table></div>
+      {testingRoute && <RouteTestDialog route={testingRoute} targetNames={testingRoute.targets.map((target) => upstreams.get(target.upstreamId) ?? "未匹配上游")} onClose={() => setTestingRoute(null)} testRoute={(routeId, prompt) => {
+        if (!defaultWorkspaceClient.testRoute) return Promise.reject(new Error("当前运行时不支持真实测试调用"));
+        return defaultWorkspaceClient.testRoute(routeId, prompt);
+      }} />}
       <section className="direction-example" aria-label="协议方向示例">
         <span className="field-label">协议转换示例</span>
         <p>Res 入站 → Chat 出站 → Res 响应</p>

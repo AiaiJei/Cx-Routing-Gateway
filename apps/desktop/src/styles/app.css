@@ -392,3 +392,28 @@ td code, code { font-family: "Geist Mono Variable", "Cascadia Code", monospace; 
 .failover-threshold { display: flex; align-items: center; gap: 12px; font-size: 13px; }
 .failover-threshold input { width: 80px; height: 34px; }
 .route-target { display: block; line-height: 1.6; }
+.row-actions { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-left: 8px; }
+.route-test-play-icon { width: 14px; height: 14px; }
+.route-test-form { display: grid; gap: 16px; }
+.route-test-context { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; padding: 14px; border-radius: var(--radius-card); background: var(--raised); }
+.route-test-context > div { display: grid; align-content: start; justify-items: start; gap: 7px; min-width: 0; }
+.route-test-targets { grid-column: 1 / -1; }
+.route-test-targets ol { display: flex; flex-wrap: wrap; gap: 8px 24px; margin: 0; padding-left: 20px; color: var(--text); font-size: 13px; }
+.route-test-prompt { display: grid; gap: 7px; }
+.route-test-prompt-label { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.route-test-prompt-label .cell-subtext { flex: none; margin: 0; }
+.route-test-prompt textarea { width: 100%; min-width: 0; min-height: 96px; resize: vertical; padding: 10px 11px; border: 1px solid var(--control); border-radius: var(--radius-control); background: var(--surface); color: var(--text); font: inherit; font-size: 14px; line-height: 1.5; }
+.route-test-prompt textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.route-test-disclosure { border-left-color: var(--warning); background: var(--warning-soft); color: var(--text); }
+.route-test-error { border-left-color: var(--negative); background: var(--negative-soft); color: var(--negative); }
+.route-test-result { display: grid; gap: 12px; min-width: 0; padding: 14px; border-radius: var(--radius-card); background: var(--raised); }
+.route-test-result-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.route-test-result pre { max-height: 260px; overflow: auto; margin: 0; padding: 12px; border-radius: 6px; background: var(--surface); color: var(--text); font: 14px/1.55 "Geist Mono Variable", "Cascadia Code", monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+.route-test-result-error { margin: 0; padding: 10px 12px; border-radius: 6px; background: var(--surface); color: var(--negative); font-size: 13px; line-height: 1.5; }
+.route-test-metadata { display: flex; flex-wrap: wrap; gap: 12px 24px; margin: 0; }
+.route-test-metadata div { display: grid; gap: 3px; min-width: 0; }
+.route-test-metadata dt { color: var(--muted); font-size: 12px; }
+.route-test-metadata dd { margin: 0; font-size: 13px; }
+.route-test-spinner { width: 13px; height: 13px; margin-right: 7px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: route-test-spin 700ms linear infinite; }
+@keyframes route-test-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .route-test-spinner { animation-duration: 1.5s; } }
