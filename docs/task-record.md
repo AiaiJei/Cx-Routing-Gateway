@@ -295,3 +295,8 @@
 - 本轮 Desktop 55/55、Runtime 61/61、production build、生产依赖 audit、Windows x64 解包构建及实际 1.0.1 版本 smoke 均通过；六页三尺寸截图无页面级横向溢出。
 - 原生 GUI 操作为 PARTIAL/NOT_RUN（隔离窗口未被 UI inventory 枚举）；真实 provider、NSIS 安装/签名/发布、Owner 最终验收尚未执行；没有合并或推送 master。
 - 详细证据与局限：[任务记录](tasks/2026-11-19-workspace-redesign.md)。
+
+### PR #6 集成授权
+
+- 2026-11-19 用户授权合并 PR #6、同步主工作树并移除本任务 worktree；未授权发布或删除其他工作树/分支。
+- 合并前 Desktop 55/55、Runtime 61/61、production build 新鲜验证通过；详细授权、证据归档与最终结果入口见 [任务记录](tasks/2026-11-19-workspace-redesign.md)。

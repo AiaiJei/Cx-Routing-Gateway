@@ -5,7 +5,7 @@
   "task_id": "CXRG-WORKSPACE-DESIGN-2026-11-19",
   "title": "Desktop workspace redesign 1.0.1",
   "status": "active",
-  "stage": "implemented-awaiting-owner-acceptance",
+  "stage": "integration-authorized",
   "branch": "codex/desktop-workspace-redesign",
   "base": "master",
   "base_sha": "9807fd32b27c436dde55129308799ec4d6187643",
@@ -38,12 +38,13 @@
       "Refine the existing static design illustration and provide a PNG render as requested by the user on 2026-11-19",
       "Implement the approved rendering across existing six pages using shared React components",
       "Set Desktop package and lockfile to 1.0.1; derive release and update-tool version from package metadata",
-      "Verify component and runtime regressions, production build, responsive screenshots, and isolated Electron smoke"
+      "Verify component and runtime regressions, production build, responsive screenshots, and isolated Electron smoke",
+      "Merge PR #6, synchronize primary master, archive task evidence and remove only the dedicated task worktree under explicit 2026-11-19 authorization"
     ],
     "exclude": [
       "Block editor, nested user-created pages, cloud collaboration or multiple workspaces",
       "Framework replacement, backend or storage schema changes",
-      "Merge, deployment, release, direct push to master or worktree deletion"
+      "Publication/deployment, direct push to master, task branch deletion, or modification/deletion of other worktrees"
     ]
   },
   "authorization": {
@@ -55,7 +56,10 @@
       "create draft PR",
       "implement approved six-page redesign",
       "set product version 1.0.1",
-      "commit and push implementation to existing PR #6"
+      "commit and push implementation to existing PR #6",
+      "mark PR #6 ready and merge to master",
+      "fast-forward primary worktree to merged master",
+      "archive ignored task artifacts and remove this task worktree"
     ],
     "design_approval": "approved: user requested implementation from the refined rendering",
     "implementation_approval": "approved: user requested version 1.0.1 and implementation on PR #6",
@@ -69,9 +73,10 @@
     "Owner approval and implementation status remain distinct",
     "Six pages match the approved shell and design with preserved runtime operations",
     "Product metadata, Settings and release tooling report 1.0.1",
-    "Tests/build, visual evidence and independent review recorded"
+    "Tests/build, visual evidence and independent review recorded",
+    "PR #6 merged; primary master matches origin/master; task evidence archived; dedicated task worktree removed"
   ],
-  "rollback": "Revert this task's documentation commits or close the draft PR; retain branch and worktree unless separately authorized.",
+  "rollback": "Revert PR #6 on master through a new authorized change if needed; evidence and all local packages retained under .worktree/archives/pr6-desktop-1.0.1-a57f5b1; task branch retained.",
   "owner_acceptance": "pending",
   "revisions": [
     {
@@ -103,6 +108,12 @@
       "scope": "Present ordered upstream targets as compact horizontal priority tags with secondary hostnames and one failover summary; preserve routing order and behavior",
       "date": "2026-11-19",
       "request": "目标上游改为横向/标签式或更好的呈现"
+    },
+    {
+      "design_approval": "existing approval retained",
+      "scope": "Commit integration authorization, ready/merge PR #6 into master, fast-forward primary worktree, preserve all task evidence/packages, remove this task worktree",
+      "request": "提交合并PR#，任务工作树合并主工作树后并移除任务工作树",
+      "date": "2026-11-19"
     }
   ],
   "product_version": "1.0.1",
