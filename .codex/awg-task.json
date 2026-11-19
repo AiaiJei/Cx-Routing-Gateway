@@ -30,11 +30,14 @@
       "Use an in-memory route-scoped test credential that is removed after one request and is never persisted or exposed to the renderer",
       "Clearly disclose that real upstream test calls may incur provider charges",
       "Preserve PR #4 runtime-backed interactions, multi-upstream priority routing, and explicit fixture/runtime states",
-      "Store generated visual verification screenshots and reports under .taste-skill/ without including them in the product change"
+      "Store generated visual verification screenshots and reports under .taste-skill/ without including them in the product change",
+      "Record the user's scope extension, retarget PR #5 to master after PR #4 merged, and merge PR #5 when required checks permit",
+      "Synchronize the main worktree with the merged PR #5 result",
+      "Remove the PR #5 task worktree after preserving untracked verification artifacts"
     ],
     "exclude": [
       "Changes to PR #4 route matching, protocol conversion, upstream failover policy, persistent storage schema, or external provider profiles",
-      "Merge, release, deployment, or changes to the PR #4 worktree"
+      "Release/deployment, force-pushing master, deleting task branches, or changes to other worktrees"
     ]
   },
   "acceptance": [
@@ -45,7 +48,8 @@
     "The test dialog discloses that upstream provider charges may apply",
     "Responsive and keyboard accessibility checks are recorded",
     "Desktop tests, production build, visual checks, and independent review are recorded",
-    "No Critical or Important review findings remain; Owner acceptance is recorded separately"
+    "No Critical or Important review findings remain; Owner acceptance is recorded separately",
+    "PR #5 is merged to master, the main worktree reflects the merge, and the task worktree is removed with untracked artifacts preserved"
   ],
   "rollback": "Revert only this refinement's commits while preserving the PR #4 base and its runtime changes.",
   "owner_acceptance": "pending"

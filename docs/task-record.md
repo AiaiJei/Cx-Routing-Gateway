@@ -271,3 +271,11 @@
 - 最终验证：Desktop 45/45，Runtime 59/59，`npm run build` 通过；新增集成用例覆盖 Chat/Res/Mes 入站、日志落盘、无永久 client key、失败请求关联 metadata、拒绝与 refusal 文本、256 token 输出预算、禁用/未知 route、prompt 上限、每分钟 10 次限流、响应体超时槽位释放、客户端断连取消上游请求与 bounded server shutdown。Taste App lint 0 FAIL / 4 WARN（共享 control/modal 阴影）；CRLF 感知 diff check 通过。未触发真实第三方 provider 请求。
 - 视觉检查：交互窗口在 1440px 与 390px 显示模拟 IPC 的 `OK` 响应，检查了提示词编辑、费用提示、状态/request ID/耗时，无截图覆盖行为；不代表真实 provider 已验收。
 - PR #5 base 为 PR #4 分支；本轮实现提交 `4caa5a1` 已推送，PR 标题为 `feat: refine Desktop UI and add route testing`。GitHub CI 状态以 PR 实时页面为准；Owner 验收仍 pending。
+
+### 集成授权修订（2026-11-19）
+
+- 用户明确授权提交并合并 PR #5，将任务成果同步到主工作树，并在合并后移除任务工作树；此授权扩展原合同排除的合并/清理范围。
+- PR #4 已合并至 `master`（当前合并提交 `41b2a39`），因此 PR #5 应以 `master` 为目标；本次不授权直接推送 `master`、删除任务分支、发布或部署，Owner acceptance 仍单独 pending。
+- 当前 PR #5 head 为 `306c2dc`。任务工作树唯一未跟踪内容为 `.taste-skill/`，应在移除工作树前保留归档副本，不加入产品提交。
+- 新鲜验证：Runtime 59/59、Desktop 45/45、Desktop 生产构建通过；GitHub runtime/desktop 检查通过。`npm run verify:all` 最终因本地缺少 `apps/desktop/release/win-unpacked/Cx-Routing Gateway.exe` 在 release manifest 步骤退出 1；release/package smoke 本次未运行。
+- 集成状态：进行中，尚未改 PR base、合并远端 PR、更新本地主工作树或移除任务工作树。
