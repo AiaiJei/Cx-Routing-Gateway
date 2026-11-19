@@ -1,19 +1,23 @@
 {
   "title": "Request log refresh, latest-first order and date filters 1.0.3",
-  "stage": "pr-open",
+  "stage": "integration-authorized",
   "authorization": {
     "operations": [
       "isolated branch/worktree",
       "implement and verify",
       "commit/push task branch",
-      "create dedicated PR"
+      "create dedicated PR",
+      "merge PR #8 after checks",
+      "fast-forward primary master",
+      "archive and remove current and historical linked task worktrees",
+      "relocate current unpacked Desktop to primary tree and relaunch"
     ],
     "source": "2026-11-20 user request: base on PR #7, increment version, add refresh button and polling within 1–2 seconds, create dedicated PR",
     "design_approval": "Direct specific feature request; routine implementation choices stated before implementation"
   },
   "project": "Cx-Routing Gateway",
   "product_version": "1.0.3",
-  "rollback": "Revert task commits through an authorized change; no persisted schema changes. Preserve worktree and evidence.",
+  "rollback": "Revert merged PR through an authorized change; restore worktree from preserved branch/history bundle plus verified local archive and patches. Desktop prior package archived.",
   "acceptance": [
     "Version 1.0.3",
     "Manual refresh loads latest logs",
@@ -32,11 +36,11 @@
   "base": "master",
   "scope": {
     "exclude": [
-      "merge",
       "publish/deploy",
-      "delete worktrees/branches",
       "real provider requests",
-      "backend/auth/storage changes"
+      "backend/auth/storage changes",
+      "delete local/remote branches",
+      "merge unrelated PR #1"
     ]
   },
   "authorized_paths": [
@@ -70,6 +74,13 @@
       "request": "优化日志记录展示顺序，第一条为最新；新增日期筛选：实时、今日、近7天、近30天",
       "acceptance": "Newest first; calendar date filters combine with search/status, reset to realtime, polling retains selected filter; no persistence migration.",
       "scope": "Continue PR #8 / version 1.0.3. Pure view sorting/date filtering and tests; rebuild and relaunch Desktop using existing data after verification."
+    },
+    {
+      "archive": ".worktree/archives/2026-11-20-pr8-integration",
+      "premerge_tests": "Desktop 88/88; Runtime 75/75; existing CI successful on 612c51a",
+      "scope": "Merge PR #8, fast-forward primary master, preserve runtime app/config, archive six linked task worktrees then remove. Unmerged PR #1 branch and dirty test retained in local archive; not merged or closed.",
+      "request": "提交合并PR#，任务工作树合并到主工作树并移除历史以往的任务工作树",
+      "date": "2026-11-20"
     }
   ],
   "verification": {
