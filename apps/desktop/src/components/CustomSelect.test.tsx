@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { CustomSelect } from "./CustomSelect";
@@ -33,6 +33,30 @@ describe("CustomSelect", () => {
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("listbox", { name: "模型" })).not.toBeInTheDocument();
   });
+});
+
+it("navigates grouped visible options without counting headings or losing hidden selections", async () => {
+  const user = userEvent.setup();
+  function GroupedSelect() {
+    const [value, setValue] = useState(["hidden"]);
+    return <CustomSelect multiple name="models" ariaLabel="分组模型" value={value} onChange={setValue} options={[
+      { value: "hidden", label: "已选隐藏模型", group: "gpt", hidden: true },
+      { value: "one", label: "第一模型", group: "gpt" },
+      { value: "two", label: "第二模型", group: "claude" },
+    ]} />;
+  }
+  render(<GroupedSelect />);
+  const trigger = screen.getByRole("combobox");
+  expect(trigger).toHaveTextContent("已选隐藏模型");
+  await user.click(trigger);
+  expect(within(screen.getByRole("group", { name: "gpt" })).getAllByRole("option")).toHaveLength(1);
+  expect(screen.queryByRole("option", { name: "已选隐藏模型" })).not.toBeInTheDocument();
+  await user.keyboard("{ArrowDown}{Enter}");
+  expect(screen.getByRole("option", { name: "第二模型" })).toHaveAttribute("aria-selected", "true");
+  expect(trigger).toHaveTextContent("已选 2 个模型");
+  expect([...document.querySelectorAll<HTMLInputElement>('input[name="models"]')].map(input => input.value)).toEqual(["hidden", "two"]);
+  await user.keyboard("{Escape}");
+  expect(trigger).toHaveFocus();
 });
 
 function TestMultiSelect() {

@@ -1,0 +1,101 @@
+{
+  "title": "Request log refresh, latest-first order and date filters 1.0.3",
+  "stage": "integration-authorized",
+  "authorization": {
+    "operations": [
+      "isolated branch/worktree",
+      "implement and verify",
+      "commit/push task branch",
+      "create dedicated PR",
+      "merge PR #8 after checks",
+      "fast-forward primary master",
+      "archive and remove current and historical linked task worktrees",
+      "relocate current unpacked Desktop to primary tree and relaunch"
+    ],
+    "source": "2026-11-20 user request: base on PR #7, increment version, add refresh button and polling within 1–2 seconds, create dedicated PR",
+    "design_approval": "Direct specific feature request; routine implementation choices stated before implementation"
+  },
+  "project": "Cx-Routing Gateway",
+  "product_version": "1.0.3",
+  "rollback": "Revert merged PR through an authorized change; restore worktree from preserved branch/history bundle plus verified local archive and patches. Desktop prior package archived.",
+  "acceptance": [
+    "Version 1.0.3",
+    "Manual refresh loads latest logs",
+    "Visible log page polls every 1500 ms without overlapping reads",
+    "Preserve filters/details/rows; recover from failure",
+    "Pause hidden/unmounted pages; refresh on return",
+    "Full tests/build, browser and independent review",
+    "Dedicated PR from merged PR #7",
+    "Newest request timestamp first, stable ties, invalid times last",
+    "Realtime/today/last7/last30 calendar filters combine with status/search, reset and polling"
+  ],
+  "branch": "codex/request-logs-refresh-1.0.3",
+  "previous_contract": "docs/tasks/2026-11-20-pr7-contract.json",
+  "status": "active",
+  "repository": "AiaiJei/Cx-Routing-Gateway",
+  "base": "master",
+  "scope": {
+    "exclude": [
+      "publish/deploy",
+      "real provider requests",
+      "backend/auth/storage changes",
+      "delete local/remote branches",
+      "merge unrelated PR #1"
+    ]
+  },
+  "authorized_paths": [
+    ".codex/awg-task.json",
+    "apps/desktop/src/data/use-workspace*",
+    "apps/desktop/src/pages/LogsPage*",
+    "apps/desktop/package.json",
+    "apps/desktop/package-lock.json",
+    "docs/superpowers/specs/2026-11-20-request-log-refresh-design.md",
+    "docs/superpowers/plans/2026-11-20-request-log-refresh.md",
+    "docs/tasks/2026-11-20-*",
+    "docs/tasks/evidence/request-log-refresh-1.0.3/**",
+    "docs/task-record.md",
+    ".task-evidence/**",
+    "apps/desktop/src/pages/SettingsPage.test.tsx",
+    "tests/runtime/release-manifest.test.mjs",
+    "apps/desktop/src/domain/request-log-filter*"
+  ],
+  "contract_version": 1,
+  "owner_acceptance": "pending",
+  "base_sha": "272e4439967fc50455a01abb8adfd0dbb7a1773e",
+  "task_id": "CXRG-LOG-REFRESH-2026-11-20",
+  "revisions": [
+    {
+      "evidence": "Full suites still expected 1.0.2. Runtime build-path test also ran before dist existed; rerun after successful build.",
+      "date": "2026-11-20",
+      "scope": "Synchronize Settings and release-manifest test fixtures with authorized 1.0.3 version bump"
+    },
+    {
+      "date": "2026-11-20",
+      "request": "优化日志记录展示顺序，第一条为最新；新增日期筛选：实时、今日、近7天、近30天",
+      "acceptance": "Newest first; calendar date filters combine with search/status, reset to realtime, polling retains selected filter; no persistence migration.",
+      "scope": "Continue PR #8 / version 1.0.3. Pure view sorting/date filtering and tests; rebuild and relaunch Desktop using existing data after verification."
+    },
+    {
+      "archive": ".worktree/archives/2026-11-20-pr8-integration",
+      "premerge_tests": "Desktop 88/88; Runtime 75/75; existing CI successful on 612c51a",
+      "scope": "Merge PR #8, fast-forward primary master, preserve runtime app/config, archive six linked task worktrees then remove. Unmerged PR #1 branch and dirty test retained in local archive; not merged or closed.",
+      "request": "提交合并PR#，任务工作树合并到主工作树并移除历史以往的任务工作树",
+      "date": "2026-11-20"
+    }
+  ],
+  "verification": {
+    "installer": "NOT_RUN",
+    "desktop": "88/88",
+    "native_electron_latency": "NOT_RUN",
+    "provider": "NOT_RUN",
+    "owner": "pending",
+    "browser": "PASS 1440/768/390; today/week/month/realtime 1/2/3/4 fixture rows; reset/keyboard and newest-first verified",
+    "runtime": "75/75",
+    "independent_review": "P2 midnight-DST boundary reproduced and fixed with two RED-to-GREEN tests; no deferred code findings",
+    "production_build": "PASS",
+    "production_audit": "0 vulnerabilities",
+    "date_timezone_tests": "UTC and America/New_York 24/24 each; ordinary suite includes explicit America/Santiago midnight-DST tests",
+    "native_unpacked": "PASS final 1.0.3.0 x64 build and launch, window responds and both health endpoints OK; native date interaction automation PARTIAL"
+  },
+  "pull_request": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/8"
+}
