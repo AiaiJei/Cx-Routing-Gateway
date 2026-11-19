@@ -35,3 +35,21 @@ describe("fixtureWorkspaceClient", () => {
     expect(workspace.upstreams[0].status).toBe("已连接");
   });
 });
+
+it("maps measured metrics while preserving missing, zero and invalid historical values", () => {
+  const state = { settings: { gatewayHost: "127.0.0.1", gatewayPort: 4318 }, upstreams: [], routes: [], clientKeys: [], usage: [
+    { requestId: "zero", createdAt: "2026-11-19T00:00:00.000Z", inboundProtocol: "Chat", outboundProtocol: "Res", status: "completed", stream: true, durationMs: 0, firstTokenMs: 0, tokens: { input: 0, output: 12, cacheRead: 0, total: 12, private: "secret" } },
+    { requestId: "legacy", status: "failed" },
+    { requestId: "invalid", stream: "false", durationMs: -1, firstTokenMs: Infinity, tokens: { input: "100", output: -2, cacheWrite: 1.5 } },
+  ] };
+  const [zero, legacy, invalid] = mapRuntimeState(state).logs;
+  expect(zero).toMatchObject({ stream: true, durationMs: 0, firstTokenMs: 0, tokens: { input: 0, output: 12, cacheRead: 0, total: 12 } });
+  expect(zero.tokens).not.toHaveProperty("private");
+  expect(legacy.durationMs).toBeNull();
+  expect(legacy.stream).toBeUndefined();
+  expect(legacy.firstTokenMs).toBeUndefined();
+  expect(invalid.durationMs).toBeNull();
+  expect(invalid.stream).toBeUndefined();
+  expect(invalid.firstTokenMs).toBeUndefined();
+  expect(invalid.tokens).toBeUndefined();
+});

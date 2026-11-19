@@ -29,8 +29,8 @@ describe("AppShell", () => {
     const context = screen.getByRole("navigation", { name: "当前位置" });
     expect(context).toHaveTextContent("本机工作区网关配置模型路由");
     expect(within(context).getByText("模型路由")).toHaveAttribute("aria-current", "page");
-    await user.click(screen.getByRole("link", { name: "调用日志" }));
-    expect(context).toHaveTextContent("本机工作区运行记录调用日志");
+    await user.click(screen.getByRole("link", { name: "请求日志" }));
+    expect(context).toHaveTextContent("本机工作区运行记录请求日志");
   });
 
   it("names the product and exposes all six workspace destinations", () => {
@@ -44,7 +44,7 @@ describe("AppShell", () => {
 
     expect(screen.getByTestId("window-title")).toHaveTextContent("Cx-Routing Gateway");
     expect(screen.queryByRole("link", { name: /Cx-Routing Gateway/ })).not.toBeInTheDocument();
-    const destinations = ["总览", "上游服务", "模型路由", "调用日志", "接入凭证", "设置"];
+    const destinations = ["总览", "上游服务", "模型路由", "请求日志", "接入凭证", "设置"];
     for (const label of destinations) {
       const link = screen.getByRole("link", { name: label });
       expect(link).toBeVisible();

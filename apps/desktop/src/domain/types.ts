@@ -28,6 +28,8 @@ export type ModelRoute = {
   failover?: { failureThreshold: number; statusClasses: number[]; cooldownSeconds?: number };
 };
 
+export type RequestTokens = Partial<Record<'input' | 'output' | 'cacheRead' | 'cacheWrite' | 'total' | 'reasoning' | 'inputAudio' | 'outputAudio' | 'cacheWrite5m' | 'cacheWrite1h', number>>;
+
 export type CallLog = {
   id: string;
   time: string;
@@ -36,7 +38,10 @@ export type CallLog = {
   upstream: string;
   direction: string;
   status: "成功（模拟）" | "失败（模拟）" | "成功" | "失败";
-  durationMs: number;
+  durationMs: number | null;
+  stream?: boolean;
+  firstTokenMs?: number;
+  tokens?: RequestTokens;
   error?: string;
 };
 

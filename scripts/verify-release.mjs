@@ -9,6 +9,7 @@ const required = [
   'win-unpacked/resources/app.asar',
   'win-unpacked/resources/runtime/services/local-control/src/server.mjs',
   'win-unpacked/resources/runtime/services/gateway/src/server.mjs',
+  'win-unpacked/resources/runtime/services/gateway/src/request-metrics.mjs',
   'win-unpacked/resources/runtime/packages/shared/src/config-store.mjs',
   'win-unpacked/resources/runtime/packages/shared/src/secret-vault.mjs',
   'win-unpacked/resources/runtime/scripts/check-update.mjs',

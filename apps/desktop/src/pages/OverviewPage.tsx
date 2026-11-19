@@ -10,7 +10,8 @@ export function OverviewPage() {
   const succeeded = logs.filter((log) => log.status.startsWith("成功")).length;
   const failed = logs.length - succeeded;
   const failedLogs = logs.filter((log) => log.status.startsWith("失败"));
-  const average = logs.length ? Math.round(logs.reduce((total, log) => total + log.durationMs, 0) / logs.length) : null;
+  const timedLogs = logs.filter((log) => log.durationMs !== null);
+  const average = timedLogs.length ? Math.round(timedLogs.reduce((total, log) => total + log.durationMs!, 0) / timedLogs.length) : null;
   const metrics = gateway.metrics;
 
   if (loading || error) return <WorkspaceState title="总览" loading={loading} error={error} />;
@@ -38,7 +39,7 @@ export function OverviewPage() {
         {logs.length ? <div className="table-scroll" role="region" aria-label="最近调用列表" tabIndex={0}><table>
           <thead><tr><th>请求 ID</th><th>模型</th><th>协议方向</th><th>状态</th><th className="numeric">耗时</th></tr></thead>
           <tbody>{logs.slice(0, 3).map((log) => (
-            <tr key={log.id}><td><code>{log.id}</code></td><td>{log.model}</td><td><ProtocolFlow value={log.direction} /></td><td><span className={`status-badge ${log.status.startsWith("成功") ? "status-positive" : "status-negative"}`}>{log.status}</span></td><td className="numeric">{log.durationMs} ms</td></tr>
+            <tr key={log.id}><td><code>{log.id}</code></td><td>{log.model}</td><td><ProtocolFlow value={log.direction} /></td><td><span className={`status-badge ${log.status.startsWith("成功") ? "status-positive" : "status-negative"}`}>{log.status}</span></td><td className="numeric">{log.durationMs === null ? "—" : `${log.durationMs} ms`}</td></tr>
           ))}</tbody>
         </table></div> : <EmptyResult>尚无调用记录</EmptyResult>}
       </section>

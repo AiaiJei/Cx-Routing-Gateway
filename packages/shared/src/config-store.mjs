@@ -69,6 +69,16 @@ export class ConfigStore {
     }
     const temporary = `${this.filePath}.${process.pid}.tmp`;
     await fs.writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600 });
-    await fs.rename(temporary, this.filePath);
+    // Windows readers/scanners can briefly deny replacement. Retry only rename,
+    // while holding the store lock; never replay the caller's mutation.
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      try {
+        await fs.rename(temporary, this.filePath);
+        return;
+      } catch (error) {
+        if (!['EPERM', 'EBUSY'].includes(error.code) || attempt === 5) throw error;
+        await new Promise(resolve => setTimeout(resolve, 25 * (attempt + 1)));
+      }
+    }
   }
 }

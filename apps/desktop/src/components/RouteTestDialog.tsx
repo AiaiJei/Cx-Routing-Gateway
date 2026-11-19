@@ -49,7 +49,7 @@ export function RouteTestDialog({
           <span className="route-test-prompt-label"><span className="field-label">发送内容</span><span className="cell-subtext">{prompt.length}/2000</span></span>
           <textarea id="route-test-prompt" aria-label="发送内容" value={prompt} maxLength={2000} rows={4} onChange={(event) => setPrompt(event.target.value)} />
         </label>
-        <p className="action-feedback route-test-disclosure" role="note">将通过本机 Gateway 向此路由的上游发送真实请求并写入调用日志；每次输出最多 256 tokens。上游服务可能会对此请求计费。</p>
+        <p className="action-feedback route-test-disclosure" role="note">将通过本机 Gateway 向此路由的上游发送真实请求并写入请求日志；每次输出最多 256 tokens。上游服务可能会对此请求计费。</p>
         {sending && <p className="helper-text" role="status">请求正在经过本机 Gateway 和上游模型处理…</p>}
         {error && <p className="action-feedback route-test-error" role="alert">{error}</p>}
         {result && <section className="route-test-result" aria-label="真实请求结果" role="status">
