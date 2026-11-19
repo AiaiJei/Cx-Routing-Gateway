@@ -242,6 +242,9 @@ test('priority policy and order persist, can be edited, and reject invalid setti
   assert.equal(edited.response.status, 200);
   assert.deepEqual(edited.body.routes[0].targets, [...targets].reverse());
   assert.equal(edited.body.routes[0].failover.failureThreshold, 4);
+  const removed = await request({ editId: created.body.routes[0].id, targets: [targets[1]], failover: policy });
+  assert.equal(removed.response.status, 200);
+  assert.deepEqual(removed.body.routes[0].targets, [targets[1]]);
   const before = await fs.readFile(store.filePath, 'utf8');
   for (const bad of [{ failureThreshold: 0, statusClasses: [5] }, { failureThreshold: 101, statusClasses: [4] }, { failureThreshold: 2, statusClasses: [] }, { failureThreshold: 2, statusClasses: [3] }]) {
     assert.equal((await request({ targets, failover: bad })).response.status, 400);

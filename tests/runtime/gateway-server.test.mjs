@@ -498,6 +498,21 @@ test('gateway converts multiple function calls and result blocks in one turn', a
   assert.equal((await second.json()).choices[0].message.content, 'both tools accepted');
 });
 
+test('gateway connects to the validated DNS address and preserves the upstream host', async (t) => {
+  let receivedHost;
+  const upstream = http.createServer((req, res) => { receivedHost = req.headers.host; res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ choices: [{ message: { content: 'approved' } }] })); });
+  const upstreamPort = await listen(upstream); t.after(() => upstream.close());
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-dns-pinned-'));
+  const store = new ConfigStore(path.join(dir, 'config.json')); const vault = new SecretVault(path.join(dir, 'secrets.json'), 'test-master-key');
+  const clientKey = 'pinned-client';
+  await store.update(config => ({ ...config, upstreams: [{ id: 'u', baseUrl: `http://approved.invalid:${upstreamPort}`, trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'], enabled: true }], routes: [{ id: 'r', alias: 'm', inboundProtocol: 'Chat', outboundProtocol: 'Chat', upstreamId: 'u', modelId: 'm', enabled: true }], clientKeys: [{ id: 'k', keyHash: crypto.createHash('sha256').update(clientKey).digest('hex'), enabled: true }] }));
+  const gateway = createGatewayServer({ store, vault, dnsLookup: async () => [{ address: '127.0.0.1', family: 4 }] }); await listen(gateway); t.after(() => gateway.close());
+  const response = await fetch(`http://127.0.0.1:${gateway.address().port}/v1/chat/completions`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${clientKey}` }, body: JSON.stringify({ model: 'm', messages: [{ role: 'user', content: 'hello' }] }) });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).choices[0].message.content, 'approved');
+  assert.equal(receivedHost, `approved.invalid:${upstreamPort}`);
+});
+
 test('gateway rejects an upstream whose DNS result no longer matches the approved address snapshot', async (t) => {
   const upstream = http.createServer(() => { throw new Error('DNS drift target must not be called'); });
   const upstreamPort = await listen(upstream);

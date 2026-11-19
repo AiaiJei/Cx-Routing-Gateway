@@ -1,9 +1,11 @@
 import http from 'node:http';
+import https from 'node:https';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dns from 'node:dns/promises';
 import net from 'node:net';
+import { Readable } from 'node:stream';
 
 const MAX_BODY = 1024 * 1024;
 const pathProtocols = { '/v1/responses': 'Res', '/v1/messages': 'Mes', '/v1/chat/completions': 'Chat' };
@@ -50,6 +52,7 @@ export async function validateDestination(baseUrl, trustedPrivateNetwork, approv
   const value = new URL(baseUrl);
   const records = await lookup(value.hostname, { all: true });
   const currentAddresses = records.map((record) => record.address.toLowerCase()).sort();
+  if (!currentAddresses.length || currentAddresses.some((address) => !net.isIP(address))) throw Object.assign(new Error('Invalid upstream DNS result'), { code: 'upstream_error', statusCode: 502 });
   if (approvedAddresses.length && (currentAddresses.length !== approvedAddresses.length || currentAddresses.some((address, index) => address !== approvedAddresses[index]))) throw Object.assign(new Error('Upstream DNS result changed'), { code: 'upstream_error', statusCode: 502 });
   const classes = currentAddresses.map((address) => classifyAddress(address));
   if (classes.some((addressClass) => addressClass.metadata || addressClass.linkLocal || addressClass.unspecified)) throw Object.assign(new Error('Upstream destination is not trusted'), { code: 'upstream_error', statusCode: 502 });
@@ -57,6 +60,7 @@ export async function validateDestination(baseUrl, trustedPrivateNetwork, approv
   const hasPublic = classes.some((addressClass) => !addressClass.privateNetwork);
   if (hasPrivate && hasPublic) throw Object.assign(new Error('Mixed public and private upstream addresses are not trusted'), { code: 'upstream_error', statusCode: 502 });
   if (hasPrivate && !trustedPrivateNetwork) throw Object.assign(new Error('Upstream destination is not trusted'), { code: 'upstream_error', statusCode: 502 });
+  return currentAddresses;
 }
 
 function textParts(value) {
@@ -132,10 +136,31 @@ function inboundResponse(inboundProtocol, outboundProtocol, body, requestId) {
   return { id: body.id || `resp_${requestId}`, object: 'response', output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text }] }], status: 'completed', usage: body.usage };
 }
 
-async function fetchWithTimeout(url, options, timeoutMs = 30000) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try { return await fetch(url, { ...options, signal: controller.signal, redirect: 'manual' }); } catch (error) { throw Object.assign(new Error(error.name === 'AbortError' ? 'Upstream timeout' : 'Upstream unavailable'), { code: error.name === 'AbortError' ? 'upstream_timeout' : 'upstream_error', statusCode: error.name === 'AbortError' ? 504 : 502 }); } finally { clearTimeout(timer); }
+async function fetchWithTimeout(url, options, addresses, timeoutMs = 30000) {
+  const target = new URL(url);
+  const address = addresses[0];
+  return new Promise((resolve, reject) => {
+    let timedOut = false;
+    const request = (target.protocol === 'https:' ? https : http).request(target, {
+      method: options.method,
+      headers: options.headers,
+      lookup: (_hostname, lookupOptions, callback) => {
+        const record = { address, family: net.isIP(address) };
+        if (lookupOptions.all) callback(null, [record]);
+        else callback(null, record.address, record.family);
+      },
+    }, (response) => {
+      clearTimeout(timer);
+      const status = response.statusCode || 502;
+      const headers = new Headers();
+      for (let index = 0; index < response.rawHeaders.length; index += 2) headers.append(response.rawHeaders[index], response.rawHeaders[index + 1]);
+      if ([204, 205, 304].includes(status)) { response.resume(); return resolve(new Response(null, { status, headers })); }
+      resolve(new Response(Readable.toWeb(response), { status, headers }));
+    });
+    const timer = setTimeout(() => { timedOut = true; request.destroy(); }, timeoutMs);
+    request.on('error', () => { clearTimeout(timer); reject(Object.assign(new Error(timedOut ? 'Upstream timeout' : 'Upstream unavailable'), { code: timedOut ? 'upstream_timeout' : 'upstream_error', statusCode: timedOut ? 504 : 502 })); });
+    request.end(options.body);
+  });
 }
 
 async function readJson(response, maxBytes = 4 * 1024 * 1024) {
@@ -347,14 +372,14 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
       route = { ...route, upstreamId: selected.target.upstreamId, modelId: selected.target.modelId };
       const normalized = route.outboundProtocol === inbound ? null : normalize(inbound, input);
       upstreamStarted = true;
-      await validateDestination(upstream.baseUrl, upstream.trustedPrivateNetwork === true, upstream.approvedAddresses || [], dnsLookup);
+      const addresses = await validateDestination(upstream.baseUrl, upstream.trustedPrivateNetwork === true, upstream.approvedAddresses || [], dnsLookup);
       const outboundPath = { Res: '/v1/responses', Mes: '/v1/messages', Chat: '/v1/chat/completions' }[route.outboundProtocol];
       const headers = { 'content-type': 'application/json', 'x-request-id': requestId };
       const secret = upstream.credentialRef ? await vault.get(upstream.credentialRef) : undefined;
       if (secret) headers[route.outboundProtocol === 'Mes' ? 'x-api-key' : 'authorization'] = route.outboundProtocol === 'Mes' ? secret : `Bearer ${secret}`;
       if (route.outboundProtocol === 'Mes') headers['anthropic-version'] = '2026-10-21';
       const payload = route.outboundProtocol === inbound ? { ...input, model: route.modelId } : outboundBody(route.outboundProtocol, normalized, route.modelId);
-      const upstreamResponse = await fetchWithTimeout(upstreamUrl(upstream.baseUrl, outboundPath), { method: 'POST', headers, body: JSON.stringify(payload) });
+      const upstreamResponse = await fetchWithTimeout(upstreamUrl(upstream.baseUrl, outboundPath), { method: 'POST', headers, body: JSON.stringify(payload) }, addresses);
       if (upstreamResponse.status >= 300) {
         recordOutcome(policy.statusClasses.includes(Math.floor(upstreamResponse.status / 100)));
         await appendUsage(store, { requestId, createdAt: new Date().toISOString(), durationMs: Date.now() - startedAt, inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, modelId: route.modelId, status: 'failed', errorCode: 'upstream_error', upstreamStatus: upstreamResponse.status });
