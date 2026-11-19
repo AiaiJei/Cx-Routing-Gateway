@@ -2,130 +2,76 @@
   "contract_version": 1,
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
-  "task_id": "CXRG-WORKSPACE-DESIGN-2026-11-19",
-  "title": "Desktop workspace redesign 1.0.1",
+  "task_id": "CXRG-REQUEST-LOGS-2026-11-19",
+  "title": "Request logs 1.0.2",
   "status": "active",
-  "stage": "integration-authorized",
-  "branch": "codex/desktop-workspace-redesign",
+  "stage": "verified-ready-for-pr",
+  "branch": "codex/request-logs-1.0.2",
   "base": "master",
-  "base_sha": "9807fd32b27c436dde55129308799ec4d6187643",
+  "base_sha": "6acebc964b7f4f331ec5827819f4bf923829fd5f",
+  "product_version": "1.0.2",
   "authorized_paths": [
     ".codex/awg-task.json",
-    "docs/superpowers/specs/2026-11-19-workspace-redesign-design.md",
-    "docs/concepts/workspace-redesign.svg",
-    "docs/tasks/2026-11-19-workspace-redesign.md",
+    "docs/tasks/**",
+    "docs/superpowers/specs/2026-11-19-request-logs-design.md",
+    "docs/superpowers/plans/2026-11-19-request-logs-1.0.2.md",
     "docs/task-record.md",
-    "docs/concepts/workspace-redesign.png",
     "apps/desktop/src/**",
     "apps/desktop/package.json",
     "apps/desktop/package-lock.json",
-    "apps/desktop/vite.config.ts",
-    "scripts/verify-release.mjs",
-    "scripts/check-update.mjs",
-    "scripts/smoke-packaged.mjs",
+    "services/gateway/src/**",
+    "tests/runtime/request-metrics.test.mjs",
+    "tests/runtime/request-logs.test.mjs",
+    ".task-evidence/**",
     "tests/runtime/release-manifest.test.mjs",
-    "tests/runtime/check-update.test.mjs",
-    "docs/superpowers/plans/2026-11-19-workspace-redesign-1.0.1.md",
-    "apps/desktop/electron/main.cjs"
+    "scripts/verify-release.mjs"
   ],
+  "authorization": {
+    "source": "2026-11-19 user request: increment version by one from PR #6, establish dedicated PR, rename request logs and add popovers/type/tokens/first-token duration",
+    "operations": [
+      "isolated worktree and branch",
+      "implement requested log presentation and necessary telemetry",
+      "commit and push task branch",
+      "create dedicated PR"
+    ],
+    "design_approval": "direct detailed change request; implementation choices documented in design"
+  },
   "scope": {
     "include": [
-      "Create a dedicated draft PR against master with design artifacts and the task contract",
-      "Study the supplied Notion, Linear and Apple HIG references",
-      "Map information architecture, layout and component principles to the existing six Desktop pages",
-      "Provide a static illustration, sources, acceptance criteria and rollback",
-      "Review the design independently and record evidence",
-      "Refine the existing static design illustration and provide a PNG render as requested by the user on 2026-11-19",
-      "Implement the approved rendering across existing six pages using shared React components",
-      "Set Desktop package and lockfile to 1.0.1; derive release and update-tool version from package metadata",
-      "Verify component and runtime regressions, production build, responsive screenshots, and isolated Electron smoke",
-      "Merge PR #6, synchronize primary master, archive task evidence and remove only the dedicated task worktree under explicit 2026-11-19 authorization"
+      "request log UI and accessible disclosures",
+      "bounded allowlisted usage and streaming telemetry",
+      "legacy missing-value compatibility",
+      "version 1.0.2",
+      "tests/build/browser verification/independent review"
     ],
     "exclude": [
-      "Block editor, nested user-created pages, cloud collaboration or multiple workspaces",
-      "Framework replacement, backend or storage schema changes",
-      "Publication/deployment, direct push to master, task branch deletion, or modification/deletion of other worktrees"
+      "merge",
+      "push master",
+      "publish/deploy",
+      "delete branches/worktrees",
+      "real provider calls",
+      "request/response body persistence",
+      "protocol transformation redesign"
     ]
   },
-  "authorization": {
-    "source": "User request on 2026-11-19 to establish a dedicated PR using Notion architecture, Linear layout and Apple HIG components",
-    "operations": [
-      "create isolated branch/worktree",
-      "commit design artifacts",
-      "push task branch",
-      "create draft PR",
-      "implement approved six-page redesign",
-      "set product version 1.0.1",
-      "commit and push implementation to existing PR #6",
-      "mark PR #6 ready and merge to master",
-      "fast-forward primary worktree to merged master",
-      "archive ignored task artifacts and remove this task worktree"
-    ],
-    "design_approval": "approved: user requested implementation from the refined rendering",
-    "implementation_approval": "approved: user requested version 1.0.1 and implementation on PR #6",
-    "scope_confirmation": "User explicitly selected information architecture and redesign of the existing six pages; no block editor or nested-page capability."
-  },
   "acceptance": [
-    "Dedicated draft PR exists against master and is attached to this chat",
-    "Each reference has an explicit role and source URL",
-    "Existing components, routes and runtime boundaries are mapped",
-    "Design, independent review and verification are recorded",
-    "Owner approval and implementation status remain distinct",
-    "Six pages match the approved shell and design with preserved runtime operations",
-    "Product metadata, Settings and release tooling report 1.0.1",
-    "Tests/build, visual evidence and independent review recorded",
-    "PR #6 merged; primary master matches origin/master; task evidence archived; dedicated task worktree removed"
+    "new PR based on merged PR #6",
+    "all requested table fields and disclosure interactions",
+    "measured stream/token metadata survives Gateway → store → control/IPC → UI",
+    "historical missing data stays unknown",
+    "regressions/build and independent review recorded"
   ],
-  "rollback": "Revert PR #6 on master through a new authorized change if needed; evidence and all local packages retained under .worktree/archives/pr6-desktop-1.0.1-a57f5b1; task branch retained.",
+  "rollback": "Revert task commits through an authorized change; optional metrics do not require schema migration. Keep task worktree and evidence.",
+  "previous_contract": "docs/tasks/2026-11-19-pr6-contract.json",
   "owner_acceptance": "pending",
-  "revisions": [
-    {
-      "date": "2026-11-19",
-      "scope": "Typography, navigation icons, table spacing, protocol-flow illustration, and PNG export only",
-      "design_approval": "pending",
-      "request": "精修下细节吧；这个渲染图；"
-    },
-    {
-      "date": "2026-11-19",
-      "request": "按渲染图执行更新，版本号定义1.0.1",
-      "design_approval": "approved",
-      "scope": "Approved design implementation, product version 1.0.1, verification and existing PR update"
-    },
-    {
-      "request": "优化模型路由/凭证按钮布局；滚动条放在内部、细小淡化、全局统一",
-      "date": "2026-11-19",
-      "scope": "Dedicated row action columns, shared button layout, internal workspace scrolling and global scrollbar appearance; preserve version 1.0.1 and all backend behavior",
-      "design_approval": "approved by direct change request"
-    },
-    {
-      "request": "窗口尺寸和比例缩小15%，后拉起desktop",
-      "scope": "Scale default and minimum window dimensions to 85%, set renderer zoomFactor 0.85, rebuild and launch Desktop 1.0.1",
-      "design_approval": "approved by direct change request",
-      "date": "2026-11-19"
-    },
-    {
-      "design_approval": "approved by direct refinement request",
-      "scope": "Present ordered upstream targets as compact horizontal priority tags with secondary hostnames and one failover summary; preserve routing order and behavior",
-      "date": "2026-11-19",
-      "request": "目标上游改为横向/标签式或更好的呈现"
-    },
-    {
-      "design_approval": "existing approval retained",
-      "scope": "Commit integration authorization, ready/merge PR #6 into master, fast-forward primary worktree, preserve all task evidence/packages, remove this task worktree",
-      "request": "提交合并PR#，任务工作树合并主工作树后并移除任务工作树",
-      "date": "2026-11-19"
-    }
-  ],
-  "product_version": "1.0.1",
   "verification": {
-    "runtime_tests": "61/61 (final revision)",
-    "independent_review": "Window85% and upstream priority presentation reviewed; no substantive findings",
-    "native_gui": "Latest upstream-tag package launched; actual AX shows production file URL and Gateway running; native pixel screenshot remains unavailable",
-    "desktop_tests": "55/55 (final upstream-tag revision)",
-    "package_version": "PASS: executable1.0.1, packaged main and14 dist files match final sources/build",
     "production_build": "PASS",
-    "visual": "Upstream priority tags verified at 1440/960/390; double targets share one row, tag overflows0; global internal scroll and action layout retained",
+    "independent_review": "Three P2 findings and release dependency check fixed with regression evidence",
     "production_audit": "0 vulnerabilities",
-    "provider": "NOT_RUN"
+    "runtime_tests": "72/72",
+    "native_installer": "NOT_RUN",
+    "provider": "NOT_RUN",
+    "browser": "PASS 1440/768/390 fixture mode",
+    "desktop_tests": "61/61"
   }
 }

@@ -300,3 +300,10 @@
 
 - 2026-11-19 用户授权合并 PR #6、同步主工作树并移除本任务 worktree；未授权发布或删除其他工作树/分支。
 - 合并前 Desktop 55/55、Runtime 61/61、production build 新鲜验证通过；详细授权、证据归档与最终结果入口见 [任务记录](tasks/2026-11-19-workspace-redesign.md)。
+
+## 请求日志 1.0.2（2026-11-19）
+
+- 基于已合并 PR #6 的 master `6acebc9`，在 `.worktree/request-logs-1.0.2` / `codex/request-logs-1.0.2` 实施独立变更。
+- 调用日志改名请求日志；时间/请求 ID、入站/完整协议、Token 摘要/明细分层展示，新增流/非流与首字/总耗时；真实 Gateway usage 采集和旧日志兼容同步完成，版本 1.0.2。
+- Runtime 72/72、Desktop 61/61、生产构建、生产依赖 audit 与三尺寸浏览器检查通过；独立审查问题均有回归修复。
+- [设计](superpowers/specs/2026-11-19-request-logs-design.md)、[计划](superpowers/plans/2026-11-19-request-logs-1.0.2.md)、[证据/审查/限制/回退](tasks/2026-11-19-request-logs.md)。真实 provider、原生安装发布、Owner 最终验收 NOT_RUN/pending；不沿用 PR #6 合并或清理授权。

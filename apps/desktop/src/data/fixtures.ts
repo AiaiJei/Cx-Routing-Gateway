@@ -26,9 +26,9 @@ export const workspaceFixtures: WorkspaceFixtures = {
     { id: "route-fast", alias: "gateway-fast", inboundProtocol: "Mes", targets: [{ upstreamId: "up-lantern", upstreamModel: "lantern-haiku" }], outboundProtocol: "Mes", enabled: true },
   ],
   logs: [
-    { id: "req-7d3a9f21", time: "2026-11-18 09:42:11", model: "gateway-reasoner", credential: "Desktop client ·••••", upstream: "Northstar AI", direction: "Res → Chat → Res", status: "成功（模拟）", durationMs: 842 },
-    { id: "req-29ab10ce", time: "2026-11-18 09:38:04", model: "gateway-fast", credential: "Local test ·••••", upstream: "Lantern Labs", direction: "Mes → Mes → Mes", status: "失败（模拟）", durationMs: 241, error: "上游响应超时（示例错误）" },
-    { id: "req-1f20cc6b", time: "2026-11-18 09:31:52", model: "gateway-reasoner", credential: "Desktop client ·••••", upstream: "Northstar AI", direction: "Res → Chat → Res", status: "成功（模拟）", durationMs: 1106 },
+    { id: "req-7d3a9f21", time: "2026-11-18 09:42:11", model: "gateway-reasoner", credential: "Desktop client ·••••", upstream: "Northstar AI", direction: "Res → Chat → Res", status: "成功（模拟）", durationMs: 842, stream: true, firstTokenMs: 218, tokens: { input: 1248, output: 182, cacheRead: 1024, cacheWrite: 0, total: 1430, reasoning: 64 } },
+    { id: "req-29ab10ce", time: "2026-11-18 09:38:04", model: "gateway-fast", credential: "Local test ·••••", upstream: "Lantern Labs", direction: "Mes → Mes → Mes", status: "失败（模拟）", durationMs: 241, stream: true, error: "上游响应超时（示例错误）" },
+    { id: "req-1f20cc6b", time: "2026-11-18 09:31:52", model: "gateway-reasoner", credential: "Desktop client ·••••", upstream: "Northstar AI", direction: "Res → Chat → Res", status: "成功（模拟）", durationMs: 1106, stream: false, tokens: { input: 326, output: 98, cacheRead: 0, total: 424 } },
   ],
   credentials: [
     { id: "key-desktop", label: "Desktop client", preview: "cxg_demo_••••••••••••7a2f", scope: "全部模型", createdAt: "2026-11-12", lastUsed: "未使用（示例）", status: "示例" },

@@ -1,0 +1,30 @@
+/* 9 compact columns fit the PR #6 desktop sheet; narrow screens scroll inside it. */
+.logs-table { min-width: 1000px; }
+.logs-table th, .logs-table td { padding-inline: 12px; }
+.logs-table td { padding-block: 12px; }
+.logs-table time { white-space: nowrap; font-variant-numeric: tabular-nums; font-size: 13px; }
+.logs-table .log-model { min-width: 130px; max-width: 230px; }
+.logs-table .log-type { white-space: nowrap; color: var(--muted); font-size: 13px; }
+.logs-table .log-status { min-width: 72px; max-width: 150px; }
+.detail-trigger { appearance: none; border: 0; border-radius: 4px; background: transparent; padding: 4px 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.detail-trigger:hover { background: var(--raised); }
+.detail-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.detail-tooltip { position: fixed; z-index: 1500; box-sizing: border-box; width: max-content; max-width: min(350px, calc(100vw - 16px)); max-height: calc(100vh - 16px); overflow: auto; padding: 14px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); box-shadow: 0 4px 16px rgb(0 0 0 / 10%); font-size: 13px; overflow-wrap: anywhere; }
+.tooltip-heading { display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.request-id { display: block; user-select: text; line-height: 1.6; }
+.tooltip-flow { margin: 0; white-space: nowrap; font-weight: 500; }
+.tooltip-facts { display: grid; gap: 6px; margin: 12px 0 0; }
+.tooltip-facts > div { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 20px; }
+.tooltip-facts dt { color: var(--muted); }
+.tooltip-facts dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.token-facts { min-width: 240px; margin-top: 0; }
+.token-trigger { display: block; margin-left: auto; }
+.token-summary { display: grid; grid-template-columns: repeat(2, minmax(50px, auto)); gap: 5px 14px; font-size: 13px; }
+.token-value { display: flex; align-items: center; justify-content: space-between; gap: 6px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.token-value svg { width: 15px; height: 15px; color: var(--muted); flex: none; }
+.request-duration { display: grid; gap: 4px; font-size: 13px; white-space: nowrap; }
+.request-duration > span { display: flex; justify-content: space-between; gap: 12px; }
+.duration-label { color: var(--muted); font-size: 12px; }
+.log-detail-tokens { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.log-detail-tokens .tooltip-facts { min-width: 0; }
+@media (max-width: 640px) { .logs-table th:first-child, .logs-table td:first-child { position: sticky; left: 0; z-index: 1; background: var(--surface); } }
