@@ -150,3 +150,6 @@
 - 窗口完成 85% 缩放：BrowserWindow 1224×765，最小 816×544，renderer `zoomFactor: 0.85`，宽高比保持 1.6；x64 包 smoke 1.0.1；asar 中最终 main.cjs 配置与源码一致。
 - 当前最终包已拉起：`.tmp/upstream-tags/package/win-unpacked/Cx-Routing Gateway.exe`，AX 实际读取 file URL、5 条运行时路由、独立操作列、Gateway 运行中；无真实 provider/凭证写入操作。
 - 新增条款均为展示和窗口配置，不改 API/数据/版本；用户随后提出的再次启动已执行。当前窗口保持打开。
+- 最终复验：Desktop 55/55、Runtime 61/61；窗口/上游标签独立审查无实质问题，路由专项独立 11/11。最终包 main.cjs 和 14 个 dist 文件与当前源码/生产构建逐字节一致，版本为 1.0.1。
+- 标签回归断言先失败后通过，随本次补充测试提交进入 PR；不重写已推送历史。55/55 是包含该断言后的完整测试结果。
+- 当前原生 AX 已验证最终包实际加载和 Gateway 运行中；未取得原生像素截图，三尺寸标签视觉证据来自明确标注的合成 IPC 预览。未将已有用户日志中的调用记录当作本任务发起的 provider 测试。

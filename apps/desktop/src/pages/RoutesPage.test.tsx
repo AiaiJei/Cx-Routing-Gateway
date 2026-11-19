@@ -77,8 +77,12 @@ describe("RoutesPage", () => {
     const cells = within(row).getAllByRole("cell");
     expect(cells[0]).toHaveTextContent(/^northstar-fast$/);
     expect(cells[1].querySelector(".protocol-chat")).not.toBeNull();
-    expect(cells[2]).toHaveTextContent("1. Northstar AI");
-    expect(cells[2]).toHaveTextContent("2. Lantern Labs");
+    const targets = within(cells[2]).getByRole("list", { name: "上游优先级" });
+    const priorities = within(targets).getAllByRole("listitem");
+    expect(priorities).toHaveLength(2);
+    expect(priorities[0]).toHaveTextContent("优先Northstar AI");
+    expect(priorities[1]).toHaveTextContent("备用Lantern Labs");
+    expect(cells[2]).toHaveTextContent("连续失败 3 次切换 · 4xx / 5xx");
   });
 
   it("opens an interactive real-request dialog for an enabled runtime route", async () => {

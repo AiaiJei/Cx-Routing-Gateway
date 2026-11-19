@@ -5,7 +5,7 @@
   "task_id": "CXRG-WORKSPACE-DESIGN-2026-11-19",
   "title": "Desktop workspace redesign 1.0.1",
   "status": "active",
-  "stage": "implementation-refinement",
+  "stage": "implemented-awaiting-owner-acceptance",
   "branch": "codex/desktop-workspace-redesign",
   "base": "master",
   "base_sha": "9807fd32b27c436dde55129308799ec4d6187643",
@@ -107,13 +107,13 @@
   ],
   "product_version": "1.0.1",
   "verification": {
-    "runtime_tests": "61/61",
-    "independent_review": "Latest button/scroll delta accepted; related25/25, production build and diff check PASS",
-    "native_gui": "Prior package launched and AX confirms Gateway running; latest refinement restart stopped by user Escape",
-    "desktop_tests": "55/55",
-    "package_version": "PASS: x64 executable reports 1.0.1",
+    "runtime_tests": "61/61 (final revision)",
+    "independent_review": "Window85% and upstream priority presentation reviewed; no substantive findings",
+    "native_gui": "Latest upstream-tag package launched; actual AX shows production file URL and Gateway running; native pixel screenshot remains unavailable",
+    "desktop_tests": "55/55 (final upstream-tag revision)",
+    "package_version": "PASS: executable1.0.1, packaged main and14 dist files match final sources/build",
     "production_build": "PASS",
-    "visual": "Button rows: no wraps/overflow at 1440/960/390; global internal scroll and 6px scrollbars verified for all six pages",
+    "visual": "Upstream priority tags verified at 1440/960/390; double targets share one row, tag overflows0; global internal scroll and action layout retained",
     "production_audit": "0 vulnerabilities",
     "provider": "NOT_RUN"
   }
