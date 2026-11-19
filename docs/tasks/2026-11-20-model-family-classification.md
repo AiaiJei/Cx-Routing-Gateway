@@ -10,6 +10,7 @@
 - CAPABILITY: skills read/applied: using-superpowers, workspace-governance, repo-map, brainstorming, worktrees, writing-plans, executing-plans, TDD, design-taste, requesting-code-review, verification-before-completion, finishing-a-development-branch, and computer-use for production browser verification. Repo MCP not called: registration file absent, workspace_id unknown. Native create_worktree lacks destination-path argument; Git honors user repo-local placement and native attach_worktree succeeded.
 - RED to GREEN: domain/page/selector regression tests first failed with missing classifier, filter, groups and empty states; focused green 52/52.
 - Verification: baseline Desktop 88/88; final Desktop 126/126 (22 files); Runtime 75/75; TypeScript/Vite production build PASS; production dependency audit 0 vulnerabilities; git diff --check PASS.
+- GitHub CI on final PR head f423555cfda9294035adc8b4bb0f37cbf702873b: Desktop PASS, Runtime PASS; package job SKIPPED by the pull-request workflow condition.
 - Browser used production build assets plus an isolated local fixture bridge with fake model catalogues/routes. Verified all route counts, per-family filtering, empty routes/models, selector family order, independent upstream filters, multi-select retention across category switches, keyboard selection/Escape, batch save with counts updating, and a selected model missing from the discovered catalogue. This is fixture/UI evidence, not native runtime/provider evidence.
 - Responsive production screenshots and inspection at 1440/768/390. Root and modal widths fit; no horizontal viewport overflow. Evidence: docs/tasks/evidence/model-family-classification/.
 - Review: independent reviewer and fallback could not start after repeated provider HTTP 429; no independent findings returned. Author completed a separate read-only source/diff self-review; it is explicitly NOT independent.
@@ -26,4 +27,4 @@
 - Setup, bounded source/consumer review complete. No dependencies added.
 - Worktree contract/spec/plan prepared before product code.
 - Feature implemented against the PR #8 merge base. Product build and test evidence, screenshots and author self-review complete.
-- Dedicated PR #9 opened against master: https://github.com/AiaiJei/Cx-Routing-Gateway/pull/9. PR head at creation: ae47edc7f241d39b412c48217dc8e5a54a10a2f1. GitHub Desktop and Runtime CI were pending at creation; latest head status is reported separately.
+- Dedicated PR #9 opened against master: https://github.com/AiaiJei/Cx-Routing-Gateway/pull/9. PR head at creation: ae47edc7f241d39b412c48217dc8e5a54a10a2f1. The final documentation commit is f423555cfda9294035adc8b4bb0f37cbf702873b; GitHub Desktop and Runtime CI both PASS on it.

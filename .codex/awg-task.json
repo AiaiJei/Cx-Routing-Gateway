@@ -80,6 +80,7 @@
     "production_build": "PASS (TypeScript and Vite)",
     "production_audit": "0 vulnerabilities",
     "github_ci_at_pr_creation": "Desktop and Runtime pending in two CI runs; package jobs skipped. Final head checks will be confirmed.",
+    "github_ci": "PASS on final source commit f423555cfda9294035adc8b4bb0f37cbf702873b: Desktop PASS, Runtime PASS; package skipped on pull_request builds.",
     "whitespace": "PASS",
     "browser": "PASS built production assets with isolated local fixture bridge; route filters/counts, both upstream selectors, independent family filters, group order, hidden cross-family selections, keyboard selection, save/update counts and stale edit model checked",
     "responsive": "PASS 1440/768/390 widths; modal and filters do not overflow viewport",
