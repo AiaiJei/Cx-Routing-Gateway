@@ -9,6 +9,14 @@
   "base": "master",
   "base_sha": "7e3c4db0d54f34045ce1bdd2ad9d8b56f76a118d",
   "base_pr": 8,
+  "revisions": [
+    {
+      "date": "2026-11-20",
+      "request": "提交合并PR，任务工作树合并到主工作树",
+      "scope": "Merge dedicated PR #9 after checks, then fast-forward primary master to the GitHub merge commit. Preserve this task worktree and the primary checkout's existing untracked files.",
+      "acceptance": "PR #9 merged into master; primary master equals origin/master and the PR merge commit; regression tests pass on the merged commit; no unrelated files or worktrees removed."
+    }
+  ],
   "branch": "codex/model-family-classification",
   "previous_contract": "docs/tasks/2026-11-20-pr8-contract.json",
   "authorization": {
@@ -17,7 +25,10 @@
       "isolated task worktree",
       "implement and verify requested model classification",
       "commit and push task branch",
-      "create dedicated PR"
+      "create dedicated PR",
+      "merge PR #9 after required checks pass",
+      "fast-forward primary master to PR #9 merge commit",
+      "preserve task worktree and unrelated primary untracked files"
     ],
     "design_basis": "Direct specific feature request; implementation choices stated before changes."
   },
@@ -30,7 +41,8 @@
       "task design, plan and evidence"
     ],
     "exclude": [
-      "merge",
+      "merge unrelated pull requests",
+      "delete task worktree or task branch",
       "release/deploy/native install",
       "provider requests",
       "backend/storage/auth/protocol changes",

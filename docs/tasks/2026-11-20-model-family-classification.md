@@ -28,3 +28,11 @@
 - Worktree contract/spec/plan prepared before product code.
 - Feature implemented against the PR #8 merge base. Product build and test evidence, screenshots and author self-review complete.
 - Dedicated PR #9 opened against master: https://github.com/AiaiJei/Cx-Routing-Gateway/pull/9. PR head at creation: ae47edc7f241d39b412c48217dc8e5a54a10a2f1. The final documentation commit is f423555cfda9294035adc8b4bb0f37cbf702873b; GitHub Desktop and Runtime CI both PASS on it.
+
+## Integration authorization
+
+- User request: “提交合并PR，任务工作树合并到主工作树”.
+- Authorized: merge PR #9 after checks, fast-forward primary master to its merge commit, preserve this linked task worktree and all existing untracked primary-worktree paths.
+- Not authorized by this revision: deleting the task worktree or branch, or cleaning unrelated untracked files.
+- Preflight: PR #9 OPEN, MERGEABLE, base master, Desktop/Runtime CI PASS; master and origin/master both 7e3c4db0d54f34045ce1bdd2ad9d8b56f76a118d; primary tracked files clean, pre-existing untracked .agent-workspace-governance/, .agents/, .tmp-awg-source/, .worktree/, and plugins/ preserved.
+- Integration and merged-commit verification pending.
