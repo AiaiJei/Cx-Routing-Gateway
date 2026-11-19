@@ -1,6 +1,6 @@
 {
   "title": "Request log refresh 1.0.3",
-  "stage": "pr-ready",
+  "stage": "pr-open",
   "authorization": {
     "operations": [
       "isolated branch/worktree",
@@ -72,6 +72,8 @@
     "browser": "PASS 1440/768/390, fixture log arrival 1556 ms",
     "runtime": "75/75",
     "independent_review": "PASS; no P0/P1/P2",
-    "production_build": "PASS"
-  }
+    "production_build": "PASS",
+    "production_audit": "0 vulnerabilities"
+  },
+  "pull_request": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/8"
 }

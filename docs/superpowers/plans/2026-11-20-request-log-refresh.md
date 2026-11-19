@@ -43,7 +43,7 @@ Produces: refresh button, quiet background polling and recoverable errors.
 - [x] Implement header action/errors, opt into 1500 ms polling, bump manifest/lock to 1.0.3.
 - [x] Run Desktop/Runtime suites and build; verify browser controls/layout at desktop/mobile widths.
 - [x] Fresh independent review of full change against spec/focus; fix material findings with regressions.
-- [ ] Update records, commit explicit task paths, push task branch, create/attach PR. Keep worktree; do not merge.
+- [x] Update records, commit explicit task paths, push task branch, create/attach PR. Keep worktree; do not merge.
 
 ## Roles and evidence
 

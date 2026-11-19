@@ -53,3 +53,9 @@ Review boundaries resolved:
 Reviewer flagged JSON CRLF in `git diff --check`; normalized the task contract to LF and rechecked. Plan/evidence updates completed before PR preparation.
 
 - Baseline Desktop: 61/61. Hook RED 9 missing behaviors → GREEN 9/9; UI RED 4 expected failures → focused GREEN 19/19. Build PASS. Full suites exposed old 1.0.2 fixtures in Settings/release manifest; updated within version scope. Runtime build-path test was started before dist existed; rerun after build. No product bug masked.
+
+## Delivery
+
+- Product commit: fb40d57. Dedicated PR: [#8](https://github.com/AiaiJei/Cx-Routing-Gateway/pull/8), open against master; attached to this chat. Branch pushed; worktree/evidence preserved.
+- Production dependency audit: 0 vulnerabilities. GitHub CI status is available on the PR; local verification is recorded above.
+- No merge, installation, provider call or release performed. Owner acceptance remains pending.
