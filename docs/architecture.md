@@ -1,19 +1,19 @@
 # 仓库架构树
 
-产品是 Desktop 程序，打开时自动启动本机 Gateway；没有管理员角色或独立 Web 管理后台。本次只建立空目录骨架与职责说明；目录不代表功能已实现。文件/模块可以在实现阶段按技术栈与调用关系微调。
+产品是 Desktop 程序，打开时自动启动本机 Gateway；没有管理员角色或独立 Web 管理后台。Desktop 前端与 Electron 窗口 shell、preload IPC、本机 control/Gateway、配置存储、协议转换、文本流式、基础工具调用和 Windows 打包已实现。复杂并行工具流、代码签名、真实 provider 联调和生产部署仍待完成。目录名只说明目标职责，不能作为运行时功能证据。文件/模块可以在实现阶段按技术栈与调用关系微调。
 
 ```text
 Cx-Routing Gateway/
 ├── apps/
-│   └── desktop/             # Desktop 工作区与 Gateway 启动编排（尚未实现）
+│   └── desktop/             # Desktop 工作区 UI、Electron shell、IPC 和 runtime supervisor
 ├── services/
-│   ├── gateway/             # 数据面：入站请求与上游转发（尚未实现）
-│   └── local-control/       # 管理 API、鉴权与配置（尚未实现）
+│   ├── gateway/             # 数据面：入站鉴权、路由与基础上游转发（阶段 2 基础已实现）
+│   └── local-control/       # 本机管理 API、Key 鉴权与配置（阶段 2 基础已实现）
 ├── packages/
-│   ├── protocols/           # Res/Mes/Chat 协议规范化与转换（尚未实现）
-│   └── shared/              # 共享类型、错误与基础契约（尚未实现）
-├── deploy/                  # 部署、环境样例及运维配置（尚未实现）
-├── scripts/                 # 本地开发与维护脚本（尚未实现）
+│   ├── protocols/           # Res/Mes/Chat 完整规范化与转换（TextCore 基础在 Gateway 内，完整包尚未拆出）
+│   └── shared/              # 配置存储、加密 SecretVault 与共享基础契约（阶段 2 基础已实现）
+├── deploy/                  # 部署环境样例及运维说明（基础已实现）
+├── scripts/                 # 本地验证、诊断、回滚、发布和更新脚本
 ├── tests/
 │   ├── unit/
 │   ├── integration/
