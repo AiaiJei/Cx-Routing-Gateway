@@ -106,3 +106,10 @@
 - Repo MCP 保持 NOT_RUN（本 worktree 无注册 workspace_id）；未把静态 MCP/Hook 配置当成运行证据。
 - Taste browser inspector 的测量改由可用 CUA 完成，保留真实 DOM 尺寸与截图；未声称运行 inspect.mjs。采用用户已定渲染方向，不随机重抽风格。
 - 归档决策：沿用现有独立 worktree 和仓内 scratch，保留证据；不按技能默认清理删除，遵循用户“归档时保留成果”的要求。
+
+### PR 集成状态
+
+- 实施提交 `b8ff64f` 已推送 PR #6；GitHub push / pull_request 两组 Runtime 和 Desktop 检查均通过，package 按工作流条件跳过。
+- PR 标题/描述已改为最终 1.0.1 实现；仍为 Draft。后续仅证据文档修订，当前 head 与最终 CI 以 PR 元数据为准。
+- 本地 x64 包的 14 个生产 dist 文件与最终生产构建逐字节一致；首次校验工具使用了 POSIX 分隔符导致 Windows asar 查找失败，改用原生路径后通过，不是包文件缺失。
+- 主工作树与远端 master 仍为 `9807fd3`，已有未跟踪目录保留。没有合并、直接推送 master、发布或删除 worktree。

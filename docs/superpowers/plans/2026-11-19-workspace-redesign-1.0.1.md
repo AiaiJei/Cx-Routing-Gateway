@@ -61,7 +61,7 @@
 - [x] Run app lint/inspector where supported; record every allowed warning. Retain screenshots and critique in task-local ignored scratch.
 - [ ] **PARTIAL: window not enumerated by native UI tools.** Launch Electron on isolated user data and non-conflicting ports, check window/real preload/status and safe local settings operation; no real upstream credentials or provider requests. Verify --version reports 1.0.1. If runtime tooling prevents GUI evidence, record the concrete limitation separately.
 - [x] Request one independent review against base 9807fd3 with spec, this plan, changes and evidence. Resolve important findings with targeted reproductions and verification.
-- [ ] Commit final docs/fixes, push task branch, rewrite PR title/body for the final implementation; watch CI to completion and attach existing PR. Leave merge/Owner acceptance separately pending.
+- [x] Commit final docs/fixes, push task branch, rewrite PR title/body for the final implementation; watch CI to completion and attach existing PR. Leave merge/Owner acceptance separately pending.
 
 ## Evidence and rollback
 
