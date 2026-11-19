@@ -26,6 +26,38 @@ async function selectModels(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("RoutesPage", () => {
+  it("shows only a safe hostname and tolerates malformed upstream URLs", async () => {
+    const data = structuredClone(workspaceFixtures);
+    data.upstreams[0].baseUrl = "https://person:secret@api.northstar.example/v1?key=sensitive";
+    data.upstreams[1].baseUrl = "not a URL";
+    vi.spyOn(defaultWorkspaceClient, "getWorkspace").mockResolvedValue(data);
+    render(<RoutesPage />);
+    expect(await screen.findByText("api.northstar.example")).toBeVisible();
+    expect(screen.getByText("地址不可用")).toBeVisible();
+    expect(document.body).not.toHaveTextContent(/secret|sensitive/);
+    expect(screen.getByRole("region", { name: "模型路由列表" })).toHaveAttribute("tabindex", "0");
+  });
+
+  it("shows a useful empty state for a live workspace without routes", async () => {
+    vi.spyOn(defaultWorkspaceClient, "getWorkspace").mockResolvedValue(liveWorkspace());
+    render(<RoutesPage />);
+    expect(await screen.findByText("还没有模型路由，添加路由以连接客户端与上游。")).toBeVisible();
+    expect(screen.queryByText("northstar-large")).not.toBeInTheDocument();
+    expect(screen.getByText("0 条路由")).toBeVisible();
+  });
+
+  it("does not display example routes while loading or after a failed runtime read", async () => {
+    let rejectRead!: (error: Error) => void;
+    vi.spyOn(defaultWorkspaceClient, "getWorkspace").mockImplementation(() => new Promise((_resolve, reject) => { rejectRead = reject; }));
+    render(<RoutesPage />);
+    expect(screen.getByRole("status")).toHaveTextContent("正在读取工作区");
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    rejectRead(new Error("连接已断开"));
+    expect(await screen.findByRole("alert")).toHaveTextContent("连接已断开");
+    expect(screen.queryByText("northstar-large")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "添加路由" })).not.toBeInTheDocument();
+  });
+
   it("does not offer real route tests in fixture preview mode", async () => {
     render(<RoutesPage />);
     await screen.findByText("浏览器预览路由");

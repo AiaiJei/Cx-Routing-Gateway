@@ -1,3 +1,4 @@
+import { WorkspaceState } from "../components/WorkspaceState";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { EmptyResult, FixtureNotice, PageHeader, SearchField } from "../components/PageHeader";
 import { Button } from "../components/Button";
@@ -12,7 +13,7 @@ export function UpstreamsPage() {
   const [feedback, setFeedback] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [testingId, setTestingId] = useState<string | null>(null);
-  const { data, error } = useWorkspace();
+  const { data, error, loading } = useWorkspace();
   const [upstreams, setUpstreams] = useState(data.upstreams);
   useEffect(() => setUpstreams(data.upstreams), [data.upstreams]);
   const visibleUpstreams = useMemo(() => upstreams.filter((upstream) =>
@@ -69,11 +70,12 @@ export function UpstreamsPage() {
     setFeedback("上游已删除。");
   }
 
+  if (loading || error) return <WorkspaceState title="上游服务" loading={loading} error={error} />;
+
   return (
     <div className="page-content">
       <PageHeader title="上游服务" description="管理目标服务与配置的上游出站协议。" action={<Button variant="primary" onClick={() => setFormOpen((open) => !open)}>添加上游</Button>} />
       <FixtureNotice live={data.meta.live}>{data.meta.live ? "本机运行时数据" : "示例数据 · 非实时"}</FixtureNotice>
-      {error && <p className="action-feedback" role="alert">工作区数据读取失败：{error}</p>}
       <div className="toolbar"><SearchField label="搜索上游服务" value={query} onChange={setQuery} /><span className="result-count">{visibleUpstreams.length} 项</span></div>
       {feedback && <p className="action-feedback" role="status">{feedback}</p>}
       {formOpen && <Modal title={data.meta.live ? "新增上游" : "新增上游示例"} onClose={() => setFormOpen(false)}><form className="modal-form" onSubmit={addUpstream}>
@@ -83,13 +85,13 @@ export function UpstreamsPage() {
         <TextField label="上游 Key" name="key" type="password" required autoComplete="new-password" />
         <div className="form-actions"><Button variant={data.meta.live ? "accent" : "secondary"} onClick={data.meta.live ? () => setFeedback("请先保存上游，再从列表测试连接") : simulateNewUpstreamTest}>{data.meta.live ? "测试连接" : "模拟连通测试"}</Button><Button variant="primary" type="submit">{data.meta.live ? "保存上游" : "保存示例上游"}</Button></div>
       </form></Modal>}
-      {visibleUpstreams.length ? <div className="table-scroll"><table>
-        <thead><tr><th>服务</th><th>Base URL</th><th>模型</th><th>状态</th><th><span className="sr-only">操作</span></th></tr></thead>
+      {visibleUpstreams.length ? <div className="table-scroll" role="region" aria-label="上游服务列表" tabIndex={0}><table>
+        <thead><tr><th>服务 / Base URL</th><th>上游凭证</th><th>模型</th><th>状态</th><th><span className="sr-only">操作</span></th></tr></thead>
         <tbody>{visibleUpstreams.map((upstream) => {
           const statusTone = upstream.status === "已连接" ? "status-positive" : /失败|错误/.test(upstream.status) ? "status-negative" : upstream.status === "待测试" ? "status-warning" : "status-neutral";
           return <tr key={upstream.id}>
-            <td><strong>{upstream.name}</strong><span className="cell-subtext">凭证引用：{upstream.credentialLabel}</span></td>
-            <td><code className="url-cell">{upstream.baseUrl}</code></td>
+            <td><strong>{upstream.name}</strong><code className="cell-subtext url-cell">{upstream.baseUrl}</code></td>
+            <td><span className="cell-subtext">{upstream.credentialLabel}</span></td>
             <td>{upstream.models.length} 个{data.meta.live ? "已发现" : "预览"}模型</td>
             <td><span className={`status-badge ${statusTone}`}>{upstream.status}</span></td>
             <td><div className="table-actions"><Button variant={data.meta.live ? "accent" : "secondary"} size="small" aria-label={`测试 ${upstream.name}`} disabled={testingId === upstream.id} onClick={() => void testConnection(upstream.id)}>{testingId === upstream.id ? "测试中…" : data.meta.live ? "测试" : "模拟测试"}</Button>{data.meta.live && <Button variant="danger" size="small" onClick={() => void deleteUpstream(upstream.id)}>删除</Button>}</div></td>

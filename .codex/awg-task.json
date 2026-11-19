@@ -3,9 +3,9 @@
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
   "task_id": "CXRG-WORKSPACE-DESIGN-2026-11-19",
-  "title": "Notion information architecture, Linear layout, and Apple HIG components",
+  "title": "Desktop workspace redesign 1.0.1",
   "status": "active",
-  "stage": "design-review",
+  "stage": "implementation",
   "branch": "codex/desktop-workspace-redesign",
   "base": "master",
   "base_sha": "9807fd32b27c436dde55129308799ec4d6187643",
@@ -15,7 +15,17 @@
     "docs/concepts/workspace-redesign.svg",
     "docs/tasks/2026-11-19-workspace-redesign.md",
     "docs/task-record.md",
-    "docs/concepts/workspace-redesign.png"
+    "docs/concepts/workspace-redesign.png",
+    "apps/desktop/src/**",
+    "apps/desktop/package.json",
+    "apps/desktop/package-lock.json",
+    "apps/desktop/vite.config.ts",
+    "scripts/verify-release.mjs",
+    "scripts/check-update.mjs",
+    "scripts/smoke-packaged.mjs",
+    "tests/runtime/release-manifest.test.mjs",
+    "tests/runtime/check-update.test.mjs",
+    "docs/superpowers/plans/2026-11-19-workspace-redesign-1.0.1.md"
   ],
   "scope": {
     "include": [
@@ -24,10 +34,12 @@
       "Map information architecture, layout and component principles to the existing six Desktop pages",
       "Provide a static illustration, sources, acceptance criteria and rollback",
       "Review the design independently and record evidence",
-      "Refine the existing static design illustration and provide a PNG render as requested by the user on 2026-11-19"
+      "Refine the existing static design illustration and provide a PNG render as requested by the user on 2026-11-19",
+      "Implement the approved rendering across existing six pages using shared React components",
+      "Set Desktop package and lockfile to 1.0.1; derive release and update-tool version from package metadata",
+      "Verify component and runtime regressions, production build, responsive screenshots, and isolated Electron smoke"
     ],
     "exclude": [
-      "Product implementation before design approval",
       "Block editor, nested user-created pages, cloud collaboration or multiple workspaces",
       "Framework replacement, backend or storage schema changes",
       "Merge, deployment, release, direct push to master or worktree deletion"
@@ -39,10 +51,13 @@
       "create isolated branch/worktree",
       "commit design artifacts",
       "push task branch",
-      "create draft PR"
+      "create draft PR",
+      "implement approved six-page redesign",
+      "set product version 1.0.1",
+      "commit and push implementation to existing PR #6"
     ],
-    "design_approval": "pending",
-    "implementation_approval": "pending",
+    "design_approval": "approved: user requested implementation from the refined rendering",
+    "implementation_approval": "approved: user requested version 1.0.1 and implementation on PR #6",
     "scope_confirmation": "User explicitly selected information architecture and redesign of the existing six pages; no block editor or nested-page capability."
   },
   "acceptance": [
@@ -50,7 +65,10 @@
     "Each reference has an explicit role and source URL",
     "Existing components, routes and runtime boundaries are mapped",
     "Design, independent review and verification are recorded",
-    "Owner approval and implementation status remain distinct"
+    "Owner approval and implementation status remain distinct",
+    "Six pages match the approved shell and design with preserved runtime operations",
+    "Product metadata, Settings and release tooling report 1.0.1",
+    "Tests/build, visual evidence and independent review recorded"
   ],
   "rollback": "Revert this task's documentation commits or close the draft PR; retain branch and worktree unless separately authorized.",
   "owner_acceptance": "pending",
@@ -60,6 +78,12 @@
       "scope": "Typography, navigation icons, table spacing, protocol-flow illustration, and PNG export only",
       "design_approval": "pending",
       "request": "精修下细节吧；这个渲染图；"
+    },
+    {
+      "date": "2026-11-19",
+      "request": "按渲染图执行更新，版本号定义1.0.1",
+      "design_approval": "approved",
+      "scope": "Approved design implementation, product version 1.0.1, verification and existing PR update"
     }
   ]
 }

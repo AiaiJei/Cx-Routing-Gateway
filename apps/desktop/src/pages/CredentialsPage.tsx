@@ -1,5 +1,6 @@
+import { WorkspaceState } from "../components/WorkspaceState";
 import { useEffect, useState } from "react";
-import { FixtureNotice, PageHeader } from "../components/PageHeader";
+import { EmptyResult, FixtureNotice, PageHeader } from "../components/PageHeader";
 import { Button } from "../components/Button";
 import { TextField } from "../components/TextField";
 import { defaultWorkspaceClient } from "../data/workspace-client";
@@ -9,7 +10,7 @@ import type { AccessCredential } from "../domain/types";
 export function CredentialsPage() {
   const [message, setMessage] = useState("");
   const [scopeInput, setScopeInput] = useState("");
-  const { data, error } = useWorkspace();
+  const { data, error, loading } = useWorkspace();
   const [credentials, setCredentials] = useState(data.credentials);
   useEffect(() => setCredentials(data.credentials), [data.credentials]);
 
@@ -38,15 +39,16 @@ export function CredentialsPage() {
     setMessage("Key 已撤销。");
   }
 
+  if (loading || error) return <WorkspaceState title="接入凭证" loading={loading} error={error} />;
+
   return (
     <div className="page-content">
       <PageHeader title="接入凭证" description="供下游客户端使用的访问凭证管理界面。" action={<Button variant="primary" onClick={() => void createCredential()}>{data.meta.live ? "创建凭证" : "演示创建凭证"}</Button>} />
       <FixtureNotice live={data.meta.live}>{data.meta.live ? "本机凭证 · 仅显示脱敏预览" : "脱敏示例 · 未生成真实密钥"}</FixtureNotice>
-      {error && <p className="action-feedback" role="alert">工作区数据读取失败：{error}</p>}
       <p className="action-feedback" role="note">{data.meta.live ? "Key 只在创建或轮换结果中显示一次；页面列表只保留脱敏预览。" : "密钥创建、轮换和撤销尚未接入本机运行时。此页仅展示界面。"}</p>
       {data.meta.live && <div className="credential-scope"><TextField label="模型范围（逗号分隔，留空为全部）" value={scopeInput} onChange={(event) => setScopeInput(event.target.value)} placeholder="gateway-fast, gateway-reasoner" /></div>}
       {message && <p className="action-feedback" role="status">{message}</p>}
-      <div className="table-scroll"><table>
+      {credentials.length ? <div className="table-scroll" role="region" aria-label="接入凭证列表" tabIndex={0}><table>
         <thead><tr><th>名称</th><th>凭证预览</th><th>模型范围</th><th>创建时间</th><th>最近使用</th><th>状态</th></tr></thead>
         <tbody>{credentials.map((credential) => {
           const statusTone = credential.status === "已撤销" ? "status-negative" : credential.status === "运行时" ? "status-positive" : "status-neutral";
@@ -54,7 +56,7 @@ export function CredentialsPage() {
             <td><strong>{credential.label}</strong></td><td><code>{credential.preview}</code></td><td>{credential.scope}</td><td>{credential.createdAt}</td><td>{credential.lastUsed}</td><td><span className={`status-badge ${statusTone}`}>{credential.status}</span>{data.meta.live && <span className="row-actions"><Button variant="tertiary" size="small" onClick={() => void rotateCredential(credential.id)}>轮换</Button><Button variant="danger" size="small" onClick={() => void revokeCredential(credential.id)}>撤销</Button></span>}</td>
           </tr>;
         })}</tbody>
-      </table></div>
+      </table></div> : <EmptyResult>还没有接入凭证，创建后可供客户端使用。</EmptyResult>}
       <section className="endpoint-block credential-endpoint"><span className="field-label">本机接入 URL</span><code>{data.gateway.url}</code><span className="helper-text">{data.meta.live ? "Gateway 由 Desktop 本地运行时提供。" : "仅为界面示例；当前无 Gateway 服务监听。"}</span></section>
     </div>
   );
