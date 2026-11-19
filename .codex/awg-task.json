@@ -4,8 +4,8 @@
   "repository": "AiaiJei/Cx-Routing-Gateway",
   "task_id": "CXRG-REQUEST-LOGS-2026-11-19",
   "title": "Request logs 1.0.2",
-  "status": "active",
-  "stage": "verified-ready-for-pr",
+  "status": "complete",
+  "stage": "draft-pr-created",
   "branch": "codex/request-logs-1.0.2",
   "base": "master",
   "base_sha": "6acebc964b7f4f331ec5827819f4bf923829fd5f",
@@ -73,5 +73,6 @@
     "provider": "NOT_RUN",
     "browser": "PASS 1440/768/390 fixture mode",
     "desktop_tests": "61/61"
-  }
+  },
+  "pull_request": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/7"
 }

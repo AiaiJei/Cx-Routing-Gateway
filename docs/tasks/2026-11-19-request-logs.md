@@ -54,3 +54,8 @@ Rulings on reviewer boundaries:
 Invoked requesting-code-review, verification-before-completion and finishing-a-development-branch; systematic-debugging used for observed failures. CUA browser capability exercised for DOM, viewport and screenshots; manual responsive inspection substituted for taste inspect.mjs to follow the available browser-control interface. Computer-use Windows instructions were read; native Windows automation NOT_RUN. No new dependencies. Development dependency advisories remain outside the production-only audit claim.
 
 Task 1: complete. Task 2: complete. Verification and independent review: complete. Integration choice already supplied by user: commit/push dedicated branch and create PR against master. No merge, release, native installer, provider request or worktree cleanup authorized in this task. Owner acceptance remains pending.
+
+## PR integration
+- Dedicated Draft PR #7 created and attached: https://github.com/AiaiJei/Cx-Routing-Gateway/pull/7 . Base master, head codex/request-logs-1.0.2, implementation commit d5904ef.
+- Push-event CI at d5904ef: runtime SUCCESS, desktop SUCCESS, package SKIPPED (expected for nonrelease branch). PR-event CI was in progress when this record was written; final live status is on PR #7.
+- Main checkout remains master 6acebc9, with its original untracked directories retained. Task worktree and scratch evidence are preserved. No merge, release or deletion performed.

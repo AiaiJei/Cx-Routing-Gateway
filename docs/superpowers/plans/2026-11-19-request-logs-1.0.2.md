@@ -37,4 +37,4 @@ Interface: RequestTokens has input/output/cacheRead/cacheWrite/total/reasoning/a
 ## Task 3: Verify, review, PR
 - [x] Inspect real browser screenshots at 1440/768/390, verify popover placement and keyboard behavior; record any limitations.
 - [x] Independent whole-branch review; fix substantive findings with regression verification.
-- [ ] Record fresh tests/build, capability inventory, acceptance limits; commit explicit files and push dedicated branch; create and attach dedicated PR, check CI.
+- [x] Record fresh tests/build, capability inventory, acceptance limits; commit explicit files and push dedicated branch; create and attach dedicated PR, check CI.
