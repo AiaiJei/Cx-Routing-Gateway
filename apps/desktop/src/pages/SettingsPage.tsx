@@ -5,6 +5,7 @@ import { Button } from "../components/Button";
 import { useWorkspace } from "../data/use-workspace";
 import { defaultWorkspaceClient } from "../data/workspace-client";
 import { TextField } from "../components/TextField";
+import { version } from "../../package.json";
 
 export function SettingsPage() {
   const { data, error, loading } = useWorkspace();
@@ -57,7 +58,7 @@ export function SettingsPage() {
       {settingsMessage && <p className="action-feedback" role="status">{settingsMessage}</p>}
       </section>
       <section className="settings-section" aria-labelledby="desktop-settings-title"><h2 id="desktop-settings-title" className="section-title">桌面应用</h2>
-        <div className="settings-update"><div><p className="app-version">Cx-Routing Gateway</p><p className="helper-text">更新由你发起，安装前验证版本与文件。</p></div><div className="settings-update-actions"><Button variant="secondary" size="small" onClick={() => void checkUpdate()}>检查更新</Button>{updateAvailable && <Button variant="primary" size="small" onClick={() => void installUpdate()}>安装更新</Button>}</div>{updateMessage && <p className="settings-update-message helper-text" role="status">{updateMessage}</p>}</div>
+        <div className="settings-update"><div><p className="app-version">版本 {version}</p><p className="helper-text">更新由你发起，安装前验证版本与文件。</p></div><div className="settings-update-actions"><Button variant="secondary" size="small" onClick={() => void checkUpdate()}>检查更新</Button>{updateAvailable && <Button variant="primary" size="small" onClick={() => void installUpdate()}>安装更新</Button>}</div>{updateMessage && <p className="settings-update-message helper-text" role="status">{updateMessage}</p>}</div>
       </section>
       <section className="page-section"><h2 className="section-title">协议术语</h2><p className="body-copy">Res 为 Responses，Mes 为 Messages，Chat 为 Chat Completions。客户端请求决定入站协议，路由配置决定上游出站协议，响应返回原入站协议。</p></section>
     </div>

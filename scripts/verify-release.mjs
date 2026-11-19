@@ -3,6 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 
 const releaseDir = path.resolve(process.argv[2] || 'apps/desktop/release');
+const { version } = JSON.parse(await fs.readFile(new URL('../apps/desktop/package.json', import.meta.url), 'utf8'));
 const required = [
   'win-unpacked/Cx-Routing Gateway.exe',
   'win-unpacked/resources/app.asar',
@@ -11,8 +12,8 @@ const required = [
   'win-unpacked/resources/runtime/packages/shared/src/config-store.mjs',
   'win-unpacked/resources/runtime/packages/shared/src/secret-vault.mjs',
   'win-unpacked/resources/runtime/scripts/check-update.mjs',
-  'Cx-Routing Gateway Setup 0.1.0.exe',
-  'Cx-Routing Gateway Setup 0.1.0.exe.blockmap',
+  `Cx-Routing Gateway Setup ${version}.exe`,
+  `Cx-Routing Gateway Setup ${version}.exe.blockmap`,
 ];
 
 const artifacts = [];
@@ -27,7 +28,7 @@ for (const relative of required) {
 
 const privateKey = process.env.CXRG_RELEASE_PRIVATE_KEY;
 const publicKey = process.env.CXRG_RELEASE_PUBLIC_KEY;
-const manifest = { product: 'Cx-Routing Gateway', version: '0.1.0', platform: 'win32', generatedAt: new Date().toISOString(), signed: Boolean(privateKey && publicKey), artifacts };
+const manifest = { product: 'Cx-Routing Gateway', version, platform: 'win32', generatedAt: new Date().toISOString(), signed: Boolean(privateKey && publicKey), artifacts };
 if (privateKey && publicKey) {
   manifest.signature = crypto.sign(null, Buffer.from(JSON.stringify(manifest)), privateKey).toString('base64');
   manifest.publicKey = publicKey;

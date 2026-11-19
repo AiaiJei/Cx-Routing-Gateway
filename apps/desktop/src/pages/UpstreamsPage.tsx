@@ -85,7 +85,7 @@ export function UpstreamsPage() {
         <TextField label="上游 Key" name="key" type="password" required autoComplete="new-password" />
         <div className="form-actions"><Button variant={data.meta.live ? "accent" : "secondary"} onClick={data.meta.live ? () => setFeedback("请先保存上游，再从列表测试连接") : simulateNewUpstreamTest}>{data.meta.live ? "测试连接" : "模拟连通测试"}</Button><Button variant="primary" type="submit">{data.meta.live ? "保存上游" : "保存示例上游"}</Button></div>
       </form></Modal>}
-      {visibleUpstreams.length ? <div className="table-scroll" role="region" aria-label="上游服务列表" tabIndex={0}><table>
+      {visibleUpstreams.length ? <div className="table-scroll" role="region" aria-label="上游服务列表" tabIndex={0}><table className="upstreams-table">
         <thead><tr><th>服务 / Base URL</th><th>上游凭证</th><th>模型</th><th>状态</th><th><span className="sr-only">操作</span></th></tr></thead>
         <tbody>{visibleUpstreams.map((upstream) => {
           const statusTone = upstream.status === "已连接" ? "status-positive" : /失败|错误/.test(upstream.status) ? "status-negative" : upstream.status === "待测试" ? "status-warning" : "status-neutral";

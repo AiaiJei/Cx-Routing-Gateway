@@ -265,3 +265,16 @@ td code, code { font-family: "Geist Mono Variable", "Cascadia Code", monospace; 
   .form-actions { flex-wrap: wrap; }
   .overview-actions .geist-button { flex-grow: 1; }
 }
+
+/* Dense data remains readable inside the local scroll region at narrow widths. */
+.logs-table { min-width: 1080px; }
+.logs-table td:nth-child(1) { min-width: 172px; }
+.logs-table td:nth-child(2), .logs-table td:nth-child(3) { min-width: 150px; }
+.logs-table time, .logs-table code { white-space: nowrap; }
+.credentials-table { min-width: 980px; }
+.credentials-table td:first-child { min-width: 150px; }
+.credentials-table code { white-space: nowrap; }
+.upstreams-table { min-width: 800px; }
+.upstreams-table td:first-child { width: 34%; min-width: 260px; }
+.upstreams-table td:nth-child(2) { min-width: 140px; }
+.upstreams-table td:nth-child(3) { min-width: 110px; }

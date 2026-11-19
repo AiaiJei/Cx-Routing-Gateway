@@ -48,7 +48,7 @@ export function CredentialsPage() {
       <p className="action-feedback" role="note">{data.meta.live ? "Key 只在创建或轮换结果中显示一次；页面列表只保留脱敏预览。" : "密钥创建、轮换和撤销尚未接入本机运行时。此页仅展示界面。"}</p>
       {data.meta.live && <div className="credential-scope"><TextField label="模型范围（逗号分隔，留空为全部）" value={scopeInput} onChange={(event) => setScopeInput(event.target.value)} placeholder="gateway-fast, gateway-reasoner" /></div>}
       {message && <p className="action-feedback" role="status">{message}</p>}
-      {credentials.length ? <div className="table-scroll" role="region" aria-label="接入凭证列表" tabIndex={0}><table>
+      {credentials.length ? <div className="table-scroll" role="region" aria-label="接入凭证列表" tabIndex={0}><table className="credentials-table">
         <thead><tr><th>名称</th><th>凭证预览</th><th>模型范围</th><th>创建时间</th><th>最近使用</th><th>状态</th></tr></thead>
         <tbody>{credentials.map((credential) => {
           const statusTone = credential.status === "已撤销" ? "status-negative" : credential.status === "运行时" ? "status-positive" : "status-neutral";

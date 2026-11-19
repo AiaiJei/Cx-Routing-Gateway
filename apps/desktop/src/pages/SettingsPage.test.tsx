@@ -5,6 +5,11 @@ import userEvent from "@testing-library/user-event";
 import { defaultWorkspaceClient } from "../data/workspace-client";
 
 describe("SettingsPage", () => {
+  it("shows the installed product version in the desktop application section", async () => {
+    render(<SettingsPage />);
+    expect(await screen.findByText("版本 1.0.1")).toBeVisible();
+    expect(screen.getByRole("heading", { name: "桌面应用" })).toBeVisible();
+  });
   it("identifies runtime-dependent settings as unavailable and read-only", async () => {
     render(<SettingsPage />);
     expect(await screen.findByText("运行时未接入，以下配置尚不可更改。" )).toBeVisible();

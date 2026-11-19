@@ -30,7 +30,7 @@ export function LogsPage() {
         <span className="result-count">{logs.length} 条{data.meta.live ? "" : "示例"}</span>
         {hasFilter && <Button variant="tertiary" size="small" aria-label="清除筛选" onClick={() => { setQuery(""); setStatus("全部"); }}>清除筛选</Button>}
       </div>
-      {logs.length ? <div className="table-scroll" role="region" aria-label="调用日志列表" tabIndex={0}><table>
+      {logs.length ? <div className="table-scroll" role="region" aria-label="调用日志列表" tabIndex={0}><table className="logs-table">
         <thead><tr><th>时间 / 请求 ID</th><th>模型</th><th>入口凭证</th><th>协议方向</th><th>结果</th><th className="numeric">耗时</th><th><span className="sr-only">操作</span></th></tr></thead>
         <tbody>{logs.map((log) => (
           <tr key={log.id}>
