@@ -1,12 +1,14 @@
+import { WorkspaceState } from "../components/WorkspaceState";
 import { useEffect, useState } from "react";
 import { FixtureNotice, PageHeader } from "../components/PageHeader";
 import { Button } from "../components/Button";
 import { useWorkspace } from "../data/use-workspace";
 import { defaultWorkspaceClient } from "../data/workspace-client";
 import { TextField } from "../components/TextField";
+import { version } from "../../package.json";
 
 export function SettingsPage() {
-  const { data, error } = useWorkspace();
+  const { data, error, loading } = useWorkspace();
   const [updateMessage, setUpdateMessage] = useState("");
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [retention, setRetention] = useState("1000");
@@ -38,21 +40,27 @@ export function SettingsPage() {
       setSettingsMessage("日志保留策略已保存。");
     } catch (caught) { setSettingsMessage(caught instanceof Error ? caught.message : "日志保留策略保存失败"); }
   }
+  if (loading || error) return <WorkspaceState title="设置" loading={loading} error={error} />;
+
   return (
     <div className="page-content">
       <PageHeader title="设置" description="本机 Gateway 与桌面应用的运行选项。" />
       <FixtureNotice live={data.meta.live}>{data.meta.live ? "本机运行时配置" : "示例配置 · 只读"}</FixtureNotice>
-      {error && <p className="action-feedback" role="alert">工作区数据读取失败：{error}</p>}
       <p className="action-feedback" role="note">{data.meta.live ? "运行时已接入；可调整日志保留条数。" : "运行时未接入，以下配置尚不可更改。"}</p>
-      <div className="action-feedback"><Button variant="secondary" size="small" onClick={() => void checkUpdate()}>检查更新</Button>{updateAvailable && <Button variant="primary" size="small" onClick={() => void installUpdate()}>安装更新</Button>}{updateMessage && <span>{updateMessage}</span>}</div>
-      {settingsMessage && <p className="action-feedback" role="status">{settingsMessage}</p>}
-      <section className="settings-list" aria-label="Gateway 设置">
+      <section className="settings-section" aria-labelledby="gateway-settings-title">
+      <h2 id="gateway-settings-title" className="section-title">Gateway 设置</h2>
+      <div className="settings-list">
         {data.settings.map((setting) => <div className={`setting-row${data.meta.live && setting.label === "日志保留条数" ? " setting-row-editable" : ""}`} key={setting.label}>
-          <div><label className="field-label" htmlFor={`setting-${setting.label}`}>{setting.label}</label><p className="helper-text">{data.meta.live && setting.label === "日志保留条数" ? "保留范围：1 到 100000 条。" : "本机运行时配置，当前不可用"}</p></div>
+          <div><label className="field-label" htmlFor={`setting-${setting.label}`}>{setting.label}</label><p className="helper-text">{data.meta.live && setting.label === "日志保留条数" ? "保留范围：1 到 100000 条。" : data.meta.live ? "当前本机配置，仅供查看" : "示例配置，当前不可更改"}</p></div>
           {data.meta.live && setting.label === "日志保留条数" ? <><TextField id={`setting-${setting.label}`} type="number" min="1" max="100000" value={retention} onChange={(event) => setRetention(event.target.value)} /><Button variant="secondary" size="small" onClick={() => void saveRetention()}>保存日志保留</Button></> : <TextField id={`setting-${setting.label}`} value={setting.value} disabled readOnly />}
         </div>)}
+      </div>
+      {settingsMessage && <p className="action-feedback" role="status">{settingsMessage}</p>}
       </section>
-      <section className="page-section"><h2 className="section-title">协议术语</h2><p className="body-copy">Res、Mes、Chat 为规划中的协议简称，具体版本与转换能力仍待确认。客户端请求决定入站协议，路由配置决定上游出站协议，响应返回原入站协议。</p></section>
+      <section className="settings-section" aria-labelledby="desktop-settings-title"><h2 id="desktop-settings-title" className="section-title">桌面应用</h2>
+        <div className="settings-update"><div><p className="app-version">版本 {version}</p><p className="helper-text">更新由你发起，安装前验证版本与文件。</p></div><div className="settings-update-actions"><Button variant="secondary" size="small" onClick={() => void checkUpdate()}>检查更新</Button>{updateAvailable && <Button variant="primary" size="small" onClick={() => void installUpdate()}>安装更新</Button>}</div>{updateMessage && <p className="settings-update-message helper-text" role="status">{updateMessage}</p>}</div>
+      </section>
+      <section className="page-section"><h2 className="section-title">协议术语</h2><p className="body-copy">Res 为 Responses，Mes 为 Messages，Chat 为 Chat Completions。客户端请求决定入站协议，路由配置决定上游出站协议，响应返回原入站协议。</p></section>
     </div>
   );
 }

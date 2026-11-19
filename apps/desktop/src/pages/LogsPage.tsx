@@ -1,3 +1,4 @@
+import { WorkspaceState } from "../components/WorkspaceState";
 import { useMemo, useState } from "react";
 import { EmptyResult, FixtureNotice, PageHeader, SearchField } from "../components/PageHeader";
 import { Button } from "../components/Button";
@@ -11,25 +12,26 @@ export function LogsPage() {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("全部");
   const [selectedLog, setSelectedLog] = useState<CallLog | null>(null);
-  const { data, error } = useWorkspace();
+  const { data, error, loading } = useWorkspace();
   const logs = useMemo(() => data.logs.filter((log) => {
     const textMatches = `${log.id} ${log.model} ${log.credential} ${log.upstream} ${log.direction} ${log.error ?? ""}`.toLowerCase().includes(query.trim().toLowerCase());
     return textMatches && (status === "全部" || log.status.startsWith(status));
   }), [data.logs, query, status]);
   const hasFilter = query.length > 0 || status !== "全部";
 
+  if (loading || error) return <WorkspaceState title="调用日志" loading={loading} error={error} />;
+
   return (
     <div className="page-content">
       <PageHeader title="调用日志" description="查看请求摘要；默认不包含请求或响应正文。" />
       <FixtureNotice live={data.meta.live}>{data.meta.live ? "本机运行时日志 · 正文已脱敏" : "示例日志 · 非运行时记录"}</FixtureNotice>
-      {error && <p className="action-feedback" role="alert">工作区数据读取失败：{error}</p>}
       <div className="toolbar"><SearchField label="搜索调用日志" value={query} onChange={setQuery} />
         <SegmentedControl ariaLabel="按状态筛选" value={status} options={["全部", "成功", "失败"]} onChange={setStatus} />
         <span className="result-count">{logs.length} 条{data.meta.live ? "" : "示例"}</span>
         {hasFilter && <Button variant="tertiary" size="small" aria-label="清除筛选" onClick={() => { setQuery(""); setStatus("全部"); }}>清除筛选</Button>}
       </div>
-      {logs.length ? <div className="table-scroll"><table>
-        <thead><tr><th>时间 / 请求 ID</th><th>模型</th><th>入口凭证</th><th>协议方向</th><th>结果</th><th>耗时</th><th><span className="sr-only">操作</span></th></tr></thead>
+      {logs.length ? <div className="table-scroll" role="region" aria-label="调用日志列表" tabIndex={0}><table className="logs-table">
+        <thead><tr><th>时间 / 请求 ID</th><th>模型</th><th>入口凭证</th><th>协议方向</th><th>结果</th><th className="numeric">耗时</th><th><span className="sr-only">操作</span></th></tr></thead>
         <tbody>{logs.map((log) => (
           <tr key={log.id}>
             <td><time>{log.time}</time><code className="cell-subtext">{log.id}</code></td>

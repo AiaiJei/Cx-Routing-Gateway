@@ -279,3 +279,24 @@
 - 当前 PR #5 head 为 `306c2dc`。任务工作树唯一未跟踪内容为 `.taste-skill/`，应在移除工作树前保留归档副本，不加入产品提交。
 - 新鲜验证：Runtime 59/59、Desktop 45/45、Desktop 生产构建通过；GitHub runtime/desktop 检查通过。`npm run verify:all` 最终因本地缺少 `apps/desktop/release/win-unpacked/Cx-Routing Gateway.exe` 在 release manifest 步骤退出 1；release/package smoke 本次未运行。
 - 集成状态：进行中，尚未改 PR base、合并远端 PR、更新本地主工作树或移除任务工作树。
+
+## 2026-11-19 Notion / Linear / Apple HIG 专属设计 PR
+
+- 用户要求建立专属 PR，采用 Notion 框架与架构、Linear 布局及 Apple HIG 组件规范。
+- 新鲜核查 PR #4、#5 已合并，master 为 `9807fd32b27c436dde55129308799ec4d6187643`；上方 PR #5 的“集成进行中”为历史记录。
+- 在仓内 `.worktree/desktop-workspace-redesign` 和 `codex/desktop-workspace-redesign` 分支开展，不继承 PR #5 的合并/删除授权。
+- [设计稿](superpowers/specs/2026-11-19-workspace-redesign-design.md)记录参考分工、共享组件、六页布局、验收与回退；[任务记录](tasks/2026-11-19-workspace-redesign.md)记录合同、能力和证据。
+- 当前为设计提案与 Draft PR 阶段；产品实现、Owner 设计批准与验收尚未完成。
+
+### 1.0.1 实施修订
+
+- 用户已批准按精修渲染图执行，并明确版本 1.0.1；专属 PR #6 继续承载六页改版及版本链路修正。
+- 已完成分组导航/上下文、共享样式、路由列表/协议路径、设置版本显示；保留既有 Gateway/IPC 行为。修复独立审查指出的历史导航遮罩和 fixture/live 混合提交问题。
+- 本轮 Desktop 55/55、Runtime 61/61、production build、生产依赖 audit、Windows x64 解包构建及实际 1.0.1 版本 smoke 均通过；六页三尺寸截图无页面级横向溢出。
+- 原生 GUI 操作为 PARTIAL/NOT_RUN（隔离窗口未被 UI inventory 枚举）；真实 provider、NSIS 安装/签名/发布、Owner 最终验收尚未执行；没有合并或推送 master。
+- 详细证据与局限：[任务记录](tasks/2026-11-19-workspace-redesign.md)。
+
+### PR #6 集成授权
+
+- 2026-11-19 用户授权合并 PR #6、同步主工作树并移除本任务 worktree；未授权发布或删除其他工作树/分支。
+- 合并前 Desktop 55/55、Runtime 61/61、production build 新鲜验证通过；详细授权、证据归档与最终结果入口见 [任务记录](tasks/2026-11-19-workspace-redesign.md)。

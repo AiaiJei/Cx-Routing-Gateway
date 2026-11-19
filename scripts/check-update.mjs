@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 function versionParts(value) {
   const parts = String(value).split('.').map((part) => Number.parseInt(part, 10));
@@ -26,13 +27,15 @@ function verifyManifest(manifest, product) {
   return { manifest, signed };
 }
 
-export async function checkUpdate({ manifestUrl, currentVersion = '0.1.0', product = 'Cx-Routing Gateway' }) {
+export async function checkUpdate({ manifestUrl, currentVersion, product = 'Cx-Routing Gateway' }) {
+  if (!currentVersion) throw new Error('currentVersion is required');
   const { manifest, signed } = verifyManifest(await fetchManifest(manifestUrl), product);
   const comparison = compareVersions(manifest.version, currentVersion);
   return { available: comparison > 0 && signed, version: manifest.version, signed, artifacts: manifest.artifacts || [] };
 }
 
-export async function installUpdate({ manifestUrl, currentVersion = '0.1.0', product = 'Cx-Routing Gateway', downloadDir }) {
+export async function installUpdate({ manifestUrl, currentVersion, product = 'Cx-Routing Gateway', downloadDir }) {
+  if (!currentVersion) throw new Error('currentVersion is required');
   const { manifest, signed } = verifyManifest(await fetchManifest(manifestUrl), product);
   if (!signed || compareVersions(manifest.version, currentVersion) <= 0) throw new Error('No verified update is available');
   const artifact = (manifest.artifacts || []).find((item) => typeof item?.path === 'string' && /\.exe$/i.test(item.path) && !/blockmap|win-unpacked/i.test(item.path));
@@ -53,8 +56,9 @@ export async function installUpdate({ manifestUrl, currentVersion = '0.1.0', pro
   return { version: manifest.version, path: targetPath, bytes: bytes.length, sha256: hash };
 }
 
-if (process.argv[1] && new URL(import.meta.url).pathname.endsWith(process.argv[1].replaceAll('\\', '/'))) {
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const manifestUrl = process.env.CXRG_UPDATE_MANIFEST_URL;
   if (!manifestUrl) throw new Error('CXRG_UPDATE_MANIFEST_URL is required');
-  console.log(JSON.stringify(await checkUpdate({ manifestUrl, currentVersion: process.env.CXRG_CURRENT_VERSION || '0.1.0' }), null, 2));
+  const currentVersion = process.env.CXRG_CURRENT_VERSION || JSON.parse(await fs.readFile(new URL('../apps/desktop/package.json', import.meta.url), 'utf8')).version;
+  console.log(JSON.stringify(await checkUpdate({ manifestUrl, currentVersion }), null, 2));
 }

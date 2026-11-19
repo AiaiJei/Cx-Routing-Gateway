@@ -10,8 +10,9 @@ afterEach(() => {
 });
 
 describe("CredentialsPage", () => {
-  it("keeps the header action label on one line", () => {
+  it("keeps the header action label on one line", async () => {
     render(<CredentialsPage />);
+    await screen.findByText("脱敏示例 · 未生成真实密钥");
     expect(getComputedStyle(screen.getByRole("button", { name: "演示创建凭证" })).whiteSpace).toBe("nowrap");
   });
 

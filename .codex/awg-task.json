@@ -2,55 +2,130 @@
   "contract_version": 1,
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
-  "task_id": "CXRG-FE-IOS-HIG-2026-11-19",
-  "title": "Desktop iOS-inspired refinement on PR #4",
+  "task_id": "CXRG-WORKSPACE-DESIGN-2026-11-19",
+  "title": "Desktop workspace redesign 1.0.1",
   "status": "active",
-  "branch": "codex/desktop-frontend-ios-hig",
-  "base": "codex/project-stage0-contract",
+  "stage": "integration-authorized",
+  "branch": "codex/desktop-workspace-redesign",
+  "base": "master",
+  "base_sha": "9807fd32b27c436dde55129308799ec4d6187643",
   "authorized_paths": [
     ".codex/awg-task.json",
-    "docs/superpowers/specs/2026-11-19-desktop-ios-hig-design.md",
-    "docs/superpowers/plans/2026-11-19-desktop-ios-hig.md",
+    "docs/superpowers/specs/2026-11-19-workspace-redesign-design.md",
+    "docs/concepts/workspace-redesign.svg",
+    "docs/tasks/2026-11-19-workspace-redesign.md",
     "docs/task-record.md",
-    ".taste-skill/**",
+    "docs/concepts/workspace-redesign.png",
     "apps/desktop/src/**",
-    "apps/desktop/electron/main.cjs",
-    "apps/desktop/electron/preload.cjs",
-    "apps/desktop/electron/runtime-supervisor.cjs",
-    "services/gateway/src/server.mjs",
-    "tests/**"
+    "apps/desktop/package.json",
+    "apps/desktop/package-lock.json",
+    "apps/desktop/vite.config.ts",
+    "scripts/verify-release.mjs",
+    "scripts/check-update.mjs",
+    "scripts/smoke-packaged.mjs",
+    "tests/runtime/release-manifest.test.mjs",
+    "tests/runtime/check-update.test.mjs",
+    "docs/superpowers/plans/2026-11-19-workspace-redesign-1.0.1.md",
+    "apps/desktop/electron/main.cjs"
   ],
   "scope": {
     "include": [
-      "Build on PR #4 at 480f54cf490cdb58de9a48be891d61135d594ecc",
-      "Refine the existing Desktop renderer with iOS-inspired semantic colors, grouped surfaces, and controls",
-      "Remove the sidebar product title while retaining product identity in the native title bar and workspace header",
-      "Add a corresponding decorative SVG icon to each of the six navigation destinations",
-      "Add an interactive route test dialog that sends a user-editable prompt through the selected route's real Gateway path",
-      "Use an in-memory route-scoped test credential that is removed after one request and is never persisted or exposed to the renderer",
-      "Clearly disclose that real upstream test calls may incur provider charges",
-      "Preserve PR #4 runtime-backed interactions, multi-upstream priority routing, and explicit fixture/runtime states",
-      "Store generated visual verification screenshots and reports under .taste-skill/ without including them in the product change",
-      "Record the user's scope extension, retarget PR #5 to master after PR #4 merged, and merge PR #5 when required checks permit",
-      "Synchronize the main worktree with the merged PR #5 result",
-      "Remove the PR #5 task worktree after preserving untracked verification artifacts"
+      "Create a dedicated draft PR against master with design artifacts and the task contract",
+      "Study the supplied Notion, Linear and Apple HIG references",
+      "Map information architecture, layout and component principles to the existing six Desktop pages",
+      "Provide a static illustration, sources, acceptance criteria and rollback",
+      "Review the design independently and record evidence",
+      "Refine the existing static design illustration and provide a PNG render as requested by the user on 2026-11-19",
+      "Implement the approved rendering across existing six pages using shared React components",
+      "Set Desktop package and lockfile to 1.0.1; derive release and update-tool version from package metadata",
+      "Verify component and runtime regressions, production build, responsive screenshots, and isolated Electron smoke",
+      "Merge PR #6, synchronize primary master, archive task evidence and remove only the dedicated task worktree under explicit 2026-11-19 authorization"
     ],
     "exclude": [
-      "Changes to PR #4 route matching, protocol conversion, upstream failover policy, persistent storage schema, or external provider profiles",
-      "Release/deployment, force-pushing master, deleting task branches, or changes to other worktrees"
+      "Block editor, nested user-created pages, cloud collaboration or multiple workspaces",
+      "Framework replacement, backend or storage schema changes",
+      "Publication/deployment, direct push to master, task branch deletion, or modification/deletion of other worktrees"
     ]
   },
+  "authorization": {
+    "source": "User request on 2026-11-19 to establish a dedicated PR using Notion architecture, Linear layout and Apple HIG components",
+    "operations": [
+      "create isolated branch/worktree",
+      "commit design artifacts",
+      "push task branch",
+      "create draft PR",
+      "implement approved six-page redesign",
+      "set product version 1.0.1",
+      "commit and push implementation to existing PR #6",
+      "mark PR #6 ready and merge to master",
+      "fast-forward primary worktree to merged master",
+      "archive ignored task artifacts and remove this task worktree"
+    ],
+    "design_approval": "approved: user requested implementation from the refined rendering",
+    "implementation_approval": "approved: user requested version 1.0.1 and implementation on PR #6",
+    "scope_confirmation": "User explicitly selected information architecture and redesign of the existing six pages; no block editor or nested-page capability."
+  },
   "acceptance": [
-    "All six screens are navigable, each navigation item has its SVG icon, and the sidebar has no site title",
-    "Semantic system colors, protocol distinctions, and grouped controls are applied consistently",
-    "PR #4 runtime-backed interactions and fixture/runtime disclosure remain intact",
-    "Real route tests run through the Gateway path with route-scoped in-memory authorization and no persisted test credentials",
-    "The test dialog discloses that upstream provider charges may apply",
-    "Responsive and keyboard accessibility checks are recorded",
-    "Desktop tests, production build, visual checks, and independent review are recorded",
-    "No Critical or Important review findings remain; Owner acceptance is recorded separately",
-    "PR #5 is merged to master, the main worktree reflects the merge, and the task worktree is removed with untracked artifacts preserved"
+    "Dedicated draft PR exists against master and is attached to this chat",
+    "Each reference has an explicit role and source URL",
+    "Existing components, routes and runtime boundaries are mapped",
+    "Design, independent review and verification are recorded",
+    "Owner approval and implementation status remain distinct",
+    "Six pages match the approved shell and design with preserved runtime operations",
+    "Product metadata, Settings and release tooling report 1.0.1",
+    "Tests/build, visual evidence and independent review recorded",
+    "PR #6 merged; primary master matches origin/master; task evidence archived; dedicated task worktree removed"
   ],
-  "rollback": "Revert only this refinement's commits while preserving the PR #4 base and its runtime changes.",
-  "owner_acceptance": "pending"
+  "rollback": "Revert PR #6 on master through a new authorized change if needed; evidence and all local packages retained under .worktree/archives/pr6-desktop-1.0.1-a57f5b1; task branch retained.",
+  "owner_acceptance": "pending",
+  "revisions": [
+    {
+      "date": "2026-11-19",
+      "scope": "Typography, navigation icons, table spacing, protocol-flow illustration, and PNG export only",
+      "design_approval": "pending",
+      "request": "精修下细节吧；这个渲染图；"
+    },
+    {
+      "date": "2026-11-19",
+      "request": "按渲染图执行更新，版本号定义1.0.1",
+      "design_approval": "approved",
+      "scope": "Approved design implementation, product version 1.0.1, verification and existing PR update"
+    },
+    {
+      "request": "优化模型路由/凭证按钮布局；滚动条放在内部、细小淡化、全局统一",
+      "date": "2026-11-19",
+      "scope": "Dedicated row action columns, shared button layout, internal workspace scrolling and global scrollbar appearance; preserve version 1.0.1 and all backend behavior",
+      "design_approval": "approved by direct change request"
+    },
+    {
+      "request": "窗口尺寸和比例缩小15%，后拉起desktop",
+      "scope": "Scale default and minimum window dimensions to 85%, set renderer zoomFactor 0.85, rebuild and launch Desktop 1.0.1",
+      "design_approval": "approved by direct change request",
+      "date": "2026-11-19"
+    },
+    {
+      "design_approval": "approved by direct refinement request",
+      "scope": "Present ordered upstream targets as compact horizontal priority tags with secondary hostnames and one failover summary; preserve routing order and behavior",
+      "date": "2026-11-19",
+      "request": "目标上游改为横向/标签式或更好的呈现"
+    },
+    {
+      "design_approval": "existing approval retained",
+      "scope": "Commit integration authorization, ready/merge PR #6 into master, fast-forward primary worktree, preserve all task evidence/packages, remove this task worktree",
+      "request": "提交合并PR#，任务工作树合并主工作树后并移除任务工作树",
+      "date": "2026-11-19"
+    }
+  ],
+  "product_version": "1.0.1",
+  "verification": {
+    "runtime_tests": "61/61 (final revision)",
+    "independent_review": "Window85% and upstream priority presentation reviewed; no substantive findings",
+    "native_gui": "Latest upstream-tag package launched; actual AX shows production file URL and Gateway running; native pixel screenshot remains unavailable",
+    "desktop_tests": "55/55 (final upstream-tag revision)",
+    "package_version": "PASS: executable1.0.1, packaged main and14 dist files match final sources/build",
+    "production_build": "PASS",
+    "visual": "Upstream priority tags verified at 1440/960/390; double targets share one row, tag overflows0; global internal scroll and action layout retained",
+    "production_audit": "0 vulnerabilities",
+    "provider": "NOT_RUN"
+  }
 }

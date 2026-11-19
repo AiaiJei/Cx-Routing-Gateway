@@ -8,6 +8,7 @@ describe("UpstreamsPage", () => {
   it("filters upstreams and marks connectivity actions as simulated", async () => {
     const user = userEvent.setup();
     render(<UpstreamsPage />);
+    await screen.findByRole("button", { name: "添加上游" });
     const search = screen.getByRole("searchbox", { name: "搜索上游服务" });
     await user.type(search, "Northstar");
     expect(screen.getByText("Northstar AI")).toBeVisible();
@@ -19,6 +20,7 @@ describe("UpstreamsPage", () => {
   it("shows a useful empty result and lets the search be cleared", async () => {
     const user = userEvent.setup();
     render(<UpstreamsPage />);
+    await screen.findByRole("button", { name: "添加上游" });
     const search = screen.getByRole("searchbox", { name: "搜索上游服务" });
     await user.type(search, "missing");
     expect(screen.getByText("没有匹配的上游服务")).toBeVisible();
@@ -29,6 +31,7 @@ describe("UpstreamsPage", () => {
   it("adds a session-only upstream through a labeled form", async () => {
     const user = userEvent.setup();
     render(<UpstreamsPage />);
+    await screen.findByRole("button", { name: "添加上游" });
     await user.click(screen.getByRole("button", { name: "添加上游" }));
     expect(screen.getByRole("dialog", { name: "新增上游示例" })).toBeVisible();
     expect(screen.getByRole("button", { name: "关闭弹窗" })).toHaveTextContent("×");
@@ -60,6 +63,7 @@ describe("UpstreamsPage", () => {
     try {
       const user = userEvent.setup();
       render(<UpstreamsPage />);
+    await screen.findByRole("button", { name: "添加上游" });
       const testButton = await screen.findByRole("button", { name: "测试 Live API" });
       expect(testButton).toHaveClass("geist-button", "geist-button--accent");
       expect(screen.getByRole("button", { name: "删除" })).toHaveClass("geist-button", "geist-button--danger");

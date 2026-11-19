@@ -1,0 +1,59 @@
+#root { display: flex; flex-direction: column; height: 100svh; min-height: 0; overflow: hidden; }
+.window-titlebar { position: relative; flex: 0 0 36px; z-index: 6; display: flex; align-items: center; justify-content: space-between; height: 36px; padding-left: 15px; background: var(--raised); border-bottom: 1px solid var(--border); color: var(--text); -webkit-app-region: drag; user-select: none; }
+.window-titlebar-brand { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 500; }
+.window-titlebar-brand svg { width: 18px; height: 18px; color: var(--muted); }
+.window-controls { display: flex; height: 36px; -webkit-app-region: no-drag; }
+.window-controls button { display: grid; place-items: center; width: 46px; height: 36px; border: 0; background: transparent; color: var(--muted); font-size: 19px; cursor: pointer; }
+.window-controls button:hover { background: var(--active); color: var(--text); }
+.window-controls .window-close:hover { background: var(--negative); color: #fff; }
+.window-maximize-mark { position: relative; width: 10px; height: 10px; border: 1px solid currentColor; border-radius: 1px; }
+.window-maximize-mark.is-maximized::before { position: absolute; top: -3px; left: 2px; width: 8px; height: 7px; border: 1px solid currentColor; border-bottom: 0; content: ""; }
+/* 1440 = 224 sidebar + 32 gutter + 1152 content + 32 gutter. */
+.app-frame { display: grid; flex: 1; min-height: 0; grid-template-columns: var(--sidebar-width) minmax(0, 1fr); overflow: hidden; }
+.sidebar { position: relative; display: flex; flex-direction: column; gap: 24px; height: 100%; min-height: 0; min-width: 0; padding: 24px 12px 18px; border-right: 1px solid var(--border); background: var(--raised); overflow-y: auto; }
+.primary-nav { display: flex; flex: 1; flex-direction: column; gap: 28px; }
+.nav-group { display: grid; align-content: start; gap: 4px; }
+.nav-group-label { margin: 0 8px 8px; color: var(--muted); font-size: 12px; font-weight: 500; }
+.nav-link { display: flex; align-items: center; min-height: 36px; gap: 10px; padding: 0 8px; border-radius: 6px; color: var(--text); font-size: 14px; text-decoration: none; transition: background-color 120ms ease; }
+.nav-link svg { flex: 0 0 20px; width: 20px; height: 20px; color: #71737b; }
+.nav-link:hover { background: #efeff2; }
+.nav-link.is-active { background: var(--active); color: var(--text); font-weight: 500; }
+.nav-group-footer { margin-top: auto; padding-top: 16px; border-top: 1px solid var(--border); }
+.sidebar-footnote { margin: 0 8px; color: var(--muted); font-size: 12px; }
+.workspace-column { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
+.topbar { position: relative; flex: 0 0 48px; z-index: 3; display: flex; align-items: center; gap: 16px; min-height: 48px; padding: 8px var(--pad); border-bottom: 1px solid var(--border); background: var(--surface); }
+.workspace-context { display: flex; align-items: center; gap: 14px; min-width: 0; color: var(--muted); font-size: 13px; white-space: nowrap; }
+.workspace-context-page { color: var(--text); font-weight: 500; }
+.context-chevron { flex: 0 0 5px; width: 5px; height: 5px; border-top: 1px solid #85878e; border-right: 1px solid #85878e; transform: rotate(45deg); }
+.runtime-state { display: inline-flex; align-items: center; flex-shrink: 0; gap: 7px; min-height: 26px; margin-left: auto; padding: 3px 9px; border-radius: 5px; background: #f3f3f5; color: var(--muted); font-size: 12px; }
+.state-dot { flex: 0 0 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--warning); }
+.work-surface { position: relative; flex: 1; min-width: 0; min-height: 0; padding: 32px var(--pad) 48px; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.menu-toggle { display: none; }
+.skip-link { position: fixed; z-index: 30; top: 6px; left: 6px; transform: translateY(-160%); padding: 8px 12px; border-radius: 4px; background: var(--text); color: #fff; }
+.skip-link:focus { transform: translateY(0); }
+.navigation-backdrop { display: none; }
+@media (max-width: 1100px) {
+  .app-frame { display: flex; }
+  .workspace-column { flex: 1; }
+  .sidebar { display: none; position: fixed; z-index: 5; top: 84px; bottom: 12px; left: 12px; height: auto; width: min(300px, calc(100% - 24px)); border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+  .sidebar.is-open { display: flex; }
+  .navigation-backdrop { position: fixed; z-index: 4; inset: 84px 0 0; display: block; background: rgb(25 26 30 / 24%); }
+  .menu-toggle { display: grid; flex-shrink: 0; gap: 4px; align-content: center; justify-items: center; width: 36px; height: 32px; padding: 0; border: 0; border-radius: 5px; background: transparent; color: var(--text); cursor: pointer; }
+  .menu-toggle:hover { background: var(--raised); }
+  .menu-toggle span { width: 16px; height: 1.5px; background: currentColor; }
+  .topbar { gap: 12px; padding-inline: 24px; }
+  .work-surface { padding-inline: 24px; }
+}
+@media (max-width: 600px) {
+  .window-titlebar-brand { font-size: 11px; gap: 6px; }
+  .window-titlebar { padding-left: 10px; }
+  .window-controls button { width: 38px; }
+  .topbar { flex-basis: 56px; height: 56px; padding: 4px 16px; gap: 8px; }
+  .workspace-context { gap: 0; font-size: 13px; }
+  .workspace-context-root, .workspace-context-group, .context-chevron { display: none; }
+  .runtime-state { font-size: 11px; gap: 5px; padding-inline: 6px; }
+  .work-surface { padding: 24px 16px 40px; }
+  .menu-toggle { width: 44px; height: 44px; margin-left: -10px; }
+  .nav-link { min-height: 44px; }
+  .sidebar, .navigation-backdrop { top: 92px; }
+}

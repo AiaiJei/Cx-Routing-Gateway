@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { NavigationIcon } from "./NavigationIcon";
 
 export function WindowTitleBar() {
   const [maximized, setMaximized] = useState(false);
@@ -15,7 +16,7 @@ export function WindowTitleBar() {
   return (
     <header className="window-titlebar" aria-label="窗口标题栏" onDoubleClick={toggleMaximize}>
       <div className="window-titlebar-brand">
-        <span className="brand-mark" aria-hidden="true"><i /><i /><i /></span>
+        <NavigationIcon name="routes" />
         <span data-testid="window-title" data-window-title="true">Cx-Routing Gateway</span>
       </div>
       <div className="window-controls" aria-label="窗口控制">

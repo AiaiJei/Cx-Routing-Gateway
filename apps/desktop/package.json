@@ -1,6 +1,6 @@
 {
   "name": "@cx-routing-gateway/desktop-ui",
-  "version": "0.1.0",
+  "version": "1.0.1",
   "description": "Cx-Routing Gateway Desktop workspace and local runtime shell",
   "author": "Cx-Routing Gateway contributors",
   "private": true,
