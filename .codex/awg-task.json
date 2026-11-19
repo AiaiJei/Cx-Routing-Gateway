@@ -14,7 +14,8 @@
     "docs/superpowers/specs/2026-11-19-workspace-redesign-design.md",
     "docs/concepts/workspace-redesign.svg",
     "docs/tasks/2026-11-19-workspace-redesign.md",
-    "docs/task-record.md"
+    "docs/task-record.md",
+    "docs/concepts/workspace-redesign.png"
   ],
   "scope": {
     "include": [
@@ -22,7 +23,8 @@
       "Study the supplied Notion, Linear and Apple HIG references",
       "Map information architecture, layout and component principles to the existing six Desktop pages",
       "Provide a static illustration, sources, acceptance criteria and rollback",
-      "Review the design independently and record evidence"
+      "Review the design independently and record evidence",
+      "Refine the existing static design illustration and provide a PNG render as requested by the user on 2026-11-19"
     ],
     "exclude": [
       "Product implementation before design approval",
@@ -51,5 +53,13 @@
     "Owner approval and implementation status remain distinct"
   ],
   "rollback": "Revert this task's documentation commits or close the draft PR; retain branch and worktree unless separately authorized.",
-  "owner_acceptance": "pending"
+  "owner_acceptance": "pending",
+  "revisions": [
+    {
+      "date": "2026-11-19",
+      "scope": "Typography, navigation icons, table spacing, protocol-flow illustration, and PNG export only",
+      "design_approval": "pending",
+      "request": "精修下细节吧；这个渲染图；"
+    }
+  ]
 }

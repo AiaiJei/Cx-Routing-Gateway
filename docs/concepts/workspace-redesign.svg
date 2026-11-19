@@ -1,61 +1,159 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-labelledby="title desc">
-  <title id="title">Cx-Routing Gateway 模型路由页设计提案</title>
-  <desc id="desc">静态设计，非运行截图。分组侧栏、上下文栏、列表和按需弹窗。两个模型来自仓库 fixture，均为预览状态。</desc>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-labelledby="title desc">
+  <title id="title">Cx-Routing Gateway · 模型路由页精修设计</title>
+  <desc id="desc">静态设计提案，非产品运行截图。六页分组导航、两条示例路由和 Res 入站、Chat 出站、Res 响应的协议路径。使用仓库 fixture 数据，所有状态均为预览，不表示实际服务已连接。</desc>
+  <defs>
+    <!-- Shared 20px icon geometry matches the existing NavigationIcon component. -->
+    <g id="overview" class="icon"><rect x="3" y="3" width="6" height="6" rx="1.2"/><rect x="11" y="3" width="6" height="6" rx="1.2"/><rect x="3" y="11" width="6" height="6" rx="1.2"/><rect x="11" y="11" width="6" height="6" rx="1.2"/></g>
+    <g id="upstreams" class="icon"><rect x="3" y="3.5" width="14" height="5" rx="1.3"/><rect x="3" y="11.5" width="14" height="5" rx="1.3"/><path d="M6 6h.01M6 14h.01M9 6h5M9 14h5"/></g>
+    <g id="routes" class="icon"><circle cx="4" cy="5" r="1.5"/><circle cx="16" cy="15" r="1.5"/><path d="M5.5 5H12a3 3 0 0 1 3 3v4M14.5 15H8a3 3 0 0 1-3-3V8M12.5 10l2.5 2 2.5-2"/></g>
+    <g id="logs" class="icon"><path d="M7 4.5h10M7 9.5h10M7 14.5h10"/><circle cx="4" cy="4.5" r=".6"/><circle cx="4" cy="9.5" r=".6"/><circle cx="4" cy="14.5" r=".6"/></g>
+    <g id="credentials" class="icon"><circle cx="7" cy="8" r="3.5"/><path d="m9.5 10.5 6.2 6.2M13 14l2-2M15 16l2-2"/></g>
+    <g id="settings" class="icon"><path d="M10 3.2v1.4M10 15.4v1.4M16.8 10h-1.4M4.6 10H3.2m11.6-4.8-1 1m-7.6 7.6-1 1m9.6 0-1-1m-7.6-7.6-1-1M12.9 4.1a6.5 6.5 0 0 1 3 3l1.3.5v4.8l-1.3.5a6.5 6.5 0 0 1-3 3l-.5 1.3H7.6l-.5-1.3a6.5 6.5 0 0 1-3-3l-1.3-.5V7.6l1.3-.5a6.5 6.5 0 0 1 3-3l.5-1.3h4.8z"/><circle cx="10" cy="10" r="2.2"/></g>
+    <g id="chevron" class="icon"><path d="m8 6 4 4-4 4"/></g>
+    <g id="info" class="icon"><circle cx="10" cy="10" r="7"/><path d="M10 9v4M10 6.5h.01"/></g>
+    <g id="laptop" class="icon"><rect x="4" y="3" width="12" height="10" rx="1.5"/><path d="M2 16h16M8 13v3m4-3v3"/></g>
+    <g id="arrow" class="icon"><path d="M3 10h14m-4-4 4 4-4 4"/></g>
+  </defs>
   <style>
-    text { font-family: 'Segoe UI', 'Microsoft YaHei UI', sans-serif; fill: #232326; font-size: 14px; }
-    .muted { fill: #626269; } .small { font-size: 12px; } .medium { font-weight: 600; }
-    .heading { font-size: 24px; font-weight: 600; } .rule { stroke: #e8e8eb; }
-    .icon { fill: none; stroke: #68686f; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
-    .res { fill: #5856d6; } .mes { fill: #007a73; } .chat { fill: #0066cc; }
+    text { font-family: 'Segoe UI', 'Microsoft YaHei UI', sans-serif; font-size: 14px; fill: #252629; font-kerning: normal; }
+    .muted { fill: #65676e; } .caption { font-size: 12px; } .small { font-size: 13px; }
+    .medium { font-weight: 600; } .heading { font-size: 24px; font-weight: 600; letter-spacing: -.4px; }
+    .section { font-size: 15px; font-weight: 600; } .model { font-size: 15px; font-weight: 600; letter-spacing: -.1px; }
+    .rule { fill: none; stroke: #e9e9ec; stroke-width: 1; }
+    .icon { fill: none; stroke: currentColor; color: #71737b; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    .res { fill: #5856b9; } .mes { fill: #16766f; } .chat { fill: #1764bb; }
+    .protocol { font-size: 12px; font-weight: 600; }
   </style>
-  <rect width="1440" height="900" fill="#fff"/>
+  <!-- 1440 = 224 sidebar + 32 gutter + 1152 content + 32 gutter. -->
+  <rect width="1440" height="900" fill="#ffffff"/>
   <rect width="1440" height="36" fill="#f7f7f8"/>
-  <text x="20" y="24" class="small medium">Cx-Routing Gateway</text>
-  <text x="1313" y="24" class="muted">—</text><text x="1357" y="24" class="muted">□</text><text x="1402" y="24" class="muted">×</text>
-  <path d="M0 36H1440" class="rule"/>
+  <g transform="translate(15 9) scale(.9)"><use xlink:href="#routes"/></g>
+  <text x="41" y="23" class="caption medium">Cx-Routing Gateway</text>
+  <g fill="none" stroke="#666870" stroke-width="1.2" stroke-linecap="round" aria-hidden="true"><path d="M1320 18.5h10"/><rect x="1365.5" y="13.5" width="9" height="9" rx=".5"/><path d="m1411 14 9 9m0-9-9 9"/></g>
+  <path d="M0 35.5H1440" class="rule"/>
   <rect y="36" width="224" height="864" fill="#f7f7f8"/>
-  <path d="M224 36V900" class="rule"/>
-  <text x="20" y="76" class="small muted">工作区</text>
-  <g class="icon"><path d="M23 98h6v6h-6zM33 98h6v6h-6zM23 108h6v6h-6zM33 108h6v6h-6z"/></g>
-  <text x="50" y="111">总览</text>
-  <text x="20" y="165" class="small muted">网关配置</text>
-  <g class="icon"><rect x="23" y="188" width="16" height="12" rx="2"/><path d="M27 192h8M27 196h4"/></g>
-  <text x="50" y="200">上游服务</text>
-  <rect x="10" y="215" width="204" height="36" rx="6" fill="#e9e9ed"/>
-  <g class="icon"><path d="M23 233h6m4 0h6m-10 0 4-7m-4 7 4 7"/><circle cx="23" cy="233" r="2"/><circle cx="36" cy="225" r="2"/><circle cx="36" cy="241" r="2"/></g>
-  <text x="50" y="238" class="medium">模型路由</text>
-  <g class="icon"><circle cx="28" cy="271" r="5"/><path d="m32 275 7 7m-3-3 3-3"/></g>
-  <text x="50" y="277">接入凭证</text>
-  <text x="20" y="330" class="small muted">运行记录</text>
-  <g class="icon"><rect x="24" y="351" width="14" height="17" rx="2"/><path d="M28 356h6M28 360h6M28 364h4"/></g>
-  <text x="50" y="364">调用日志</text>
-  <path d="M20 806H204" class="rule"/>
-  <g class="icon"><circle cx="31" cy="836" r="7"/><circle cx="31" cy="836" r="2"/><path d="M31 825v4m0 14v4m-11-11h4m14 0h4"/></g>
-  <text x="50" y="841">设置</text><text x="20" y="882" class="small muted">本机工作区</text>
-  <text x="248" y="66" class="muted">本机工作区</text><text x="341" y="66" class="muted">/</text>
-  <text x="361" y="66" class="muted">网关配置</text><text x="438" y="66" class="muted">/</text><text x="457" y="66">模型路由</text>
-  <circle cx="1304" cy="61" r="3" fill="#777780"/><text x="1316" y="66" class="small muted">浏览器预览</text>
-  <path d="M224 84H1440" class="rule"/>
-  <text x="248" y="137" class="heading">模型路由</text><text x="248" y="166" class="muted">将客户端请求映射到上游，响应返回原入站协议。</text>
-  <rect x="1320" y="111" width="96" height="34" rx="6" fill="#232326"/><text x="1368" y="133" text-anchor="middle" style="fill:#fff">添加路由</text>
-  <circle cx="251" cy="199" r="3" fill="#8a8a91"/><text x="262" y="204" class="small muted">浏览器预览路由 · 示例数据</text>
-  <path d="M248 225H1416M248 267H1416M248 351H1416M248 435H1416" class="rule"/>
-  <text x="260" y="251" class="small muted">模型</text><text x="554" y="251" class="small muted">客户端协议 / 入站</text>
-  <text x="741" y="251" class="small muted">目标上游</text><text x="1001" y="251" class="small muted">上游协议 / 出站</text>
-  <text x="1162" y="251" class="small muted">响应协议</text><text x="1302" y="251" class="small muted">状态</text>
-  <text x="260" y="300" class="medium">northstar-large</text><text x="260" y="325" class="small muted">现有调用名：gateway-reasoner</text>
-  <rect x="554" y="286" width="72" height="25" rx="4" fill="#f0efff"/><text x="590" y="303" text-anchor="middle" class="res small">Res 入站</text>
-  <text x="741" y="302">Northstar AI</text><rect x="1001" y="286" width="54" height="25" rx="4" fill="#eaf3ff"/>
-  <text x="1028" y="303" text-anchor="middle" class="chat small">Chat</text><rect x="1162" y="286" width="73" height="25" rx="4" fill="#f0efff"/>
-  <text x="1198" y="303" text-anchor="middle" class="res small">Res 响应</text><text x="1302" y="302" class="small muted">已启用（预览）</text>
-  <text x="260" y="384" class="medium">lantern-haiku</text><text x="260" y="409" class="small muted">现有调用名：gateway-fast</text>
-  <rect x="554" y="370" width="72" height="25" rx="4" fill="#e6f5f2"/><text x="590" y="387" text-anchor="middle" class="mes small">Mes 入站</text>
-  <text x="741" y="386">Lantern Labs</text><rect x="1001" y="370" width="54" height="25" rx="4" fill="#e6f5f2"/>
-  <text x="1028" y="387" text-anchor="middle" class="mes small">Mes</text><rect x="1162" y="370" width="73" height="25" rx="4" fill="#e6f5f2"/>
-  <text x="1198" y="387" text-anchor="middle" class="mes small">Mes 响应</text><text x="1302" y="386" class="small muted">已启用（预览）</text>
-  <text x="248" y="479" class="small muted">协议转换示例</text><text x="248" y="507" class="medium">Res 入站 → Chat 出站 → Res 响应</text>
-  <text x="248" y="534" class="muted">响应会转换回本次请求的入站协议。</text>
-  <rect x="248" y="811" width="1168" height="62" rx="6" fill="#f7f7f8"/>
-  <text x="268" y="837" class="small medium">设计提案 · 非产品运行截图</text>
-  <text x="268" y="858" class="small muted">Notion 信息架构 / Linear 布局 / Apple HIG 控件原则；真实模式的操作沿用现有 IPC 链路。</text>
+  <path d="M223.5 36V900" class="rule"/>
+
+  <!-- Navigation: 20px icon, 10px gap, 36px hit area, 4px row gap. -->
+  <text x="20" y="75" class="caption muted medium">工作区</text>
+  <use xlink:href="#overview" x="20" y="95"/>
+  <text x="50" y="110">总览</text>
+  <text x="20" y="157" class="caption muted medium">网关配置</text>
+  <use xlink:href="#upstreams" x="20" y="177"/>
+  <text x="50" y="192">上游服务</text>
+  <rect x="12" y="209" width="200" height="36" rx="6" fill="#e9e9ec"/>
+  <use xlink:href="#routes" x="20" y="217"/>
+  <text x="50" y="232" class="medium">模型路由</text>
+  <use xlink:href="#credentials" x="20" y="257"/>
+  <text x="50" y="272">接入凭证</text>
+  <text x="20" y="319" class="caption muted medium">运行记录</text>
+  <use xlink:href="#logs" x="20" y="339"/>
+  <text x="50" y="354">调用日志</text>
+  <path d="M20 805.5H204" class="rule"/>
+  <use xlink:href="#settings" x="20" y="822"/>
+  <text x="50" y="837">设置</text>
+  <g transform="translate(20 865) scale(.8)"><use xlink:href="#laptop"/></g>
+  <text x="44" y="878" class="caption muted">本机工作区</text>
+
+  <!-- Context bar: page context on the left, honest preview state on the right. -->
+  <text x="256" y="66" class="small muted">本机工作区</text>
+  <use xlink:href="#chevron" x="328" y="52"/>
+  <text x="354" y="66" class="small muted">网关配置</text>
+  <use xlink:href="#chevron" x="414" y="52"/>
+  <text x="440" y="66" class="small medium">模型路由</text>
+  <rect x="1310" y="49" width="98" height="26" rx="5" fill="#f3f3f5"/>
+  <circle cx="1323" cy="62" r="3" fill="#797c85"/>
+  <text x="1333" y="66.5" class="caption muted">浏览器预览</text>
+  <path d="M224 83.5H1440" class="rule"/>
+
+  <!-- One title and one primary action. -->
+  <text x="256" y="139" class="heading">模型路由</text>
+  <text x="256" y="168" class="muted">将客户端请求映射到上游，响应返回原入站协议。</text>
+  <rect x="1296" y="112" width="112" height="36" rx="7" fill="#26272b"/>
+  <path d="M1310 130h10m-5-5v10" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+  <text x="1330" y="135" class="small medium" style="fill:#fff">添加路由</text>
+
+  <!-- Calm section heading; count is derived from the two fixture rows. -->
+  <text x="256" y="220" class="section">路由配置</text>
+  <text x="330" y="219" class="small muted">2 条路由</text>
+  <g transform="translate(1290 205) scale(.8)"><use xlink:href="#info"/></g>
+  <text x="1408" y="218" text-anchor="end" class="caption muted">示例数据 · 非实时</text>
+  <path d="M256 237.5H1408" class="rule"/>
+
+  <!-- Column widths: 270 + 152 + 254 + 146 + 142 + 188 = 1152. -->
+  <text x="272" y="266" class="caption muted">模型 / 调用名</text>
+  <text x="544" y="266" class="caption muted">入站协议</text>
+  <text x="696" y="266" class="caption muted">目标上游</text>
+  <text x="950" y="266" class="caption muted">出站协议</text>
+  <text x="1096" y="266" class="caption muted">响应协议</text>
+  <text x="1238" y="266" class="caption muted">状态</text>
+  <path d="M256 281.5H1408" class="rule"/>
+
+  <text x="272" y="317" class="model">northstar-large</text>
+  <text x="272" y="340" class="caption muted">调用名：gateway-reasoner</text>
+  <rect x="544" y="299" width="48" height="24" rx="5" fill="#f0effb"/>
+  <text x="568" y="315.5" text-anchor="middle" class="protocol res">Res</text>
+  <text x="696" y="317" class="medium">Northstar AI</text>
+  <text x="696" y="340" class="caption muted">api.northstar.example</text>
+  <rect x="950" y="299" width="50" height="24" rx="5" fill="#edf4fc"/>
+  <text x="975" y="315.5" text-anchor="middle" class="protocol chat">Chat</text>
+  <rect x="1096" y="299" width="48" height="24" rx="5" fill="#f0effb"/>
+  <text x="1120" y="315.5" text-anchor="middle" class="protocol res">Res</text>
+  <circle cx="1245" cy="311" r="6" fill="none" stroke="#777b83" stroke-width="1.2"/>
+  <path d="m1242 311 2 2 4-4" fill="none" stroke="#777b83" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1259" y="316" class="small">已启用</text>
+  <text x="1259" y="339" class="caption muted">预览状态</text>
+  <path d="M256 369.5H1408" class="rule"/>
+
+  <text x="272" y="405" class="model">lantern-haiku</text>
+  <text x="272" y="428" class="caption muted">调用名：gateway-fast</text>
+  <rect x="544" y="387" width="48" height="24" rx="5" fill="#eaf5f2"/>
+  <text x="568" y="403.5" text-anchor="middle" class="protocol mes">Mes</text>
+  <text x="696" y="405" class="medium">Lantern Labs</text>
+  <text x="696" y="428" class="caption muted">api.lantern.example</text>
+  <rect x="950" y="387" width="48" height="24" rx="5" fill="#eaf5f2"/>
+  <text x="974" y="403.5" text-anchor="middle" class="protocol mes">Mes</text>
+  <rect x="1096" y="387" width="48" height="24" rx="5" fill="#eaf5f2"/>
+  <text x="1120" y="403.5" text-anchor="middle" class="protocol mes">Mes</text>
+  <circle cx="1245" cy="399" r="6" fill="none" stroke="#777b83" stroke-width="1.2"/>
+  <path d="m1242 399 2 2 4-4" fill="none" stroke="#777b83" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1259" y="404" class="small">已启用</text>
+  <text x="1259" y="427" class="caption muted">预览状态</text>
+  <path d="M256 457.5H1408" class="rule"/>
+
+  <!-- Existing protocol explanation, now a compact directional diagram. -->
+  <text x="256" y="508" class="section">协议转换示例</text>
+  <text x="256" y="534" class="small muted">入站由客户端请求决定，出站按路由配置，响应恢复为原入站协议。</text>
+  <rect x="256" y="556" width="1152" height="148" rx="8" fill="#f8f8fa"/>
+  <text x="280" y="589" class="caption muted">客户端请求</text>
+  <rect x="280" y="604" width="50" height="28" rx="5" fill="#eeedf9"/>
+  <text x="305" y="623" text-anchor="middle" class="protocol res">Res</text>
+  <text x="343" y="623" class="medium">入站协议</text>
+  <text x="280" y="675" class="caption muted">请求携带客户端使用的协议</text>
+
+  <path d="M512 618h116m-5-4 5 4-5 4" fill="none" stroke="#a2a4ac" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="570" y="597" text-anchor="middle" class="caption muted">请求转换</text>
+
+  <text x="668" y="589" class="caption muted">目标上游</text>
+  <rect x="668" y="604" width="55" height="28" rx="5" fill="#eaf2fc"/>
+  <text x="695.5" y="623" text-anchor="middle" class="protocol chat">Chat</text>
+  <text x="736" y="623" class="medium">出站协议</text>
+  <text x="668" y="675" class="caption muted">按路由配置向上游发送</text>
+
+  <path d="M900 618h116m-5-4 5 4-5 4" fill="none" stroke="#a2a4ac" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="958" y="597" text-anchor="middle" class="caption muted">响应转换</text>
+
+  <text x="1056" y="589" class="caption muted">返回客户端</text>
+  <rect x="1056" y="604" width="50" height="28" rx="5" fill="#eeedf9"/>
+  <text x="1081" y="623" text-anchor="middle" class="protocol res">Res</text>
+  <text x="1119" y="623" class="medium">响应协议</text>
+  <text x="1056" y="675" class="caption muted">与本次请求的入站协议一致</text>
+
+  <g transform="translate(256 723) scale(.8)"><use xlink:href="#info"/></g>
+  <text x="280" y="736" class="caption muted">此处为示例路由，未连接实际上游服务。</text>
+
+  <!-- Design annotation stays small and outside the operational content. -->
+  <path d="M256 857.5H1408" class="rule"/>
+  <text x="256" y="881" class="caption muted">设计预览 · 非产品运行截图</text>
+  <text x="1408" y="881" text-anchor="end" class="caption muted">Notion 信息架构 / Linear 布局 / Apple HIG</text>
 </svg>
