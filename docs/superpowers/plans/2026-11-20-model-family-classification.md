@@ -26,4 +26,4 @@ No new dependencies or data/schema changes; preserve original IDs, primary workt
 - [x] Run full Desktop tests (126/126) and production build, then Runtime tests (75/75); production dependency audit reports 0 vulnerabilities.
 - [x] Check production browser with controlled data: filtering/counts, grouping, independent upstream filters, hidden selections, stale model edit, keyboard, save/update and empty model category at 1440/768/390 widths. Browser screenshots are in docs/tasks/evidence/model-family-classification/.
 - [x] Attempt independent read-only review. Reviewer and fallback service calls both returned provider HTTP 429 with no review. Complete and record a separate read-only self-review; this is not an independent review.
-- [ ] Record evidence, whitespace, CAPABILITY, final review limitation, commit/push the task branch, create the dedicated PR against master, and preserve its worktree.
+- [x] Record evidence, whitespace, CAPABILITY and the review limitation; commit/push the task branch; create dedicated PR #9 against master; preserve its worktree.

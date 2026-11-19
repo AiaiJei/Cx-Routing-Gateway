@@ -25,4 +25,5 @@
 
 - Setup, bounded source/consumer review complete. No dependencies added.
 - Worktree contract/spec/plan prepared before product code.
-- Feature implemented against the PR #8 merge base. Product build and test evidence, screenshots, author self-review and PR preparation complete; dedicated PR URL will be added after creation.
+- Feature implemented against the PR #8 merge base. Product build and test evidence, screenshots and author self-review complete.
+- Dedicated PR #9 opened against master: https://github.com/AiaiJei/Cx-Routing-Gateway/pull/9. PR head at creation: ae47edc7f241d39b412c48217dc8e5a54a10a2f1. GitHub Desktop and Runtime CI were pending at creation; latest head status is reported separately.

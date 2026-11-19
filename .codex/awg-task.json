@@ -64,7 +64,13 @@
   ],
   "rollback": "Revert feature commit(s); no persisted data migration. Preserve primary checkout and task evidence.",
   "owner_acceptance": "pending",
-  "pull_request": { "state": "creation-pending", "base": "master", "url": null },
+  "pull_request": {
+    "state": "open",
+    "number": 9,
+    "base": "master",
+    "head_sha_at_creation": "ae47edc7f241d39b412c48217dc8e5a54a10a2f1",
+    "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/9"
+  },
   "verification": {
     "baseline_desktop": "88/88",
     "focused_red": "4 test files failed as expected; 4 classification/selection tests exposed missing behavior",
@@ -73,6 +79,7 @@
     "runtime": "75/75",
     "production_build": "PASS (TypeScript and Vite)",
     "production_audit": "0 vulnerabilities",
+    "github_ci_at_pr_creation": "Desktop and Runtime pending in two CI runs; package jobs skipped. Final head checks will be confirmed.",
     "whitespace": "PASS",
     "browser": "PASS built production assets with isolated local fixture bridge; route filters/counts, both upstream selectors, independent family filters, group order, hidden cross-family selections, keyboard selection, save/update counts and stale edit model checked",
     "responsive": "PASS 1440/768/390 widths; modal and filters do not overflow viewport",
@@ -98,7 +105,11 @@
       "using-git-worktrees",
       "writing-plans",
       "executing-plans",
-      "test-driven-development"
+      "test-driven-development",
+      "requesting-code-review",
+      "verification-before-completion",
+      "finishing-a-development-branch",
+      "computer-use"
     ],
     "repo_mcp": "UNAVAILABLE for this task: .codex/repo-map.json is absent, so registered workspace_id cannot be established. Source search/read used.",
     "worktree": "Git fallback honors user's repo-local placement; native create_worktree cannot take a destination path. Existing path/branch absent; attached with native attach_worktree.",
