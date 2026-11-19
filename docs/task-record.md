@@ -89,4 +89,7 @@
 - 验证：`npm ci` 完成并报告 0 项漏洞；`npm test` 23/23 通过；`npm run build` 通过；Taste App lint 0 FAIL / 0 WARN；`git diff --check` 通过。
 - 视觉检查：开发态检查总览、上游、路由、日志、凭证、设置；生产预览在 1440/768/390px 检查总览与日志，页面横向溢出为 0。路由及状态颜色对比检查通过；移动总览仍有约 46% 文本低于 13px，源于紧凑辅助标签；少量 fixture 行造成页面留白，保留真实数据规模。
 - 运行证据：开发服务器为 `http://127.0.0.1:4173/`；生产预览检查使用 `http://127.0.0.1:4174/`。原生 Electron 窗口启动 `NOT_RUN`；Owner 最终验收仍 pending。
-- 能力：已读取 AWG 治理、头脑风暴、计划、worktree、TDD、Taste App Screens、验证与代码审查技能；Repo Map 未调用（入口和调用链已由源代码、测试覆盖）；AWG runtime 是否激活不作推断。独立审查待完成。
+- 独立审查：只读范围 `e0f3fda..1b88d1b`，无 Critical/Important。Minor 关注 `ProtocolFlow` 的 `aria-label`；Chromium Accessibility Tree 实测该 `generic` 节点名称为完整的 `Res → Chat → Res`，因此无需代码改动。
+- PR：#5，`https://github.com/AiaiJei/Cx-Routing-Gateway/pull/5`，分支 `codex/desktop-frontend-ios-hig` → `master`；PR #4 已被另一任务占用，未改动。未合并，Owner acceptance 仍 pending。
+- 视觉产物：截图与检查报告保留在 worktree 的 `.taste-skill/`，已纳入本任务授权路径，未加入 PR 文件。
+- 能力：已读取 AWG 治理、头脑风暴、计划、worktree、TDD、Taste App Screens、验证、代码审查及接收审查技能；Repo Map 未调用（入口和调用链已由源代码、测试覆盖）；AWG runtime 是否激活不作推断。
