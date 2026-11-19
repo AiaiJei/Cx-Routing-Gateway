@@ -1,5 +1,6 @@
+import { useWorkspaceCollection } from "../data/use-workspace-collection";
 import { WorkspaceState } from "../components/WorkspaceState";
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { EmptyResult, FixtureNotice, PageHeader } from "../components/PageHeader";
 import { ProtocolExplanation } from "../components/ProtocolExplanation";
 import { Modal } from "../components/Modal";
@@ -32,8 +33,7 @@ export function RoutesPage() {
   const [failureThreshold, setFailureThreshold] = useState(3);
   const [statusClasses, setStatusClasses] = useState<number[]>([4, 5]);
   const { data, error, loading } = useWorkspace();
-  const [routes, setRoutes] = useState(data.routes);
-  useEffect(() => setRoutes(data.routes), [data.routes]);
+  const [routes, setRoutes] = useWorkspaceCollection(data.routes);
   const upstreams = new Map(data.upstreams.map((upstream) => [upstream.id, upstream.name]));
 
   const [saving, setSaving] = useState(false);

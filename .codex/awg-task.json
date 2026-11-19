@@ -5,7 +5,7 @@
   "task_id": "CXRG-WORKSPACE-DESIGN-2026-11-19",
   "title": "Desktop workspace redesign 1.0.1",
   "status": "active",
-  "stage": "implementation",
+  "stage": "implemented-awaiting-owner-acceptance",
   "branch": "codex/desktop-workspace-redesign",
   "base": "master",
   "base_sha": "9807fd32b27c436dde55129308799ec4d6187643",
@@ -85,5 +85,17 @@
       "design_approval": "approved",
       "scope": "Approved design implementation, product version 1.0.1, verification and existing PR update"
     }
-  ]
+  ],
+  "product_version": "1.0.1",
+  "verification": {
+    "runtime_tests": "61/61",
+    "independent_review": "2 P2 findings fixed with RED-GREEN tests and full suite",
+    "native_gui": "PARTIAL: isolated window not enumerated by CUA",
+    "desktop_tests": "55/55",
+    "package_version": "PASS: x64 executable reports 1.0.1",
+    "production_build": "PASS",
+    "visual": "18 screenshots, 1440/768/390 CSS widths, no page overflow",
+    "production_audit": "0 vulnerabilities",
+    "provider": "NOT_RUN"
+  }
 }

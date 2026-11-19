@@ -287,3 +287,11 @@
 - 在仓内 `.worktree/desktop-workspace-redesign` 和 `codex/desktop-workspace-redesign` 分支开展，不继承 PR #5 的合并/删除授权。
 - [设计稿](superpowers/specs/2026-11-19-workspace-redesign-design.md)记录参考分工、共享组件、六页布局、验收与回退；[任务记录](tasks/2026-11-19-workspace-redesign.md)记录合同、能力和证据。
 - 当前为设计提案与 Draft PR 阶段；产品实现、Owner 设计批准与验收尚未完成。
+
+### 1.0.1 实施修订
+
+- 用户已批准按精修渲染图执行，并明确版本 1.0.1；专属 PR #6 继续承载六页改版及版本链路修正。
+- 已完成分组导航/上下文、共享样式、路由列表/协议路径、设置版本显示；保留既有 Gateway/IPC 行为。修复独立审查指出的历史导航遮罩和 fixture/live 混合提交问题。
+- 本轮 Desktop 55/55、Runtime 61/61、production build、生产依赖 audit、Windows x64 解包构建及实际 1.0.1 版本 smoke 均通过；六页三尺寸截图无页面级横向溢出。
+- 原生 GUI 操作为 PARTIAL/NOT_RUN（隔离窗口未被 UI inventory 枚举）；真实 provider、NSIS 安装/签名/发布、Owner 最终验收尚未执行；没有合并或推送 master。
+- 详细证据与局限：[任务记录](tasks/2026-11-19-workspace-redesign.md)。

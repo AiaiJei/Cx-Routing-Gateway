@@ -1,10 +1,24 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, useNavigate, type NavigateFunction } from "react-router";
 import { describe, expect, it } from "vitest";
 import { AppShell } from "./AppShell";
 
 describe("AppShell", () => {
+  it("closes navigation and restores the content on history navigation", async () => {
+    let navigate!: NavigateFunction;
+    function Harness() { navigate = useNavigate(); return <AppShell><h1>内容</h1></AppShell>; }
+    const user = userEvent.setup();
+    render(<MemoryRouter initialEntries={["/", "/routes"]}><Harness /></MemoryRouter>);
+    await user.click(screen.getByRole("button", { name: "打开导航" }));
+    expect(screen.getByRole("main")).toHaveProperty("inert", true);
+    await act(async () => { await navigate(-1); });
+    expect(screen.getByRole("button", { name: "打开导航" })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("main")).toHaveProperty("inert", false);
+    expect(screen.getByRole("main")).toHaveFocus();
+    expect(document.body.style.overflow).not.toBe("hidden");
+    expect(document.querySelector(".navigation-backdrop")).not.toBeInTheDocument();
+  });
   it("groups the existing destinations and updates the page context after navigation", async () => {
     const user = userEvent.setup();
     render(<MemoryRouter initialEntries={["/routes"]}><AppShell><h1>内容</h1></AppShell></MemoryRouter>);

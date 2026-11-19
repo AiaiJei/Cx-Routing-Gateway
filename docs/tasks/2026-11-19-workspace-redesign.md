@@ -74,3 +74,35 @@
 - Task 1：分组导航/上下文、窄屏焦点控制、六页共享样式、模型路由六列/安全 hostname/三段协议说明，以及加载和错误隔离已实现。
 - 新增测试先复现 5 个失败，再实现通过。原有 9 个同步访问 fixture 的测试调整为等待工作区读取完成；表格滚动 containment 保留。Desktop 50/50、生产构建通过。
 - 版本链路、生产构建截图、隔离 Electron 以及最终独立审查继续执行；上述为阶段证据，不作为最终完成声明。
+
+## 1.0.1 实施结果与最终证据
+
+- 六页已使用分组侧栏、当前位置、中性选中/主按钮、统一列表/表单和响应式间距。模型路由按精修图呈现模型/调用名、脱敏 hostname、六列状态、三段协议方向；真实编辑、多目标优先级和测试调用继续复用原链路。
+- Desktop `package.json` 与 lockfile 根版本为 **1.0.1**，设置页直接读取 package 元数据；发布校验使用相应安装器/blockmap 文件名与版本。更新函数要求显式 currentVersion，Electron 原有调用已提供；CLI 默认读 package，并修复带空格路径的启动判断。未修改配置 schema version 1。
+- Task 2 先复现版本/CLI 回归失败后修复；最终 Desktop **55/55**（16 files）、Runtime **61/61**、TypeScript/Vite production build 通过。生产依赖 audit **0 vulnerabilities**。依赖安装报告的 6 项 moderate 位于开发依赖范围，本次未进行无关依赖升级。
+- Taste App lint **0 FAIL / 3 WARN**；三条警告均命中 `box-shadow: none`（搜索字段/多选列表），没有实际静态阴影。仅弹窗与浮动菜单保留已有浮层阴影；协议紫色沿用既有 Res 语义，属于用户指定设计。
+- 最终生产构建使用 CUA 检查六页 **1440×900 / 768×1024 / 390×844**，共 18 张视口截图，均无页面级横向溢出。实际 CSS 视口由 DOM 读取核对；宽表格在可命名、可聚焦容器内部滚动。初版日志/凭证窄列导致断词，已调整最低列宽并复拍。已查看全部最终截图及此前完整长页面截图。
+- 浏览器行为：窄屏菜单打开聚焦当前页、Esc 回到触发按钮；多选 Escape 只关闭列表，取消弹窗返回触发按钮；实际同页历史回退后导航关闭、遮罩消失且 focus 为 `main-content`。
+- 静态视觉复核：路由列表为主要内容，标题/内容共用边缘，单页一个主要操作，数字与真实 fixture 计数一致。小屏保留字段并明确滚动，不用省略协议信息换取整齐。空列表与读取失败由测试覆盖，未把模拟 IPC 结果描述为真实 provider 验收。
+- 全部截图、指标、测试日志、执行 ledger 和本地包保留于仓内 `.tmp/workspace-implementation-1.0.1/`，不提交生成产物。最终截图以 `final-` 开头，`final-visual-metrics.json` 记录尺寸与溢出结果。
+
+### 独立审查与修复
+
+- 独立 reviewer 对 `9807fd3 → 36efbc8` 完成只读审查，独立运行界面关键测试 19/19 与版本测试 9/9。
+- 发现 P2：历史回退没有关闭窄屏导航。新增 history navigation 回归先失败，再将 location 变化统一接入导航关闭、滚动恢复和主内容焦点；浏览器再次确认。
+- 发现 P2：routes/upstreams/credentials 的被动 effect 同步可能在单次 DOM commit 中将 fixture 与 live 标签混用。新增 React Profiler 回归逐次检查三个页面提交，三项先失败；共享 `useWorkspaceCollection` 将局部修改绑定到当前数据快照，三项通过，既有增删改回归仍通过。
+- 两项均已修复；无未解决的 Critical/Important，未列 deferred minor。遵循 native execution 的一次最终审查流程，修复通过针对性 RED→GREEN 与全套测试验证，未将其写成额外独立复审通过。
+- Reviewer 未代判的范围：原生 GUI 见下方 PARTIAL；既有后端/更新信任模型未改且不宣称重新验证；最终 Owner 接受、合并、发布不由代码审查授予；全套 tests/build/audit 使用主任务的本轮证据。
+
+### Electron 与打包边界
+
+- 本地 x64 解包构建通过，位置：`.tmp/workspace-implementation-1.0.1/package/win-unpacked/`；最后源码构建后重新打包，实际 `smoke-packaged` 验证退出码 0 且版本输出 **1.0.1**。该包未签名，使用现有默认 Electron 图标；未生成本轮 NSIS 安装器或发布正式版本。
+- 隔离 QA 使用仓内独立 userData 和端口 4618/4619，加载实际生产 `dist/index.html`。Electron `did-finish-load` 记录版本 1.0.1、隔离路径与 file URL，Gateway/control 的 health 均为 ok；测试进程已停止。
+- 原生 GUI/真实 preload 操作 **PARTIAL / NOT_RUN**：进程和窗口加载事件存在，但 CUA Windows inventory 未枚举此隔离窗口，因此未宣称点击原生窗口或实际设置写入成功。真实 provider、安装器安装、签名、发布、Owner 最终验收仍 **NOT_RUN / pending**。
+
+### CAPABILITY 补充
+
+- 已使用 writing-plans、test-driven-development、executing-plans、systematic-debugging、receiving-code-review、requesting-code-review、verification-before-completion 和 finishing-a-development-branch；现有用户执行/PR 授权覆盖继续实现、提交、推送，无二次方案审批暂停。
+- Repo MCP 保持 NOT_RUN（本 worktree 无注册 workspace_id）；未把静态 MCP/Hook 配置当成运行证据。
+- Taste browser inspector 的测量改由可用 CUA 完成，保留真实 DOM 尺寸与截图；未声称运行 inspect.mjs。采用用户已定渲染方向，不随机重抽风格。
+- 归档决策：沿用现有独立 worktree 和仓内 scratch，保留证据；不按技能默认清理删除，遵循用户“归档时保留成果”的要求。

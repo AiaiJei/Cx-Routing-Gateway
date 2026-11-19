@@ -1,5 +1,6 @@
+import { useWorkspaceCollection } from "../data/use-workspace-collection";
 import { WorkspaceState } from "../components/WorkspaceState";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { EmptyResult, FixtureNotice, PageHeader } from "../components/PageHeader";
 import { Button } from "../components/Button";
 import { TextField } from "../components/TextField";
@@ -11,8 +12,7 @@ export function CredentialsPage() {
   const [message, setMessage] = useState("");
   const [scopeInput, setScopeInput] = useState("");
   const { data, error, loading } = useWorkspace();
-  const [credentials, setCredentials] = useState(data.credentials);
-  useEffect(() => setCredentials(data.credentials), [data.credentials]);
+  const [credentials, setCredentials] = useWorkspaceCollection(data.credentials);
 
   async function createCredential() {
     if (!data.meta.live || !defaultWorkspaceClient.createClientKey) {

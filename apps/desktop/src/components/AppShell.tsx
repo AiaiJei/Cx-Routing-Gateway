@@ -11,11 +11,23 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navRef = useRef<HTMLElement>(null);
   const mainRef = useRef<HTMLElement>(null);
   const location = useLocation();
+  const previousLocation = useRef(location.key);
   const current = destinations.find(({ to }) => to === location.pathname);
 
   useEffect(() => {
+    if (previousLocation.current === location.key) return;
+    previousLocation.current = location.key;
+    setNavigationOpen(false);
+    if (mainRef.current) { mainRef.current.inert = false; mainRef.current.focus(); }
+  }, [location.key]);
+
+  useEffect(() => {
     const query = window.matchMedia?.("(min-width: 1101px)");
-    const close = () => { if (query?.matches) setNavigationOpen(false); };
+    const close = () => {
+      if (!query?.matches) return;
+      setNavigationOpen(false);
+      if (mainRef.current) { mainRef.current.inert = false; mainRef.current.focus(); }
+    };
     query?.addEventListener("change", close);
     return () => query?.removeEventListener("change", close);
   }, []);

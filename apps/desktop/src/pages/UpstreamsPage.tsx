@@ -1,5 +1,6 @@
+import { useWorkspaceCollection } from "../data/use-workspace-collection";
 import { WorkspaceState } from "../components/WorkspaceState";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { EmptyResult, FixtureNotice, PageHeader, SearchField } from "../components/PageHeader";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
@@ -14,8 +15,7 @@ export function UpstreamsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [testingId, setTestingId] = useState<string | null>(null);
   const { data, error, loading } = useWorkspace();
-  const [upstreams, setUpstreams] = useState(data.upstreams);
-  useEffect(() => setUpstreams(data.upstreams), [data.upstreams]);
+  const [upstreams, setUpstreams] = useWorkspaceCollection(data.upstreams);
   const visibleUpstreams = useMemo(() => upstreams.filter((upstream) =>
     `${upstream.name} ${upstream.baseUrl} ${upstream.models.join(" ")}`.toLowerCase().includes(query.trim().toLowerCase()),
   ), [query, upstreams]);
