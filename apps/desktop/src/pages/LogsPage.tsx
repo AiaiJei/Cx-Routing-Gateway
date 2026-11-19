@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { EmptyResult, FixtureNotice, PageHeader, SearchField } from "../components/PageHeader";
+import { Button } from "../components/Button";
 import { CustomSelect } from "../components/CustomSelect";
 import { Modal } from "../components/Modal";
 import { useWorkspace } from "../data/use-workspace";
@@ -19,18 +20,18 @@ export function LogsPage() {
   return (
     <div className="page-content">
       <PageHeader title="调用日志" description="查看示例请求摘要；默认不包含请求或响应正文。" />
-      <FixtureNotice>示例日志 · 非运行时记录</FixtureNotice>
+      <FixtureNotice live={data.meta.live}>{data.meta.live ? "本机运行时日志 · 正文已脱敏" : "示例日志 · 非运行时记录"}</FixtureNotice>
       {error && <p className="action-feedback" role="alert">工作区数据读取失败：{error}</p>}
       <div className="toolbar"><SearchField label="搜索调用日志" value={query} onChange={setQuery} />
         <div className="select-field"><CustomSelect ariaLabel="按状态筛选" name="log-status" value={status} options={["全部", "成功", "失败"]} onChange={setStatus} /></div>
         <span className="result-count">{logs.length} 条示例</span>
-        {hasFilter && <button className="button-text" type="button" aria-label="清除筛选" onClick={() => { setQuery(""); setStatus("全部"); }}>清除筛选</button>}
+        {hasFilter && <Button variant="tertiary" size="small" aria-label="清除筛选" onClick={() => { setQuery(""); setStatus("全部"); }}>清除筛选</Button>}
       </div>
       {logs.length ? <div className="table-scroll"><table>
         <thead><tr><th>时间 / 请求 ID</th><th>模型</th><th>入口凭证</th><th>协议方向</th><th>结果</th><th>耗时</th><th><span className="sr-only">操作</span></th></tr></thead>
         <tbody>{logs.map((log) => <tr key={log.id}>
           <td><time>{log.time}</time><code className="cell-subtext">{log.id}</code></td><td>{log.model}</td><td>{log.credential}</td><td>{log.direction}</td><td>{log.status}{log.error && <span className="cell-subtext">{log.error}</span>}</td><td className="numeric">{log.durationMs} ms</td>
-          <td><button className="button-text" type="button" aria-label={`查看 ${log.id}`} onClick={() => setSelectedLog(log)}>详情</button></td>
+          <td><Button variant="tertiary" size="small" aria-label={`查看 ${log.id}`} onClick={() => setSelectedLog(log)}>详情</Button></td>
         </tr>)}</tbody>
       </table></div> : <EmptyResult>没有匹配的调用记录</EmptyResult>}
       {selectedLog && <Modal title={`请求 ${selectedLog.id} 详情`} onClose={() => setSelectedLog(null)}>

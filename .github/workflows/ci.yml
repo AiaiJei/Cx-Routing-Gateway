@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [master, "codex/**"]
+    tags: ["v*.*.*"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  runtime:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci --prefix apps/desktop
+      - run: npm run build --prefix apps/desktop
+      - run: npm test
+
+  desktop:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: apps/desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: npm audit --omit=dev --ignore-scripts --allow-scripts=
+
+  package:
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: apps/desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+      - run: npm ci
+      - run: npm run desktop:installer
+      - run: node ../../scripts/verify-release.mjs release --write
+      - run: node ../../scripts/smoke-packaged.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cx-routing-gateway-windows-installer
+          path: apps/desktop/release/*
+          if-no-files-found: error

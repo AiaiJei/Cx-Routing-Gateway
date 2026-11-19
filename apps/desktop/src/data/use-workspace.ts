@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fixtureWorkspaceClient } from "./workspace-client";
+import { defaultWorkspaceClient } from "./workspace-client";
 import { workspaceFixtures } from "./fixtures";
 import type { WorkspaceClient } from "./workspace-client";
 import type { WorkspaceFixtures } from "../domain/types";
@@ -10,7 +10,7 @@ type WorkspaceState = {
   error: string;
 };
 
-export function useWorkspace(client: WorkspaceClient = fixtureWorkspaceClient): WorkspaceState {
+export function useWorkspace(client: WorkspaceClient = defaultWorkspaceClient): WorkspaceState {
   const [state, setState] = useState<WorkspaceState>({ data: workspaceFixtures, loading: true, error: "" });
 
   useEffect(() => {

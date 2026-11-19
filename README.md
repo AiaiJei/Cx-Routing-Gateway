@@ -9,6 +9,22 @@ Codex Desktop runtime activation remains a separate verification step after the 
 
 ## 规划资料
 
+The Electron Desktop workspace is implemented in `apps/desktop` and uses local fixtures when opened in a browser. A local-control/Gateway runtime foundation is implemented, including text streaming and tool conversion; complex tool-result orchestration, signing, automatic updates, and production deployment remain. See [Desktop workspace](apps/desktop/README.md) for frontend startup and verification.
+
+The runtime foundation is now available locally: `npm test` runs the Node runtime checks, `npm run start:control` starts the loopback control API, and `npm run start:gateway` starts the authenticated Gateway. The Desktop can discover signed updates, download a verified installer, and launch it after an explicit user action. Complex parallel tool-stream orchestration, code signing, and production deployment remain in later stages.
+
+Useful local checks:
+
+```powershell
+npm run doctor
+npm run verify:all
+npm run verify:release
+npm run restore:config -- <data-dir>
+npm run check:update
+```
+
+`doctor` is read-only, `verify:release` validates packaged artifacts and writes a manifest, `restore:config` restores the last configuration backup after preserving the current file, and `check:update` validates a signed update manifest and installer artifact metadata.
+
 - [产品蓝图](docs/blueprint.md)
 - [开发计划](docs/development-plan.md)
 - [开发执行计划](docs/development-execution-plan.md)
@@ -16,4 +32,4 @@ Codex Desktop runtime activation remains a separate verification step after the 
 - [仓库架构树](docs/architecture.md)
 - [静态前端概念图](docs/concepts/gateway-overview.svg)
 
-以上为规划与设计产物；当前仓库不含可运行的前端或后端实现。
+规划文档和静态概念图描述目标，不代表 Gateway 服务可用。

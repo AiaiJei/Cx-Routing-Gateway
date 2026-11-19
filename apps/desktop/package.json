@@ -1,6 +1,8 @@
 {
   "name": "@cx-routing-gateway/desktop-ui",
   "version": "0.1.0",
+  "description": "Cx-Routing Gateway Desktop workspace and local runtime shell",
+  "author": "Cx-Routing Gateway contributors",
   "private": true,
   "main": "electron/main.cjs",
   "type": "module",
@@ -9,10 +11,14 @@
     "build": "tsc -b && vite build",
     "desktop:dev": "electron .",
     "desktop:prod": "npm run build && electron .",
+    "desktop:dist": "npm run build && electron-builder --dir",
+    "desktop:installer": "npm run build && electron-builder --win nsis",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
     "@fontsource/ibm-plex-mono": "^5.3.0",
     "@fontsource/ibm-plex-sans": "^5.3.0",
     "react": "^18.3.1",
@@ -27,6 +33,7 @@
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^5.2.0",
     "electron": "^45.3.4",
+    "electron-builder": "^26.0.12",
     "jsdom": "^26.1.0",
     "typescript": "^5.7.2",
     "vite": "^7.3.7",

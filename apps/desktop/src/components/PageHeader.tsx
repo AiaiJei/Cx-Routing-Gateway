@@ -10,8 +10,8 @@ export function PageHeader({ title, description, action }: { title: string; desc
   );
 }
 
-export function FixtureNotice({ children = "示例数据 · 非实时" }: { children?: React.ReactNode }) {
-  return <p className="fixture-notice"><span className="state-dot" />{children}</p>;
+export function FixtureNotice({ children = "示例数据 · 非实时", live = false }: { children?: React.ReactNode; live?: boolean }) {
+  return <p className={`fixture-notice${live ? " live" : ""}`}><span className="state-dot" />{children}</p>;
 }
 
 export function SearchField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
@@ -19,7 +19,7 @@ export function SearchField({ label, value, onChange }: { label: string; value: 
     <label className="search-field">
       <span className="sr-only">{label}</span>
       <span aria-hidden="true" className="search-symbol" />
-      <input type="search" aria-label={label} value={value} onChange={(event) => onChange(event.target.value)} />
+      <input className="geist-input search-input" type="search" aria-label={label} value={value} onChange={(event) => onChange(event.target.value)} />
     </label>
   );
 }
