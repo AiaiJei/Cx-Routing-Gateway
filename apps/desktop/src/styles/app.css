@@ -207,7 +207,13 @@ td code, code { font-family: "Geist Mono Variable", "Cascadia Code", monospace; 
 .failover-threshold { display: flex; align-items: center; gap: 12px; font-size: 13px; }
 .failover-threshold input { width: 80px; height: 34px; }
 .route-target { display: block; line-height: 1.6; }
-.row-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 10px; }
+td.row-actions-cell { white-space: nowrap; }
+.row-actions { display: inline-flex; flex-wrap: nowrap; align-items: center; gap: 6px; margin: 0; }
+.row-actions .geist-button { flex: 0 0 auto; gap: 5px; min-height: 32px; padding-inline: 9px; font-size: 13px; }
+.row-actions .geist-button--danger { margin-left: 2px; }
+.credentials-table.has-actions { min-width: 1120px; }
+.credentials-table.has-actions .row-actions-cell, .credentials-table.has-actions .row-actions-heading { width: 160px; }
+@media (max-width: 600px) { .row-actions .geist-button { min-height: 44px; } }
 .route-test-play-icon { width: 14px; height: 14px; }
 .route-test-form { display: grid; gap: 16px; }
 .route-test-context { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; padding: 14px; border-radius: var(--radius-card); background: var(--raised); }

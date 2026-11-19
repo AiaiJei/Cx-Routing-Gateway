@@ -18,7 +18,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (previousLocation.current === location.key) return;
     previousLocation.current = location.key;
     setNavigationOpen(false);
-    if (mainRef.current) { mainRef.current.inert = false; mainRef.current.focus(); }
+    if (mainRef.current) { mainRef.current.inert = false; mainRef.current.scrollTop = 0; mainRef.current.focus(); }
   }, [location.key]);
 
   useEffect(() => {
@@ -61,7 +61,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   function navigate() {
     setNavigationOpen(false);
-    if (mainRef.current) { mainRef.current.inert = false; mainRef.current.focus(); }
+    if (mainRef.current) { mainRef.current.inert = false; mainRef.current.scrollTop = 0; mainRef.current.focus(); }
   }
 
   return <>

@@ -48,12 +48,12 @@ export function CredentialsPage() {
       <p className="action-feedback" role="note">{data.meta.live ? "Key 只在创建或轮换结果中显示一次；页面列表只保留脱敏预览。" : "密钥创建、轮换和撤销尚未接入本机运行时。此页仅展示界面。"}</p>
       {data.meta.live && <div className="credential-scope"><TextField label="模型范围（逗号分隔，留空为全部）" value={scopeInput} onChange={(event) => setScopeInput(event.target.value)} placeholder="gateway-fast, gateway-reasoner" /></div>}
       {message && <p className="action-feedback" role="status">{message}</p>}
-      {credentials.length ? <div className="table-scroll" role="region" aria-label="接入凭证列表" tabIndex={0}><table className="credentials-table">
-        <thead><tr><th>名称</th><th>凭证预览</th><th>模型范围</th><th>创建时间</th><th>最近使用</th><th>状态</th></tr></thead>
+      {credentials.length ? <div className="table-scroll" role="region" aria-label="接入凭证列表" tabIndex={0}><table className={`credentials-table${data.meta.live ? " has-actions" : ""}`}>
+        <thead><tr><th>名称</th><th>凭证预览</th><th>模型范围</th><th>创建时间</th><th>最近使用</th><th>状态</th>{data.meta.live && <th className="row-actions-heading">操作</th>}</tr></thead>
         <tbody>{credentials.map((credential) => {
           const statusTone = credential.status === "已撤销" ? "status-negative" : credential.status === "运行时" ? "status-positive" : "status-neutral";
           return <tr key={credential.id}>
-            <td><strong>{credential.label}</strong></td><td><code>{credential.preview}</code></td><td>{credential.scope}</td><td>{credential.createdAt}</td><td>{credential.lastUsed}</td><td><span className={`status-badge ${statusTone}`}>{credential.status}</span>{data.meta.live && <span className="row-actions"><Button variant="tertiary" size="small" onClick={() => void rotateCredential(credential.id)}>轮换</Button><Button variant="danger" size="small" onClick={() => void revokeCredential(credential.id)}>撤销</Button></span>}</td>
+            <td><strong>{credential.label}</strong></td><td><code>{credential.preview}</code></td><td>{credential.scope}</td><td>{credential.createdAt}</td><td>{credential.lastUsed}</td><td><span className={`status-badge ${statusTone}`}>{credential.status}</span></td>{data.meta.live && <td className="row-actions-cell"><div className="row-actions" role="group" aria-label={`${credential.label} 操作`}><Button variant="secondary" size="small" onClick={() => void rotateCredential(credential.id)}>轮换</Button><Button variant="danger" size="small" onClick={() => void revokeCredential(credential.id)}>撤销</Button></div></td>}
           </tr>;
         })}</tbody>
       </table></div> : <EmptyResult>还没有接入凭证，创建后可供客户端使用。</EmptyResult>}

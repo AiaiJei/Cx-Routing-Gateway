@@ -84,17 +84,23 @@
       "request": "按渲染图执行更新，版本号定义1.0.1",
       "design_approval": "approved",
       "scope": "Approved design implementation, product version 1.0.1, verification and existing PR update"
+    },
+    {
+      "request": "优化模型路由/凭证按钮布局；滚动条放在内部、细小淡化、全局统一",
+      "date": "2026-11-19",
+      "scope": "Dedicated row action columns, shared button layout, internal workspace scrolling and global scrollbar appearance; preserve version 1.0.1 and all backend behavior",
+      "design_approval": "approved by direct change request"
     }
   ],
   "product_version": "1.0.1",
   "verification": {
     "runtime_tests": "61/61",
-    "independent_review": "2 P2 findings fixed with RED-GREEN tests and full suite",
-    "native_gui": "PARTIAL: isolated window not enumerated by CUA",
+    "independent_review": "Latest button/scroll delta accepted; related25/25, production build and diff check PASS",
+    "native_gui": "Prior package launched and AX confirms Gateway running; latest refinement restart stopped by user Escape",
     "desktop_tests": "55/55",
     "package_version": "PASS: x64 executable reports 1.0.1",
     "production_build": "PASS",
-    "visual": "18 screenshots, 1440/768/390 CSS widths, no page overflow",
+    "visual": "Button rows: no wraps/overflow at 1440/960/390; global internal scroll and 6px scrollbars verified for all six pages",
     "production_audit": "0 vulnerabilities",
     "provider": "NOT_RUN"
   }

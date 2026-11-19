@@ -10,12 +10,14 @@ describe("AppShell", () => {
     function Harness() { navigate = useNavigate(); return <AppShell><h1>内容</h1></AppShell>; }
     const user = userEvent.setup();
     render(<MemoryRouter initialEntries={["/", "/routes"]}><Harness /></MemoryRouter>);
+    screen.getByRole("main").scrollTop = 240;
     await user.click(screen.getByRole("button", { name: "打开导航" }));
     expect(screen.getByRole("main")).toHaveProperty("inert", true);
     await act(async () => { await navigate(-1); });
     expect(screen.getByRole("button", { name: "打开导航" })).toHaveAttribute("aria-expanded", "false");
     expect(screen.getByRole("main")).toHaveProperty("inert", false);
     expect(screen.getByRole("main")).toHaveFocus();
+    expect(screen.getByRole("main").scrollTop).toBe(0);
     expect(document.body.style.overflow).not.toBe("hidden");
     expect(document.querySelector(".navigation-backdrop")).not.toBeInTheDocument();
   });

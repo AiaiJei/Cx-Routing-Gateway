@@ -19,8 +19,18 @@
 .route-state-mark { display: inline-grid; place-items: center; width: 13px; height: 13px; border: 1px solid #777b83; border-radius: 50%; color: var(--muted); font-size: 10px; line-height: 1; }
 .route-state.is-enabled .route-state-mark { border-color: var(--positive); color: var(--positive); }
 .route-preview-state { margin-left: 21px; }
-.routes-table .row-actions { margin-left: 0; gap: 4px; }
-.routes-table .row-actions .geist-button { padding-inline: 6px; font-size: 12px; }
+/* A dedicated action column keeps every row's controls on one aligned line. */
+.routes-table.has-actions { min-width: 1120px; }
+.routes-table.has-actions .route-col-model { width: auto; }
+.routes-table.has-actions .route-col-inbound,
+.routes-table.has-actions .route-col-outbound,
+.routes-table.has-actions .route-col-response { width: 88px; }
+.routes-table.has-actions .route-col-upstream { width: 240px; }
+.routes-table.has-actions .route-col-state { width: 104px; }
+.routes-table.has-actions .route-col-actions { width: 300px; }
+.routes-table.has-actions th { padding-inline: 12px; }
+.routes-table.has-actions td { padding-inline: 12px; }
+.routes-table.has-actions .row-actions-cell { padding-top: 16px; }
 .protocol-explanation { display: grid; gap: 12px; }
 .protocol-explanation > .section-title { font-size: 15px; }
 .protocol-explanation > .helper-text { margin: 0; font-size: 13px; }
@@ -43,3 +53,9 @@
 }
 
 .route-state-mark svg { width: 11px; height: 11px; stroke: currentColor; stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; }
+
+.routes-table.has-actions .row-actions { display: grid; grid-template-columns: 94px 48px 48px 48px; gap: 6px; }
+.route-action-test { grid-column: 1; }
+.route-action-edit { grid-column: 2; }
+.route-action-toggle { grid-column: 3; }
+.route-action-delete { grid-column: 4; }
