@@ -2,55 +2,54 @@
   "contract_version": 1,
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
-  "task_id": "CXRG-FE-IOS-HIG-2026-11-19",
-  "title": "Desktop iOS-inspired refinement on PR #4",
+  "task_id": "CXRG-WORKSPACE-DESIGN-2026-11-19",
+  "title": "Notion information architecture, Linear layout, and Apple HIG components",
   "status": "active",
-  "branch": "codex/desktop-frontend-ios-hig",
-  "base": "codex/project-stage0-contract",
+  "stage": "design-review",
+  "branch": "codex/desktop-workspace-redesign",
+  "base": "master",
+  "base_sha": "9807fd32b27c436dde55129308799ec4d6187643",
   "authorized_paths": [
     ".codex/awg-task.json",
-    "docs/superpowers/specs/2026-11-19-desktop-ios-hig-design.md",
-    "docs/superpowers/plans/2026-11-19-desktop-ios-hig.md",
-    "docs/task-record.md",
-    ".taste-skill/**",
-    "apps/desktop/src/**",
-    "apps/desktop/electron/main.cjs",
-    "apps/desktop/electron/preload.cjs",
-    "apps/desktop/electron/runtime-supervisor.cjs",
-    "services/gateway/src/server.mjs",
-    "tests/**"
+    "docs/superpowers/specs/2026-11-19-workspace-redesign-design.md",
+    "docs/concepts/workspace-redesign.svg",
+    "docs/tasks/2026-11-19-workspace-redesign.md",
+    "docs/task-record.md"
   ],
   "scope": {
     "include": [
-      "Build on PR #4 at 480f54cf490cdb58de9a48be891d61135d594ecc",
-      "Refine the existing Desktop renderer with iOS-inspired semantic colors, grouped surfaces, and controls",
-      "Remove the sidebar product title while retaining product identity in the native title bar and workspace header",
-      "Add a corresponding decorative SVG icon to each of the six navigation destinations",
-      "Add an interactive route test dialog that sends a user-editable prompt through the selected route's real Gateway path",
-      "Use an in-memory route-scoped test credential that is removed after one request and is never persisted or exposed to the renderer",
-      "Clearly disclose that real upstream test calls may incur provider charges",
-      "Preserve PR #4 runtime-backed interactions, multi-upstream priority routing, and explicit fixture/runtime states",
-      "Store generated visual verification screenshots and reports under .taste-skill/ without including them in the product change",
-      "Record the user's scope extension, retarget PR #5 to master after PR #4 merged, and merge PR #5 when required checks permit",
-      "Synchronize the main worktree with the merged PR #5 result",
-      "Remove the PR #5 task worktree after preserving untracked verification artifacts"
+      "Create a dedicated draft PR against master with design artifacts and the task contract",
+      "Study the supplied Notion, Linear and Apple HIG references",
+      "Map information architecture, layout and component principles to the existing six Desktop pages",
+      "Provide a static illustration, sources, acceptance criteria and rollback",
+      "Review the design independently and record evidence"
     ],
     "exclude": [
-      "Changes to PR #4 route matching, protocol conversion, upstream failover policy, persistent storage schema, or external provider profiles",
-      "Release/deployment, force-pushing master, deleting task branches, or changes to other worktrees"
+      "Product implementation before design approval",
+      "Block editor, nested user-created pages, cloud collaboration or multiple workspaces",
+      "Framework replacement, backend or storage schema changes",
+      "Merge, deployment, release, direct push to master or worktree deletion"
     ]
   },
+  "authorization": {
+    "source": "User request on 2026-11-19 to establish a dedicated PR using Notion architecture, Linear layout and Apple HIG components",
+    "operations": [
+      "create isolated branch/worktree",
+      "commit design artifacts",
+      "push task branch",
+      "create draft PR"
+    ],
+    "design_approval": "pending",
+    "implementation_approval": "pending",
+    "scope_confirmation": "User explicitly selected information architecture and redesign of the existing six pages; no block editor or nested-page capability."
+  },
   "acceptance": [
-    "All six screens are navigable, each navigation item has its SVG icon, and the sidebar has no site title",
-    "Semantic system colors, protocol distinctions, and grouped controls are applied consistently",
-    "PR #4 runtime-backed interactions and fixture/runtime disclosure remain intact",
-    "Real route tests run through the Gateway path with route-scoped in-memory authorization and no persisted test credentials",
-    "The test dialog discloses that upstream provider charges may apply",
-    "Responsive and keyboard accessibility checks are recorded",
-    "Desktop tests, production build, visual checks, and independent review are recorded",
-    "No Critical or Important review findings remain; Owner acceptance is recorded separately",
-    "PR #5 is merged to master, the main worktree reflects the merge, and the task worktree is removed with untracked artifacts preserved"
+    "Dedicated draft PR exists against master and is attached to this chat",
+    "Each reference has an explicit role and source URL",
+    "Existing components, routes and runtime boundaries are mapped",
+    "Design, independent review and verification are recorded",
+    "Owner approval and implementation status remain distinct"
   ],
-  "rollback": "Revert only this refinement's commits while preserving the PR #4 base and its runtime changes.",
+  "rollback": "Revert this task's documentation commits or close the draft PR; retain branch and worktree unless separately authorized.",
   "owner_acceptance": "pending"
 }

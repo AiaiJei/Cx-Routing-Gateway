@@ -279,3 +279,11 @@
 - 当前 PR #5 head 为 `306c2dc`。任务工作树唯一未跟踪内容为 `.taste-skill/`，应在移除工作树前保留归档副本，不加入产品提交。
 - 新鲜验证：Runtime 59/59、Desktop 45/45、Desktop 生产构建通过；GitHub runtime/desktop 检查通过。`npm run verify:all` 最终因本地缺少 `apps/desktop/release/win-unpacked/Cx-Routing Gateway.exe` 在 release manifest 步骤退出 1；release/package smoke 本次未运行。
 - 集成状态：进行中，尚未改 PR base、合并远端 PR、更新本地主工作树或移除任务工作树。
+
+## 2026-11-19 Notion / Linear / Apple HIG 专属设计 PR
+
+- 用户要求建立专属 PR，采用 Notion 框架与架构、Linear 布局及 Apple HIG 组件规范。
+- 新鲜核查 PR #4、#5 已合并，master 为 `9807fd32b27c436dde55129308799ec4d6187643`；上方 PR #5 的“集成进行中”为历史记录。
+- 在仓内 `.worktree/desktop-workspace-redesign` 和 `codex/desktop-workspace-redesign` 分支开展，不继承 PR #5 的合并/删除授权。
+- [设计稿](superpowers/specs/2026-11-19-workspace-redesign-design.md)记录参考分工、共享组件、六页布局、验收与回退；[任务记录](tasks/2026-11-19-workspace-redesign.md)记录合同、能力和证据。
+- 当前为设计提案与 Draft PR 阶段；产品实现、Owner 设计批准与验收尚未完成。
