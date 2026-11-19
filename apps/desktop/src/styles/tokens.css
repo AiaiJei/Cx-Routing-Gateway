@@ -1,7 +1,9 @@
 :root {
-  font-family: "IBM Plex Sans", Inter, system-ui, sans-serif;
+  font-family: "Geist Variable", "Microsoft YaHei UI", system-ui, sans-serif;
   color: #1c1c1e;
   background: #f2f2f7;
+  font-optical-sizing: auto;
+  line-height: 1.5;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   font-variant-numeric: tabular-nums;
@@ -16,6 +18,7 @@
   --muted: #636366;
   --accent: #0066cc;
   --accent-soft: #eaf3ff;
+  --accent-border: #b6d7ff;
   --accent-hover: #0057b8;
   --positive: #1f6b2f;
   --positive-soft: #e9f7ed;
@@ -29,6 +32,12 @@
   --protocol-mes-soft: #e6f5f2;
   --protocol-chat: #0066cc;
   --protocol-chat-soft: #eaf3ff;
+  --font-xs: 12px;
+  --font-sm: 13px;
+  --font-body: 14px;
+  --font-section: 16px;
+  --font-title: 22px;
+  --font-metric: 24px;
   --radius-card: 8px;
   --radius-control: 8px;
   --radius-sheet: 16px;

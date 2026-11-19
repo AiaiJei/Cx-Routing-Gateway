@@ -1,0 +1,324 @@
+import http from 'node:http';
+import https from 'node:https';
+import crypto from 'node:crypto';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import dns from 'node:dns/promises';
+import net from 'node:net';
+
+const MAX_BODY = 1024 * 1024;
+const protocols = new Set(['Res', 'Mes', 'Chat']);
+const defaultProfiles = { Res: { providerId: 'openai', apiProfile: 'openai-responses-v1' }, Mes: { providerId: 'anthropic', apiProfile: 'anthropic-messages-2026-10-21' }, Chat: { providerId: 'openai', apiProfile: 'openai-chat-completions-v1' } };
+function upstreamUrl(baseUrl, endpoint) { const base = baseUrl.replace(/\/$/, ''); return base.endsWith('/v1') && endpoint.startsWith('/v1/') ? `${base}${endpoint.slice(3)}` : `${base}${endpoint}`; }
+
+function send(res, status, body) {
+  res.statusCode = status;
+  res.setHeader('content-type', 'application/json; charset=utf-8');
+  res.setHeader('x-content-type-options', 'nosniff');
+  res.setHeader('cache-control', 'no-store');
+  res.end(JSON.stringify(body));
+}
+
+async function bodyOf(req) {
+  let size = 0;
+  let data = '';
+  for await (const chunk of req) {
+    size += chunk.length;
+    if (size > MAX_BODY) throw Object.assign(new Error('Request body too large'), { statusCode: 413 });
+    data += chunk;
+  }
+  if (!data) return {};
+  try { return JSON.parse(data); } catch { throw Object.assign(new Error('Invalid JSON'), { statusCode: 400 }); }
+}
+
+function publicState(config) {
+  return { ...config, clientKeys: config.clientKeys.map(({ keyHash, ...key }) => key) };
+}
+
+function requireProtocol(value) {
+  if (!protocols.has(value)) throw Object.assign(new Error('Unsupported protocol'), { statusCode: 400 });
+}
+
+function profileFor(protocol, input = {}) {
+  const defaults = defaultProfiles[protocol];
+  const providerId = String(input.providerId || defaults.providerId).trim();
+  const apiProfile = String(input.apiProfile || defaults.apiProfile).trim();
+  if (!/^[a-z0-9][a-z0-9._-]{1,99}$/i.test(providerId) || !/^[a-z0-9][a-z0-9._-]{1,119}$/i.test(apiProfile)) throw Object.assign(new Error('Invalid upstream profile'), { statusCode: 400 });
+  return { providerId, apiProfile };
+}
+
+function classifyAddress(raw) {
+  const address = String(raw).toLowerCase().replace(/^::ffff:/, '');
+  if (net.isIP(address) === 4) {
+    const octets = address.split('.').map(Number);
+    const [first, second] = octets;
+    const privateNetwork = first === 10 || first === 127 || (first === 172 && second >= 16 && second <= 31) || (first === 192 && second === 168) || (first === 100 && second >= 64 && second <= 127);
+    const linkLocal = first === 169 && second === 254;
+    const unspecified = first === 0;
+    return { privateNetwork, linkLocal, metadata: address === '169.254.169.254', unspecified };
+  }
+  const privateNetwork = address === '::1' || address.startsWith('fc') || address.startsWith('fd');
+  const linkLocal = address.startsWith('fe80:');
+  const unspecified = address === '::';
+  return { privateNetwork, linkLocal, metadata: address === 'fd00:ec2::254', unspecified };
+}
+
+async function validateBaseUrl(raw, allowPrivateNetwork = false, lookup = dns.lookup) {
+  const value = new URL(raw);
+  if (!['http:', 'https:'].includes(value.protocol) || value.username || value.password || value.hash) throw Object.assign(new Error('Invalid upstream URL'), { statusCode: 400 });
+  const host = value.hostname.replace(/^\[|\]$/g, '').toLowerCase();
+  const hostClass = host === 'localhost' ? { privateNetwork: true, linkLocal: false, metadata: false, unspecified: false } : classifyAddress(host);
+  if (hostClass.metadata || hostClass.linkLocal || hostClass.unspecified || (hostClass.privateNetwork && !allowPrivateNetwork)) throw Object.assign(new Error('Private or metadata upstream requires explicit trust'), { statusCode: 400 });
+  const addresses = (await lookup(host, { all: true })).map((record) => record.address.toLowerCase()).sort();
+  if (!addresses.length) throw Object.assign(new Error('Upstream host did not resolve'), { statusCode: 400 });
+  const classes = addresses.map((address) => classifyAddress(address));
+  if (classes.some((addressClass) => addressClass.metadata || addressClass.linkLocal || addressClass.unspecified)) throw Object.assign(new Error('Resolved upstream address is not trusted'), { statusCode: 400 });
+  const hasPrivate = classes.some((addressClass) => addressClass.privateNetwork);
+  const hasPublic = classes.some((addressClass) => !addressClass.privateNetwork);
+  if (hasPrivate && hasPublic) throw Object.assign(new Error('Mixed public and private DNS answers are not trusted'), { statusCode: 400 });
+  if (hasPrivate && !allowPrivateNetwork) throw Object.assign(new Error('Resolved upstream address is not trusted'), { statusCode: 400 });
+  return { value, addresses };
+}
+
+function requestJsonAtApprovedAddress(rawUrl, headers, approvedAddresses, timeoutMs = 5000) {
+  const target = new URL(rawUrl);
+  const address = approvedAddresses[0];
+  if (!address) throw Object.assign(new Error('Upstream host did not resolve'), { code: 'upstream_error' });
+  const transport = target.protocol === 'https:' ? https : http;
+  return new Promise((resolve, reject) => {
+    const request = transport.request({
+      protocol: target.protocol,
+      hostname: address,
+      port: target.port || (target.protocol === 'https:' ? 443 : 80),
+      path: `${target.pathname}${target.search}`,
+      method: 'GET',
+      headers: { ...headers, host: target.host },
+      servername: target.hostname,
+      timeout: timeoutMs,
+    }, (response) => {
+      let data = '';
+      let size = 0;
+      response.setEncoding('utf8');
+      response.on('data', (chunk) => {
+        size += Buffer.byteLength(chunk);
+        if (size > MAX_BODY) request.destroy(Object.assign(new Error('Upstream response too large'), { code: 'response_too_large' }));
+        else data += chunk;
+      });
+      response.on('end', () => {
+        if (response.statusCode < 200 || response.statusCode >= 300) return reject(Object.assign(new Error(`Upstream returned ${response.statusCode}`), { code: 'upstream_status', statusCode: 502 }));
+        try { resolve(JSON.parse(data)); } catch { reject(Object.assign(new Error('Invalid upstream response'), { code: 'upstream_error', statusCode: 502 })); }
+      });
+    });
+    request.on('timeout', () => request.destroy(Object.assign(new Error('Upstream timeout'), { code: 'timeout' })));
+    request.on('error', reject);
+    request.end();
+  });
+}
+
+function authorize(req, controlToken) {
+  if (!controlToken) return;
+  const value = req.headers.authorization;
+  if (value !== `Bearer ${controlToken}`) throw Object.assign(new Error('Unauthorized'), { statusCode: 401 });
+}
+
+export function createControlServer({ store, vault, controlToken = process.env.CXRG_CONTROL_TOKEN, allowUnauthenticated = false, dnsLookup = dns.lookup } = {}) {
+  if (!store || !vault) throw new Error('Control server requires store and vault');
+  if (!controlToken && !allowUnauthenticated) throw new Error('CXRG_CONTROL_TOKEN is required for local-control');
+  return http.createServer(async (req, res) => {
+    try {
+      const url = new URL(req.url, 'http://127.0.0.1');
+      const parts = url.pathname.split('/').filter(Boolean);
+      if (req.method === 'GET' && url.pathname === '/health') return send(res, 200, { status: 'ok', service: 'local-control' });
+      authorize(req, allowUnauthenticated ? undefined : controlToken);
+      if (req.method === 'GET' && url.pathname === '/v1/control/state') return send(res, 200, publicState(await store.read()));
+      if (req.method === 'GET' && url.pathname === '/v1/control/logs') {
+        const config = await store.read();
+        const limit = Math.min(Math.max(Number(url.searchParams.get('limit') || 100), 1), 500);
+        const status = url.searchParams.get('status');
+        const logs = config.usage.filter((item) => !status || item.status === status).slice(-limit).reverse();
+        return send(res, 200, { logs });
+      }
+      if (req.method === 'GET' && url.pathname === '/v1/control/metrics') {
+        const usage = (await store.read()).usage || [];
+        const completed = usage.filter((item) => item.status === 'completed').length;
+        const rejected = usage.filter((item) => item.status === 'rejected').length;
+        const failed = usage.filter((item) => item.status === 'failed').length;
+        const timed = usage.filter((item) => typeof item.durationMs === 'number');
+        return send(res, 200, { total: usage.length, completed, rejected, failed, avgDurationMs: timed.length ? Math.round(timed.reduce((sum, item) => sum + item.durationMs, 0) / timed.length) : null });
+      }
+      if (parts[0] !== 'v1' || parts[1] !== 'control') return send(res, 404, { error: 'not_found' });
+
+      if (req.method === 'PATCH' && parts[2] === 'settings' && parts.length === 3) {
+        const input = await bodyOf(req);
+        if (input.usageRetentionCount !== undefined && (!Number.isInteger(input.usageRetentionCount) || input.usageRetentionCount < 1 || input.usageRetentionCount > 100_000)) throw Object.assign(new Error('Invalid usage retention count'), { statusCode: 400 });
+        const next = await store.update((value) => ({ ...value, settings: { ...value.settings, ...(input.usageRetentionCount === undefined ? {} : { usageRetentionCount: input.usageRetentionCount }) } }));
+        return send(res, 200, { settings: next.settings });
+      }
+
+      if (req.method === 'POST' && parts[2] === 'upstreams' && parts.length === 3) {
+        const input = await bodyOf(req);
+        const upstreamProtocol = input.protocol || 'Chat';
+        requireProtocol(upstreamProtocol);
+        const profile = profileFor(upstreamProtocol, input);
+        const destination = await validateBaseUrl(input.baseUrl, input.allowPrivateNetwork === true, dnsLookup);
+        const credentialRef = input.apiKey ? await vault.put(input.apiKey) : undefined;
+        const upstream = { id: `up_${crypto.randomUUID()}`, name: String(input.name || 'Upstream'), baseUrl: input.baseUrl.replace(/\/$/, ''), protocol: upstreamProtocol, ...profile, credentialRef, trustedPrivateNetwork: input.allowPrivateNetwork === true, approvedAddresses: destination.addresses, enabled: input.enabled !== false, models: [] };
+        await store.update((config) => ({ ...config, upstreams: [...config.upstreams, upstream] }));
+        return send(res, 201, upstream);
+      }
+      if (req.method === 'POST' && url.pathname === '/v1/control/routes/batch') {
+        const { inboundProtocol, outboundProtocol, targets, editId, failover } = await bodyOf(req);
+        requireProtocol(inboundProtocol);
+        requireProtocol(outboundProtocol);
+        if (!Array.isArray(targets) || !targets.length || targets.length > 512) return send(res, 400, { error: 'invalid_targets' });
+        if (failover !== undefined && (!failover || !Number.isInteger(failover.failureThreshold) || failover.failureThreshold < 1 || failover.failureThreshold > 100 || !Array.isArray(failover.statusClasses) || !failover.statusClasses.length || failover.statusClasses.some(value => value !== 4 && value !== 5) || new Set(failover.statusClasses).size !== failover.statusClasses.length)) return send(res, 400, { error: 'invalid_failover_policy' });
+        let saved;
+        await store.update(config => {
+          const original = editId && config.routes.find(route => route.id === editId);
+          if (editId && !original) throw Object.assign(new Error('route_not_found'), { statusCode: 404 });
+          const groups = new Map();
+          for (const target of targets) {
+            if (!target || typeof target.modelId !== 'string' || !target.modelId.trim() || !config.upstreams.some(item => item.id === target.upstreamId)) throw Object.assign(new Error('invalid_target'), { statusCode: 400 });
+            const list = groups.get(target.modelId) ?? [];
+            if (!list.some(item => item.upstreamId === target.upstreamId && item.modelId === target.modelId)) list.push({ upstreamId: target.upstreamId, modelId: target.modelId });
+            groups.set(target.modelId, list);
+          }
+          const retained = config.routes.filter(route => route.id !== editId);
+          const originalTargets = original?.targets?.length ? original.targets : original ? [{ upstreamId: original.upstreamId, modelId: original.modelId }] : [];
+          const preserveModel = originalTargets.find(target => groups.has(target.modelId))?.modelId ?? (original ? targets[0].modelId : undefined);
+          saved = [];
+          for (const [modelId, selection] of groups) {
+            const previous = original && modelId === preserveModel ? original : undefined;
+            const alias = previous?.alias ?? modelId;
+            const existingIndex = retained.findIndex(route => route.enabled && route.inboundProtocol === inboundProtocol && route.alias === alias);
+            const existing = existingIndex >= 0 ? retained[existingIndex] : undefined;
+            if (existing && (previous || existing.outboundProtocol !== outboundProtocol || existing.modelId !== modelId)) throw Object.assign(new Error('route_conflict'), { statusCode: 409 });
+            const base = previous ?? existing;
+            const priorTargets = existing ? (existing.targets?.length ? existing.targets : [{ upstreamId: existing.upstreamId, modelId: existing.modelId }]) : [];
+            const merged = [...selection];
+            for (const item of priorTargets) if (!merged.some(target => target.upstreamId === item.upstreamId && target.modelId === item.modelId)) merged.push(item);
+            const policy = failover ? { failureThreshold: failover.failureThreshold, statusClasses: failover.statusClasses, cooldownSeconds: 60 } : base?.failover ?? { failureThreshold: 3, statusClasses: [4, 5], cooldownSeconds: 60 };
+            const route = { ...base, id: base?.id ?? `route_${crypto.randomUUID()}`, alias, enabled: base?.enabled ?? true, inboundProtocol, outboundProtocol, upstreamId: merged[0].upstreamId, modelId: merged[0].modelId, targets: merged, failover: policy, allowLossy: base?.allowLossy ?? false };
+            if (existing) retained.splice(existingIndex, 1);
+            saved.push(route);
+          }
+          return { ...config, routes: [...retained, ...saved] };
+        });
+        return send(res, 200, { routes: saved });
+      }
+      if (req.method === 'POST' && parts[2] === 'routes' && parts.length === 3) {
+        const input = await bodyOf(req);
+        requireProtocol(input.inboundProtocol); requireProtocol(input.outboundProtocol);
+        const config = await store.read();
+        if (!config.upstreams.some((item) => item.id === input.upstreamId)) throw Object.assign(new Error('Unknown upstream'), { statusCode: 400 });
+        if (config.routes.some((item) => item.enabled && item.alias === input.alias && item.inboundProtocol === input.inboundProtocol)) return send(res, 409, { error: 'route_conflict' });
+        const route = { id: `route_${crypto.randomUUID()}`, alias: String(input.alias || ''), inboundProtocol: input.inboundProtocol, outboundProtocol: input.outboundProtocol, upstreamId: input.upstreamId, modelId: String(input.modelId || ''), enabled: input.enabled !== false, allowLossy: input.allowLossy === true };
+        if (!route.alias || !route.modelId) throw Object.assign(new Error('Route alias and model are required'), { statusCode: 400 });
+        await store.update((value) => ({ ...value, routes: [...value.routes, route] }));
+        return send(res, 201, route);
+      }
+      if ((req.method === 'PATCH' || req.method === 'DELETE') && parts[2] === 'upstreams' && parts[3]) {
+        const id = parts[3];
+        const config = await store.read();
+        const current = config.upstreams.find((item) => item.id === id);
+        if (!current) return send(res, 404, { error: 'not_found' });
+        if (req.method === 'DELETE') {
+          if (config.routes.some((route) => route.enabled && (route.upstreamId === id || route.targets?.some(target => target.upstreamId === id)))) return send(res, 409, { error: 'upstream_in_use' });
+          await store.update((value) => ({ ...value, upstreams: value.upstreams.filter((item) => item.id !== id) }));
+          if (current.credentialRef) await vault.remove(current.credentialRef);
+          return send(res, 200, { id, deleted: true });
+        }
+        const input = await bodyOf(req);
+        if (input.protocol) requireProtocol(input.protocol);
+        const next = { ...current, ...Object.fromEntries(['name', 'baseUrl', 'protocol', 'enabled'].filter((key) => input[key] !== undefined).map((key) => [key, input[key]])) };
+        if (input.protocol) Object.assign(next, profileFor(input.protocol, input));
+        else if (input.providerId !== undefined || input.apiProfile !== undefined) Object.assign(next, profileFor(current.protocol, { providerId: input.providerId ?? current.providerId, apiProfile: input.apiProfile ?? current.apiProfile }));
+        if (input.baseUrl) { const destination = await validateBaseUrl(input.baseUrl, input.allowPrivateNetwork === true, dnsLookup); next.baseUrl = input.baseUrl.replace(/\/$/, ''); next.approvedAddresses = destination.addresses; next.trustedPrivateNetwork = input.allowPrivateNetwork === true; }
+        if (input.allowPrivateNetwork !== undefined) next.trustedPrivateNetwork = input.allowPrivateNetwork === true;
+        if (input.apiKey) { if (current.credentialRef) await vault.remove(current.credentialRef); next.credentialRef = await vault.put(input.apiKey); }
+        await store.update((value) => ({ ...value, upstreams: value.upstreams.map((item) => item.id === id ? next : item) }));
+        return send(res, 200, next);
+      }
+      if (req.method === 'PATCH' && parts[2] === 'routes' && parts[3]) {
+        const id = parts[3];
+        const input = await bodyOf(req);
+        const config = await store.read();
+        const current = config.routes.find((item) => item.id === id);
+        if (!current) return send(res, 404, { error: 'not_found' });
+        if (input.inboundProtocol) requireProtocol(input.inboundProtocol);
+        if (input.outboundProtocol) requireProtocol(input.outboundProtocol);
+        if (input.upstreamId && !config.upstreams.some((item) => item.id === input.upstreamId)) throw Object.assign(new Error('Unknown upstream'), { statusCode: 400 });
+        const next = { ...current, ...Object.fromEntries(['alias', 'inboundProtocol', 'outboundProtocol', 'upstreamId', 'modelId', 'enabled', 'allowLossy'].filter((key) => input[key] !== undefined).map((key) => [key, input[key]])) };
+        if (!next.alias || !next.modelId) throw Object.assign(new Error('Route alias and model are required'), { statusCode: 400 });
+        if (next.enabled && config.routes.some((item) => item.id !== id && item.enabled && item.alias === next.alias && item.inboundProtocol === next.inboundProtocol)) return send(res, 409, { error: 'route_conflict' });
+        await store.update((value) => ({ ...value, routes: value.routes.map((item) => item.id === id ? next : item) }));
+        return send(res, 200, next);
+      }
+      if (req.method === 'DELETE' && parts[2] === 'routes' && parts[3]) {
+        const id = parts[3];
+        const config = await store.read();
+        if (!config.routes.some((item) => item.id === id)) return send(res, 404, { error: 'not_found' });
+        await store.update((value) => ({ ...value, routes: value.routes.filter((item) => item.id !== id) }));
+        return send(res, 200, { id, deleted: true });
+      }
+      if (req.method === 'POST' && parts[2] === 'upstreams' && parts[3] && parts[4] === 'test') {
+        const config = await store.read();
+        const upstream = config.upstreams.find((item) => item.id === parts[3]);
+        if (!upstream) return send(res, 404, { error: 'not_found' });
+        const destination = await validateBaseUrl(upstream.baseUrl, upstream.trustedPrivateNetwork === true, dnsLookup);
+        const approved = upstream.approvedAddresses || [];
+        if (approved.length && (approved.length !== destination.addresses.length || approved.some((address, index) => address !== destination.addresses[index]))) return send(res, 502, { ok: false, error: 'destination_changed' });
+        try {
+          const headers = {};
+          const secret = upstream.credentialRef ? await vault.get(upstream.credentialRef) : undefined;
+          if (secret) headers[upstream.protocol === 'Mes' ? 'x-api-key' : 'authorization'] = upstream.protocol === 'Mes' ? secret : `Bearer ${secret}`;
+          if (upstream.protocol === 'Mes') headers['anthropic-version'] = '2026-10-21';
+          const payload = await requestJsonAtApprovedAddress(upstreamUrl(upstream.baseUrl, '/v1/models'), headers, destination.addresses, 5000);
+          const models = Array.isArray(payload.data) ? payload.data.map((item) => item.id).filter(Boolean) : [];
+          await store.update((value) => ({ ...value, upstreams: value.upstreams.map((item) => item.id === upstream.id ? { ...item, models, lastCheckedAt: new Date().toISOString() } : item) }));
+          return send(res, 200, { ok: true, models, checkedAt: new Date().toISOString() });
+        } catch (error) {
+          return send(res, 502, { ok: false, error: error.code === 'timeout' ? 'timeout' : 'unavailable' });
+        }
+      }
+      if (req.method === 'POST' && parts[2] === 'client-keys' && parts.length === 3) {
+        const input = await bodyOf(req);
+        const key = `cxrg_${crypto.randomBytes(24).toString('base64url')}`;
+        const scope = Array.isArray(input.scope) ? input.scope.filter((item) => typeof item === 'string' && item.trim()).slice(0, 100) : [];
+        const keyRecord = { id: `key_${crypto.randomUUID()}`, name: String(input.name || 'Client key'), scope, keyHash: crypto.createHash('sha256').update(key).digest('hex'), createdAt: new Date().toISOString(), enabled: true };
+        await store.update((value) => ({ ...value, clientKeys: [...value.clientKeys, keyRecord] }));
+        return send(res, 201, { id: keyRecord.id, name: keyRecord.name, scope, key, createdAt: keyRecord.createdAt, enabled: true });
+      }
+      if (req.method === 'POST' && parts[2] === 'client-keys' && parts[3] && parts[4] === 'rotate') {
+        const id = parts[3];
+        const config = await store.read();
+        const current = config.clientKeys.find((item) => item.id === id);
+        if (!current) return send(res, 404, { error: 'not_found' });
+        const key = `cxrg_${crypto.randomBytes(24).toString('base64url')}`;
+        const rotatedAt = new Date().toISOString();
+        await store.update((value) => ({ ...value, clientKeys: value.clientKeys.map((item) => item.id === id ? { ...item, keyHash: crypto.createHash('sha256').update(key).digest('hex'), enabled: true, rotatedAt } : item) }));
+        return send(res, 200, { id, name: current.name, scope: current.scope || [], key, rotatedAt, enabled: true });
+      }
+      if (req.method === 'DELETE' && parts[2] === 'client-keys' && parts[3]) {
+        const id = parts[3];
+        const config = await store.read();
+        if (!config.clientKeys.some((item) => item.id === id)) return send(res, 404, { error: 'not_found' });
+        await store.update((value) => ({ ...value, clientKeys: value.clientKeys.map((item) => item.id === id ? { ...item, enabled: false } : item) }));
+        return send(res, 200, { id, enabled: false });
+      }
+      return send(res, 404, { error: 'not_found' });
+    } catch (error) {
+      return send(res, error.statusCode || 500, { error: error.statusCode ? error.message : 'internal_error' });
+    }
+  });
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const dataDir = process.env.CXRG_DATA_DIR || './.cxrg-data';
+  const { ConfigStore } = await import('../../../packages/shared/src/config-store.mjs');
+  const { SecretVault } = await import('../../../packages/shared/src/secret-vault.mjs');
+  const server = createControlServer({ store: new ConfigStore(`${dataDir}/config.json`), vault: new SecretVault(`${dataDir}/secrets.json`) });
+  server.listen(Number(process.env.CXRG_CONTROL_PORT || 4319), '127.0.0.1');
+  process.stdin.on('end', () => server.close(() => process.exit(0)));
+  process.stdin.resume();
+}

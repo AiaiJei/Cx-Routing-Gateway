@@ -1,8 +1,8 @@
 # Desktop Frontend iOS-Inspired Refinement Plan
 
-**Goal:** Refine the six-screen Desktop UI with semantic iOS-inspired color and controls, remove the sidebar title, and add SVG icons to all navigation destinations.
+**Goal:** Refine the PR #4 Desktop UI with semantic iOS-inspired color and controls, remove the sidebar title, and add SVG icons to all navigation destinations while preserving runtime-backed workflows.
 
-**Architecture:** Keep React/Vite, route structure, data clients, and CSS tokens. Add focused shared navigation-icon and segmented-control components, then apply semantic tokens to existing screens.
+**Architecture:** Keep PR #4's React/Vite/Electron runtime bridge, route structure, data clients, and CSS tokens. Add focused shared navigation-icon, protocol badge, and segmented-control components, then apply semantic tokens to existing screens without changing runtime contracts.
 
 **Spec:** `docs/superpowers/specs/2026-11-19-desktop-ios-hig-design.md`
 

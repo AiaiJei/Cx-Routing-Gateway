@@ -3,42 +3,41 @@
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
   "task_id": "CXRG-FE-IOS-HIG-2026-11-19",
-  "title": "Desktop frontend iOS-inspired refinement",
+  "title": "Desktop iOS-inspired refinement on PR #4",
   "status": "active",
   "branch": "codex/desktop-frontend-ios-hig",
-  "base": "master",
+  "base": "codex/project-stage0-contract",
   "authorized_paths": [
     ".codex/awg-task.json",
     "docs/superpowers/specs/2026-11-19-desktop-ios-hig-design.md",
     "docs/superpowers/plans/2026-11-19-desktop-ios-hig.md",
     "docs/task-record.md",
     ".taste-skill/**",
-    "apps/desktop/**",
+    "apps/desktop/src/**",
     "tests/**"
   ],
   "scope": {
     "include": [
-      "Refine the existing six-screen Desktop frontend with iOS-inspired system color, grouped surfaces, and control treatments",
-      "Remove the brand title from the left sidebar while retaining product identity in the native title bar and workspace header",
-      "Add a corresponding accessible SVG icon to each of the six navigation destinations",
-      "Preserve fixture-backed interactions, explicit simulated/unavailable states, responsive behavior, and keyboard accessibility",
-      "Store generated visual verification screenshots and reports under .taste-skill/ without including them in the product change",
-      "Frontend verification, independent review, and dedicated pull request"
+      "Build on PR #4 at 480f54cf490cdb58de9a48be891d61135d594ecc",
+      "Refine the existing Desktop renderer with iOS-inspired semantic colors, grouped surfaces, and controls",
+      "Remove the sidebar product title while retaining product identity in the native title bar and workspace header",
+      "Add a corresponding decorative SVG icon to each of the six navigation destinations",
+      "Preserve PR #4 runtime-backed interactions, multi-upstream priority routing, and explicit fixture/runtime states",
+      "Store generated visual verification screenshots and reports under .taste-skill/ without including them in the product change"
     ],
     "exclude": [
-      "Gateway runtime, backend APIs, IPC server, and real upstream calls",
-      "Credential persistence, production authentication, and database changes",
-      "Merge, release, and deployment"
+      "Changes to PR #4 runtime APIs, storage, authentication, gateway behavior, or external provider integration",
+      "Merge, release, deployment, or changes to the PR #4 worktree"
     ]
   },
   "acceptance": [
-    "Development startup and production build succeed",
     "All six screens are navigable, each navigation item has its SVG icon, and the sidebar has no site title",
     "Semantic system colors, protocol distinctions, and grouped controls are applied consistently",
-    "Fixture data and simulated outcomes are not represented as live runtime evidence",
+    "PR #4 runtime-backed interactions and fixture/runtime disclosure remain intact",
     "Responsive and keyboard accessibility checks are recorded",
-    "Independent review is completed and findings are addressed or reported"
+    "Desktop tests, production build, visual checks, and independent review are recorded",
+    "No Critical or Important review findings remain; Owner acceptance is recorded separately"
   ],
-  "rollback": "Revert the dedicated frontend PR; no persistent data or runtime side effects are introduced.",
+  "rollback": "Revert only this refinement's commits while preserving the PR #4 base and its runtime changes.",
   "owner_acceptance": "pending"
 }

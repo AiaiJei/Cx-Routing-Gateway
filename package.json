@@ -1,0 +1,17 @@
+{
+  "name": "@cx-routing-gateway/runtime",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/runtime/*.test.mjs",
+    "health": "node scripts/runtime-health.mjs",
+    "verify:release": "node scripts/verify-release.mjs apps/desktop/release --write",
+    "restore:config": "node scripts/restore-config.mjs",
+    "check:update": "node scripts/check-update.mjs",
+    "doctor": "node scripts/doctor.mjs",
+    "verify:all": "node scripts/verify-all.mjs",
+    "smoke:packaged": "node scripts/smoke-packaged.mjs",
+    "start:control": "node services/local-control/src/server.mjs",
+    "start:gateway": "node services/gateway/src/server.mjs"
+  }
+}

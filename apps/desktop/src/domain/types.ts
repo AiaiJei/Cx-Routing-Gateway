@@ -1,13 +1,21 @@
 export type Protocol = "Res" | "Mes" | "Chat";
-export type FixtureMeta = { source: "fixture"; live: false };
+export type FixtureMeta = { source: "fixture" | "runtime"; live: boolean };
 
 export type Upstream = {
   id: string;
   name: string;
   baseUrl: string;
   credentialLabel: string;
-  status: "未连接" | "待测试";
+  status: "未连接" | "待测试" | "已连接";
   models: string[];
+};
+
+export type ModelRouteSelection = {
+  inboundProtocol: Protocol;
+  outboundProtocol: Protocol;
+  targets: { upstreamId: string; modelId: string }[];
+  editId?: string;
+  failover?: { failureThreshold: number; statusClasses: number[] };
 };
 
 export type ModelRoute = {
@@ -17,6 +25,7 @@ export type ModelRoute = {
   targets: { upstreamId: string; upstreamModel: string }[];
   outboundProtocol: Protocol;
   enabled: boolean;
+  failover?: { failureThreshold: number; statusClasses: number[]; cooldownSeconds?: number };
 };
 
 export type CallLog = {
@@ -26,7 +35,7 @@ export type CallLog = {
   credential: string;
   upstream: string;
   direction: string;
-  status: "成功（模拟）" | "失败（模拟）";
+  status: "成功（模拟）" | "失败（模拟）" | "成功" | "失败";
   durationMs: number;
   error?: string;
 };
@@ -38,12 +47,12 @@ export type AccessCredential = {
   scope: string;
   createdAt: string;
   lastUsed: string;
-  status: "示例";
+  status: "示例" | "运行时" | "已撤销";
 };
 
 export type WorkspaceFixtures = {
   meta: FixtureMeta;
-  gateway: { state: "未接入"; url: "http://127.0.0.1:8317" };
+  gateway: { state: "未接入" | "运行中" | "启动失败"; url: string; metrics?: { total: number; completed: number; rejected: number; failed: number; avgDurationMs: number | null } };
   upstreams: Upstream[];
   routes: ModelRoute[];
   logs: CallLog[];

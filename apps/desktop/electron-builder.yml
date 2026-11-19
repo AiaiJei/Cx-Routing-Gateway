@@ -1,0 +1,31 @@
+appId: com.cxrouting.gateway
+productName: Cx-Routing Gateway
+directories:
+  output: release
+  buildResources: build
+files:
+  - dist/**
+  - electron/**
+  - package.json
+asar: true
+extraResources:
+  - from: ../../services
+    to: runtime/services
+  - from: ../../packages
+    to: runtime/packages
+  - from: ../../scripts
+    to: runtime/scripts
+win:
+  target:
+    - target: dir
+      arch:
+        - x64
+        - ia32
+    - target: nsis
+      arch:
+        - x64
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+publish: null

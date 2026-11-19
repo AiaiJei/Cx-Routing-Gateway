@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fixtureWorkspaceClient } from "./workspace-client";
+import { fixtureWorkspaceClient, mapRuntimeState } from "./workspace-client";
 
 describe("fixtureWorkspaceClient", () => {
   it("marks workspace data as fixtures and returns independent copies", async () => {
@@ -22,5 +22,16 @@ describe("fixtureWorkspaceClient", () => {
     const { credentials } = await fixtureWorkspaceClient.getWorkspace();
     expect(credentials.every(({ preview }) => preview.includes("••••"))).toBe(true);
     expect(credentials.some(({ preview }) => /[A-Za-z0-9]{24,}/.test(preview))).toBe(false);
+  });
+
+  it("marks a checked runtime upstream as connected", () => {
+    const workspace = mapRuntimeState({
+      settings: { gatewayHost: "127.0.0.1", gatewayPort: 4318, usageRetentionCount: 1000 },
+      runtimeStatus: { state: "running" },
+      metrics: {},
+      upstreams: [{ id: "up-checked", name: "Checked", baseUrl: "https://api.example/v1", credentialRef: "cred", enabled: true, models: ["model"], lastCheckedAt: "2026-11-19T00:00:00.000Z" }],
+      routes: [], usage: [], clientKeys: [],
+    });
+    expect(workspace.upstreams[0].status).toBe("已连接");
   });
 });

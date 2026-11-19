@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { NavLink } from "react-router";
 import { WindowTitleBar } from "./WindowTitleBar";
 import { NavigationIcon, type NavigationIconName } from "./NavigationIcon";
+import { RuntimeIndicator } from "./RuntimeIndicator";
 
 const destinations = [
   { label: "总览", to: "/", end: true, icon: "overview" },
@@ -61,7 +62,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span aria-hidden="true" />
           </button>
           <span className="topbar-title">Cx-Routing Gateway</span>
-          <span className="runtime-state"><span className="state-dot" />运行时未接入</span>
+          <RuntimeIndicator />
         </header>
         <main id="main-content" className="work-surface" tabIndex={-1}>
           {children}

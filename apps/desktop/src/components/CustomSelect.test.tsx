@@ -34,3 +34,27 @@ describe("CustomSelect", () => {
     expect(screen.queryByRole("listbox", { name: "模型" })).not.toBeInTheDocument();
   });
 });
+
+function TestMultiSelect() {
+  const [value, setValue] = useState<string[]>([]);
+  return <CustomSelect multiple ariaLabel="多模型" name="models" value={value} options={["one", "two", "three"]} onChange={setValue} />;
+}
+
+it("keeps multi selections open, supports toggling and keyboard selection", async () => {
+  const user = userEvent.setup();
+  render(<TestMultiSelect />);
+  const trigger = screen.getByRole("combobox", { name: "多模型" });
+  await user.click(trigger);
+  expect(screen.getByRole("listbox")).toHaveAttribute("aria-multiselectable", "true");
+  await user.click(screen.getByRole("option", { name: "one" }));
+  await user.click(screen.getByRole("option", { name: "two" }));
+  expect(trigger).toHaveTextContent("已选 2 个模型");
+  expect(screen.getByRole("option", { name: "one" })).toHaveAttribute("aria-selected", "true");
+  await user.click(screen.getByRole("option", { name: "one" }));
+  expect(trigger).toHaveTextContent("two");
+  await user.keyboard("{Escape}");
+  expect(trigger).toHaveFocus();
+  expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  await user.keyboard("{ArrowDown}{ArrowDown}{Enter}");
+  expect(screen.getByRole("option", { name: "three" })).toHaveAttribute("aria-selected", "true");
+});

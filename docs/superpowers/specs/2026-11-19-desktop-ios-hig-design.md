@@ -2,7 +2,7 @@
 
 ## Intent
 
-Polish the existing Cx-Routing Gateway Desktop workspace with the clarity, semantic color, grouped surfaces, and direct controls associated with Apple's platform design guidance. Keep it recognizable as a dense desktop operations tool.
+Polish the PR #4 Cx-Routing Gateway Desktop workspace with the clarity, semantic color, grouped surfaces, and direct controls associated with Apple's platform design guidance. Keep PR #4's runtime-backed operations intact while refining the renderer as a dense desktop operations tool.
 
 ## Goals
 
@@ -11,10 +11,11 @@ Polish the existing Cx-Routing Gateway Desktop workspace with the clarity, seman
 - Use a restrained system-like blue accent, meaningful success/warning/error colors, and consistent per-protocol colors for Res, Mes, and Chat.
 - Refine shared controls and grouped settings/summary surfaces with clear selected, focus, hover, and disabled states.
 - Preserve all existing fixture and simulated-state disclosures, data behavior, responsive layouts, and keyboard operation.
+- Preserve PR #4 runtime-backed behavior, including runtime status, upstream lifecycle, credentials, route editing, multi-model selection, priority failover, and settings persistence.
 
 ## Non-goals
 
-- No iOS or macOS interface clone, theme switch, new runtime behavior, API, network request, credential persistence, dependency migration, or backend change.
+- No iOS or macOS interface clone, theme switch, new runtime behavior, API, network request, credential persistence, or backend change.
 - No changes to the six destinations, their labels, or routing semantics.
 
 ## Approaches
@@ -24,7 +25,7 @@ Polish the existing Cx-Routing Gateway Desktop workspace with the clarity, seman
 
 ## Design
 
-Use the existing React/Vite/Electron stack and CSS architecture. Keep the current brand mark and name in the window title bar and product name in the workspace header; remove only the sidebar brand link. Add one small navigation icon component for Overview, Upstreams, Routes, Logs, Credentials, and Settings. Use shared tokens for system-blue interaction states and distinct protocol/status colors. Restyle the existing log status filter as a compact segmented control, and use grouped row treatments where the existing content already forms a settings or overview group. Avoid decorative color blocks and retain text labels alongside all meaningful color.
+Use the existing PR #4 React/Vite/Electron stack and CSS architecture. Keep the current brand mark and name in the window title bar and product name in the workspace header; remove only the sidebar brand link. Add one small navigation icon component for Overview, Upstreams, Routes, Logs, Credentials, and Settings. Use shared tokens for system-blue interaction states and distinct protocol/status colors. Restyle the existing log status filter as a compact segmented control, and use grouped row treatments where the existing content already forms a settings or overview group. Avoid decorative color blocks and retain text labels alongside all meaningful color.
 
 ## Verification and rollback
 
