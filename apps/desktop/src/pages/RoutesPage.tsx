@@ -7,6 +7,9 @@ import { RouteTargets } from "../components/RouteTargets";
 import { Modal } from "../components/Modal";
 import { Button } from "../components/Button";
 import { CustomSelect } from "../components/CustomSelect";
+import { ModelSelect } from "../components/ModelSelect";
+import { ModelFamilyFilter } from "../components/ModelFamilyFilter";
+import { getRouteModelFamily, type ModelFamilySelection } from "../domain/model-family";
 import { ProtocolBadge } from "../components/ProtocolBadge";
 import { RouteTestDialog } from "../components/RouteTestDialog";
 import { defaultWorkspaceClient } from "../data/workspace-client";
@@ -27,6 +30,9 @@ export function RoutesPage() {
   const [statusClasses, setStatusClasses] = useState<number[]>([4, 5]);
   const { data, error, loading } = useWorkspace();
   const [routes, setRoutes] = useWorkspaceCollection(data.routes);
+  const [routeFamily, setRouteFamily] = useState<ModelFamilySelection>("all");
+  const routeFamilies = routes.map(getRouteModelFamily);
+  const visibleRoutes = routes.filter((_, index) => routeFamily === "all" || routeFamilies[index] === routeFamily);
   const upstreams = new Map(data.upstreams.map((upstream) => [upstream.id, upstream.name]));
 
   const [saving, setSaving] = useState(false);
@@ -103,9 +109,8 @@ export function RoutesPage() {
           const upstream = data.upstreams.find(item => item.id === id);
           if (!upstream) return null;
           const values = modelSelections[id] ?? [];
-          const options = [...new Set([...upstream.models, ...values])];
           return <div className="route-select-field" key={id}><span>{upstream.name} 模型</span>
-            <CustomSelect multiple ariaLabel={`${upstream.name} 模型`} value={values} options={options} placeholder="选择模型（可多选）"
+            <ModelSelect ariaLabel={`${upstream.name} 模型`} value={values} models={upstream.models}
               onChange={models => setModelSelections(current => ({ ...current, [id]: models }))} />
           </div>;
         })}
@@ -117,10 +122,12 @@ export function RoutesPage() {
       </form></Modal>}
       <section className="route-list-section" aria-labelledby="route-list-title">
       <div className="section-heading"><div className="section-title-row"><h2 id="route-list-title" className="section-title">路由配置</h2><span className="result-count">{routes.length} 条路由</span></div><FixtureNotice live={data.meta.live}>{data.meta.live ? "本机运行时路由" : "浏览器预览路由"}</FixtureNotice></div>
-      {routes.length ? <div className="table-scroll" role="region" aria-label="模型路由列表" tabIndex={0}><table className={`routes-table${data.meta.live ? " has-actions" : ""}`}>
+      <ModelFamilyFilter ariaLabel="路由模型分类" value={routeFamily} families={routeFamilies} onChange={setRouteFamily} />
+      {routeFamily !== "all" && <p className="route-filter-summary" role="status">当前显示 {visibleRoutes.length} 条路由，共 {routes.length} 条</p>}
+      {visibleRoutes.length ? <div className="table-scroll" role="region" aria-label="模型路由列表" tabIndex={0}><table className={`routes-table${data.meta.live ? " has-actions" : ""}`}>
         <colgroup><col className="route-col-model" /><col className="route-col-inbound" /><col className="route-col-upstream" /><col className="route-col-outbound" /><col className="route-col-response" /><col className="route-col-state" />{data.meta.live && <col className="route-col-actions" />}</colgroup>
         <thead><tr><th aria-label="模型">模型 / 调用名</th><th aria-label="客户端协议 / 入站">入站协议</th><th>目标上游</th><th aria-label="上游协议 / 出站">出站协议</th><th>响应协议</th><th>状态</th>{data.meta.live && <th className="row-actions-heading">操作</th>}</tr></thead>
-        <tbody>{routes.map((route) => <tr key={route.id}>
+        <tbody>{visibleRoutes.map((route) => <tr key={route.id}>
           <td><strong className="route-model-name">{route.targets[0]?.upstreamModel ?? route.alias}</strong>{route.targets[0] && route.alias !== route.targets[0].upstreamModel && <span className="cell-subtext">调用名：{route.alias}</span>}</td>
           <td><ProtocolBadge protocol={route.inboundProtocol} /></td>
           <td><RouteTargets route={route} upstreams={data.upstreams} /></td>
@@ -128,7 +135,7 @@ export function RoutesPage() {
           <td><ProtocolBadge protocol={route.inboundProtocol} /></td>
           <td className="route-state-cell"><span className={`route-state ${data.meta.live && route.enabled ? "is-enabled" : ""}`}><span className="route-state-mark" aria-hidden="true"><svg viewBox="0 0 12 12" fill="none">{route.enabled ? <path d="m3 6 2 2 4-4" /> : <path d="M3 6h6" />}</svg></span>{route.enabled ? "已启用" : "已停用"}</span>{!data.meta.live && <span className="cell-subtext route-preview-state">预览状态</span>}</td>{data.meta.live && <td className="row-actions-cell"><div className="row-actions" role="group" aria-label={`${route.alias} 操作`}>{route.enabled && <Button variant="accent" size="small" className="route-action-test" aria-label={`测试调用 ${route.alias}`} onClick={() => setTestingRoute(route)}><svg className="route-test-play-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M5 3.8c0-.6.7-.9 1.2-.6l6 3.8a.7.7 0 0 1 0 1.2l-6 3.8a.7.7 0 0 1-1.2-.6z" fill="currentColor" /></svg>测试调用</Button>}<Button variant="secondary" size="small" className="route-action-edit" onClick={() => openForm(route)}>编辑</Button><Button variant="secondary" size="small" className="route-action-toggle" onClick={() => void toggleRoute(route)}>{route.enabled ? "停用" : "启用"}</Button><Button variant="danger" size="small" className="route-action-delete" onClick={() => void deleteRoute(route.id)}>删除</Button></div></td>}
         </tr>)}</tbody>
-      </table></div> : <EmptyResult>还没有模型路由，添加路由以连接客户端与上游。</EmptyResult>}
+      </table></div> : <EmptyResult>{routes.length ? "该分类暂无路由，可选择其他分类或添加路由。" : "还没有模型路由，添加路由以连接客户端与上游。"}</EmptyResult>}
       </section>
       {testingRoute && <RouteTestDialog route={testingRoute} targetNames={testingRoute.targets.map((target) => upstreams.get(target.upstreamId) ?? "未匹配上游")} onClose={() => setTestingRoute(null)} testRoute={(routeId, prompt) => {
         if (!defaultWorkspaceClient.testRoute) return Promise.reject(new Error("当前运行时不支持真实测试调用"));

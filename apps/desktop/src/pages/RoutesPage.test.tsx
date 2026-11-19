@@ -25,6 +25,90 @@ async function selectModels(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("option", { name: "lantern-haiku" }));
 }
 
+describe("route model families", () => {
+  it("filters every family with correct counts and keeps an empty category recoverable", async () => {
+    const user = userEvent.setup();
+    const data = liveWorkspace();
+    const models = ["gpt-6-astra", "openai/o3-mini", "claude-sonnet-5", "gemini-2.5-pro", "GLM-4.6", "deepseek-chat", "kimi-k2", "kling-3.0"];
+    data.routes = models.map((model, index) => ({ id: String(index), alias: `custom-${index}`, inboundProtocol: "Res", outboundProtocol: "Chat", enabled: true, targets: [{ upstreamId: "up-northstar", upstreamModel: model }] }));
+    vi.spyOn(defaultWorkspaceClient, "getWorkspace").mockResolvedValue(data);
+    render(<RoutesPage />);
+    const filters = await screen.findByRole("group", { name: "路由模型分类" });
+    expect(within(filters).getAllByRole("button").map(button => button.textContent)).toEqual(["全部8", "gpt2", "claude1", "gemini1", "glm1", "deepseek1", "kimi1", "其他1"]);
+    for (const [family, count, names] of [
+      ["gpt", 2, models.slice(0, 2)], ["claude", 1, [models[2]]], ["gemini", 1, [models[3]]],
+      ["glm", 1, [models[4]]], ["deepseek", 1, [models[5]]], ["kimi", 1, [models[6]]], ["其他", 1, [models[7]]],
+    ] as const) {
+      await user.click(within(filters).getByRole("button", { name: `${family} ${count}` }));
+      expect(screen.getAllByRole("row")).toHaveLength(count + 1);
+      names.forEach(name => expect(screen.getByRole("row", { name: new RegExp(name) })).toBeVisible());
+    }
+    await user.click(within(filters).getByRole("button", { name: "全部 8" }));
+    expect(screen.getAllByRole("row")).toHaveLength(9);
+  });
+
+  it("updates category counts after deletion and distinguishes a filtered empty result", async () => {
+    const user = userEvent.setup();
+    const data = liveWorkspace();
+    data.routes = ["gpt-6-astra", "custom-model"].map((model, index) => ({ id: String(index), alias: model, inboundProtocol: "Res", outboundProtocol: "Chat", enabled: true, targets: [{ upstreamId: "up-northstar", upstreamModel: model }] }));
+    vi.spyOn(defaultWorkspaceClient, "getWorkspace").mockResolvedValue(data);
+    const original = defaultWorkspaceClient.deleteRoute;
+    defaultWorkspaceClient.deleteRoute = async () => ({});
+    try {
+      render(<RoutesPage />);
+      const filters = await screen.findByRole("group", { name: "路由模型分类" });
+      await user.click(within(filters).getByRole("button", { name: "gpt 1" }));
+      await user.click(screen.getByRole("button", { name: "删除" }));
+      expect(await screen.findByText("该分类暂无路由，可选择其他分类或添加路由。")).toBeVisible();
+      expect(within(filters).getByRole("button", { name: "gpt 0" })).toHaveAttribute("aria-pressed", "true");
+      await user.click(within(filters).getByRole("button", { name: "全部 1" }));
+      expect(screen.getByRole("row", { name: /custom-model/ })).toBeVisible();
+    } finally { defaultWorkspaceClient.deleteRoute = original; }
+  });
+
+  it("saves selections from different families and keeps upstream filters independent", async () => {
+    const user = userEvent.setup();
+    const data = liveWorkspace();
+    data.upstreams[0].models = ["gpt-6-astra", "claude-sonnet-5"];
+    data.upstreams[1].models = ["gemini-2.5-pro", "gpt-6-astra"];
+    vi.spyOn(defaultWorkspaceClient, "getWorkspace").mockImplementation(async () => structuredClone(data));
+    const original = defaultWorkspaceClient.saveModelRoutes;
+    const save = vi.fn(async (selection: ModelRouteSelection) => {
+      data.routes = selection.targets.map((target, index) => ({ id: String(index), alias: target.modelId, inboundProtocol: selection.inboundProtocol, outboundProtocol: selection.outboundProtocol, enabled: true, targets: [{ upstreamId: target.upstreamId, upstreamModel: target.modelId }] }));
+    });
+    defaultWorkspaceClient.saveModelRoutes = save;
+    try {
+      render(<RoutesPage />);
+      await user.click(await screen.findByRole("button", { name: "添加路由" }));
+      await user.click(screen.getByLabelText("Northstar AI"));
+      await user.click(screen.getByLabelText("Lantern Labs"));
+      await user.click(screen.getByRole("button", { name: "加载已选上游模型" }));
+      const first = screen.getByRole("group", { name: "Northstar AI 模型分类" });
+      const second = screen.getByRole("group", { name: "Lantern Labs 模型分类" });
+      await user.click(within(first).getByRole("button", { name: "gpt 1" }));
+      await user.click(screen.getByRole("combobox", { name: "Northstar AI 模型" }));
+      await user.click(screen.getByRole("option", { name: "gpt-6-astra" }));
+      await user.click(within(first).getByRole("button", { name: "claude 1" }));
+      await user.click(screen.getByRole("combobox", { name: "Northstar AI 模型" }));
+      await user.click(screen.getByRole("option", { name: "claude-sonnet-5" }));
+      expect(within(second).getByRole("button", { name: "全部 2" })).toHaveAttribute("aria-pressed", "true");
+      await user.click(within(second).getByRole("button", { name: "gemini 1" }));
+      await user.click(screen.getByRole("combobox", { name: "Lantern Labs 模型" }));
+      await user.click(screen.getByRole("option", { name: "gemini-2.5-pro" }));
+      await user.click(screen.getByRole("button", { name: "保存路由" }));
+      expect(await screen.findByText("已保存 3 个上游模型配置。")).toBeVisible();
+      expect(save).toHaveBeenCalledWith(expect.objectContaining({ targets: [
+        { upstreamId: "up-northstar", modelId: "gpt-6-astra" },
+        { upstreamId: "up-northstar", modelId: "claude-sonnet-5" },
+        { upstreamId: "up-lantern", modelId: "gemini-2.5-pro" },
+      ] }));
+      const filters = screen.getByRole("group", { name: "路由模型分类" });
+      expect(within(filters).getByRole("button", { name: "全部 3" })).toBeVisible();
+      expect(within(filters).getByRole("button", { name: "gpt 1" })).toBeVisible();
+    } finally { defaultWorkspaceClient.saveModelRoutes = original; }
+  });
+});
+
 describe("RoutesPage", () => {
   it("shows only a safe hostname and tolerates malformed upstream URLs", async () => {
     const data = structuredClone(workspaceFixtures);

@@ -1,101 +1,132 @@
 {
-  "title": "Request log refresh, latest-first order and date filters 1.0.3",
-  "stage": "integration-authorized",
-  "authorization": {
-    "operations": [
-      "isolated branch/worktree",
-      "implement and verify",
-      "commit/push task branch",
-      "create dedicated PR",
-      "merge PR #8 after checks",
-      "fast-forward primary master",
-      "archive and remove current and historical linked task worktrees",
-      "relocate current unpacked Desktop to primary tree and relaunch"
-    ],
-    "source": "2026-11-20 user request: base on PR #7, increment version, add refresh button and polling within 1–2 seconds, create dedicated PR",
-    "design_approval": "Direct specific feature request; routine implementation choices stated before implementation"
-  },
+  "contract_version": 1,
+  "task_id": "CXRG-MODEL-FAMILY-2026-11-20",
+  "title": "模型路由与模型选择自动分类",
   "project": "Cx-Routing Gateway",
-  "product_version": "1.0.3",
-  "rollback": "Revert merged PR through an authorized change; restore worktree from preserved branch/history bundle plus verified local archive and patches. Desktop prior package archived.",
-  "acceptance": [
-    "Version 1.0.3",
-    "Manual refresh loads latest logs",
-    "Visible log page polls every 1500 ms without overlapping reads",
-    "Preserve filters/details/rows; recover from failure",
-    "Pause hidden/unmounted pages; refresh on return",
-    "Full tests/build, browser and independent review",
-    "Dedicated PR from merged PR #7",
-    "Newest request timestamp first, stable ties, invalid times last",
-    "Realtime/today/last7/last30 calendar filters combine with status/search, reset and polling"
-  ],
-  "branch": "codex/request-logs-refresh-1.0.3",
-  "previous_contract": "docs/tasks/2026-11-20-pr7-contract.json",
-  "status": "active",
   "repository": "AiaiJei/Cx-Routing-Gateway",
+  "status": "pr-open",
+  "stage": "pr-open",
   "base": "master",
+  "base_sha": "7e3c4db0d54f34045ce1bdd2ad9d8b56f76a118d",
+  "base_pr": 8,
+  "revisions": [
+    {
+      "date": "2026-11-20",
+      "request": "提交合并PR，任务工作树合并到主工作树",
+      "scope": "Merge dedicated PR #9 after checks, then fast-forward primary master to the GitHub merge commit. Preserve this task worktree and the primary checkout's existing untracked files.",
+      "acceptance": "PR #9 merged into master; primary master equals origin/master and the PR merge commit; regression tests pass on the merged commit; no unrelated files or worktrees removed."
+    }
+  ],
+  "branch": "codex/model-family-classification",
+  "previous_contract": "docs/tasks/2026-11-20-pr8-contract.json",
+  "authorization": {
+    "source": "2026-11-20 user: 基于 PR #8 创建专属 PR，路由和模型加载自动按 gpt/claude/gemini/glm/deepseek/kimi/其他 分类。",
+    "operations": [
+      "isolated task worktree",
+      "implement and verify requested model classification",
+      "commit and push task branch",
+      "create dedicated PR",
+      "merge PR #9 after required checks pass",
+      "fast-forward primary master to PR #9 merge commit",
+      "preserve task worktree and unrelated primary untracked files"
+    ],
+    "design_basis": "Direct specific feature request; implementation choices stated before changes."
+  },
   "scope": {
+    "include": [
+      "shared pure model-family classification",
+      "route family filters and counts",
+      "grouped and filterable loaded model options",
+      "selection/keyboard/empty-state regressions",
+      "task design, plan and evidence"
+    ],
     "exclude": [
-      "publish/deploy",
-      "real provider requests",
-      "backend/auth/storage changes",
-      "delete local/remote branches",
-      "merge unrelated PR #1"
+      "merge unrelated pull requests",
+      "delete task worktree or task branch",
+      "release/deploy/native install",
+      "provider requests",
+      "backend/storage/auth/protocol changes",
+      "version bump"
     ]
   },
   "authorized_paths": [
     ".codex/awg-task.json",
-    "apps/desktop/src/data/use-workspace*",
-    "apps/desktop/src/pages/LogsPage*",
-    "apps/desktop/package.json",
-    "apps/desktop/package-lock.json",
-    "docs/superpowers/specs/2026-11-20-request-log-refresh-design.md",
-    "docs/superpowers/plans/2026-11-20-request-log-refresh.md",
-    "docs/tasks/2026-11-20-*",
-    "docs/tasks/evidence/request-log-refresh-1.0.3/**",
-    "docs/task-record.md",
-    ".task-evidence/**",
-    "apps/desktop/src/pages/SettingsPage.test.tsx",
-    "tests/runtime/release-manifest.test.mjs",
-    "apps/desktop/src/domain/request-log-filter*"
+    "apps/desktop/src/domain/model-family*",
+    "apps/desktop/src/components/ModelFamilyFilter*",
+    "apps/desktop/src/components/ModelSelect*",
+    "apps/desktop/src/components/CustomSelect*",
+    "apps/desktop/src/pages/RoutesPage*",
+    "apps/desktop/src/styles/routes.css",
+    "apps/desktop/src/styles/app.css",
+    "docs/superpowers/specs/2026-11-20-model-family-classification-design.md",
+    "docs/superpowers/plans/2026-11-20-model-family-classification.md",
+    "docs/tasks/2026-11-20-model-family-classification.md",
+    "docs/tasks/2026-11-20-pr8-contract.json",
+    "docs/tasks/evidence/model-family-classification/**",
+    ".task-evidence/model-family-classification/**"
   ],
-  "contract_version": 1,
+  "acceptance": [
+    "Seven fixed ordered families; case/prefix variants and unknown fallback",
+    "Routes filter with live counts and empty result",
+    "Loaded models grouped and filterable per upstream",
+    "Switching categories preserves multiselection and missing discovered edit values",
+    "Existing add/edit/save/priority/protocol behavior retained",
+    "Full desktop/runtime tests, production build, browser viewport/keyboard checks and an attempted independent review with any provider limitation recorded",
+    "Dedicated PR based on PR #8"
+  ],
+  "rollback": "Revert feature commit(s); no persisted data migration. Preserve primary checkout and task evidence.",
   "owner_acceptance": "pending",
-  "base_sha": "272e4439967fc50455a01abb8adfd0dbb7a1773e",
-  "task_id": "CXRG-LOG-REFRESH-2026-11-20",
-  "revisions": [
-    {
-      "evidence": "Full suites still expected 1.0.2. Runtime build-path test also ran before dist existed; rerun after successful build.",
-      "date": "2026-11-20",
-      "scope": "Synchronize Settings and release-manifest test fixtures with authorized 1.0.3 version bump"
-    },
-    {
-      "date": "2026-11-20",
-      "request": "优化日志记录展示顺序，第一条为最新；新增日期筛选：实时、今日、近7天、近30天",
-      "acceptance": "Newest first; calendar date filters combine with search/status, reset to realtime, polling retains selected filter; no persistence migration.",
-      "scope": "Continue PR #8 / version 1.0.3. Pure view sorting/date filtering and tests; rebuild and relaunch Desktop using existing data after verification."
-    },
-    {
-      "archive": ".worktree/archives/2026-11-20-pr8-integration",
-      "premerge_tests": "Desktop 88/88; Runtime 75/75; existing CI successful on 612c51a",
-      "scope": "Merge PR #8, fast-forward primary master, preserve runtime app/config, archive six linked task worktrees then remove. Unmerged PR #1 branch and dirty test retained in local archive; not merged or closed.",
-      "request": "提交合并PR#，任务工作树合并到主工作树并移除历史以往的任务工作树",
-      "date": "2026-11-20"
-    }
-  ],
-  "verification": {
-    "installer": "NOT_RUN",
-    "desktop": "88/88",
-    "native_electron_latency": "NOT_RUN",
-    "provider": "NOT_RUN",
-    "owner": "pending",
-    "browser": "PASS 1440/768/390; today/week/month/realtime 1/2/3/4 fixture rows; reset/keyboard and newest-first verified",
-    "runtime": "75/75",
-    "independent_review": "P2 midnight-DST boundary reproduced and fixed with two RED-to-GREEN tests; no deferred code findings",
-    "production_build": "PASS",
-    "production_audit": "0 vulnerabilities",
-    "date_timezone_tests": "UTC and America/New_York 24/24 each; ordinary suite includes explicit America/Santiago midnight-DST tests",
-    "native_unpacked": "PASS final 1.0.3.0 x64 build and launch, window responds and both health endpoints OK; native date interaction automation PARTIAL"
+  "pull_request": {
+    "state": "open",
+    "number": 9,
+    "base": "master",
+    "head_sha_at_creation": "ae47edc7f241d39b412c48217dc8e5a54a10a2f1",
+    "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/9"
   },
-  "pull_request": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/8"
+  "verification": {
+    "baseline_desktop": "88/88",
+    "focused_red": "4 test files failed as expected; 4 classification/selection tests exposed missing behavior",
+    "focused_green": "4 test files, 52/52",
+    "desktop": "126/126 tests, 22 files",
+    "runtime": "75/75",
+    "production_build": "PASS (TypeScript and Vite)",
+    "production_audit": "0 vulnerabilities",
+    "github_ci_at_pr_creation": "Desktop and Runtime pending in two CI runs; package jobs skipped. Final head checks will be confirmed.",
+    "github_ci": "PASS on final source commit f423555cfda9294035adc8b4bb0f37cbf702873b: Desktop PASS, Runtime PASS; package skipped on pull_request builds.",
+    "whitespace": "PASS",
+    "browser": "PASS built production assets with isolated local fixture bridge; route filters/counts, both upstream selectors, independent family filters, group order, hidden cross-family selections, keyboard selection, save/update counts and stale edit model checked",
+    "responsive": "PASS 1440/768/390 widths; modal and filters do not overflow viewport",
+    "browser_evidence": [
+      "docs/tasks/evidence/model-family-classification/routes-desktop.jpg",
+      "docs/tasks/evidence/model-family-classification/model-picker-desktop.jpg",
+      "docs/tasks/evidence/model-family-classification/model-picker-tablet.jpg",
+      "docs/tasks/evidence/model-family-classification/model-picker-mobile.jpg"
+    ],
+    "independent_review": "NOT_RUN: independent reviewer and fallback were unavailable after repeated provider HTTP 429; author completed a separate read-only self-review, which is not independent review.",
+    "native_electron": "NOT_RUN",
+    "provider_requests": "NOT_RUN",
+    "installer": "NOT_RUN",
+    "owner": "pending"
+  },
+  "capability": {
+    "skills": [
+      "using-superpowers",
+      "awg-workspace-governance",
+      "awg-repo-map",
+      "brainstorming",
+      "design-taste-frontend",
+      "using-git-worktrees",
+      "writing-plans",
+      "executing-plans",
+      "test-driven-development",
+      "requesting-code-review",
+      "verification-before-completion",
+      "finishing-a-development-branch",
+      "computer-use"
+    ],
+    "repo_mcp": "UNAVAILABLE for this task: .codex/repo-map.json is absent, so registered workspace_id cannot be established. Source search/read used.",
+    "worktree": "Git fallback honors user's repo-local placement; native create_worktree cannot take a destination path. Existing path/branch absent; attached with native attach_worktree.",
+    "native_runtime": "NOT_RUN",
+    "independent_review": "UNAVAILABLE after repeated provider HTTP 429; author completed a read-only self-review and records it as non-independent."
+  }
 }
