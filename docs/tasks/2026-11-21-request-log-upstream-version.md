@@ -70,3 +70,10 @@ User requested renaming `结果` to `状态`, a full-status Tooltip including HT
 - Runtime stores HTTP/upstream/gateway status codes and Desktop maps only sanitized gateway error definitions; raw provider bodies remain excluded.
 
 - Final status/error revision PR head 6ebbd74: Runtime 116/116; Desktop 142/142; build PASS; CI Runtime/Desktop SUCCESS; package SKIPPED. PR #12 remains OPEN and unmerged.
+
+## 2026-11-21 revision: balanced layout verification
+
+- Selected approach: balanced explicit column widths.
+- Layout regression: 10-column `colgroup`, fixed table layout, internal scroll region preserved.
+- Desktop: 142/142; production build PASS; `git diff --check` PASS.
+- Live Desktop screenshot at the current 1440px viewport confirms left-side whitespace is reduced and Token/status/duration/action columns have readable spacing.

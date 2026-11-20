@@ -79,6 +79,7 @@
     "dedicated PR is open and unmerged",
     "request table shows 推理 immediately after 来源 and missing values render -",
     "request table renames 结果 to 状态 with Tooltip details and request details show sanitized error information"
+    ,"request-log table uses balanced explicit column widths while preserving narrow-screen internal scrolling"
   ],
   "rollback": "Revert this branch commits only; preserve branch, worktree, probe files, existing release/tag and unrelated untracked files.",
   "pull_request": {

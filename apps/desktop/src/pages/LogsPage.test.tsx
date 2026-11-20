@@ -47,6 +47,10 @@ describe("LogsPage", () => {
     const tableViewport = container.querySelector(".table-scroll");
     expect(tableViewport).not.toBeNull();
     expect(getComputedStyle(tableViewport!).contain).toContain("paint");
+    const table = container.querySelector(".logs-table")!;
+    expect(table.querySelectorAll("col")).toHaveLength(10);
+    expect(getComputedStyle(table).tableLayout).toBe("fixed");
+    expect(table).toHaveClass("logs-table");
   });
 
   it("opens a redacted detail view without exposing request or response bodies", async () => {

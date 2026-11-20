@@ -47,6 +47,7 @@ export function LogsPage() {
         {hasFilter && <Button variant="tertiary" size="small" aria-label="清除筛选" onClick={() => { setQuery(""); setStatus("全部"); setDateRange("实时"); }}>清除筛选</Button>}
       </div>
       {logs.length ? <div className="table-scroll" role="region" aria-label="请求日志列表" tabIndex={0}><table className="logs-table">
+        <colgroup aria-hidden="true"><col className="log-col-time" /><col className="log-col-model" /><col className="log-col-source" /><col className="log-col-reasoning" /><col className="log-col-inbound" /><col className="log-col-type" /><col className="log-col-tokens" /><col className="log-col-status" /><col className="log-col-duration" /><col className="log-col-actions" /></colgroup>
         <thead><tr><th scope="col">请求时间</th><th scope="col">模型</th><th scope="col">来源</th><th scope="col">推理</th><th scope="col">入站</th><th scope="col">类型</th><th scope="col" className="numeric">Token</th><th scope="col">状态</th><th scope="col" className="numeric">耗时</th><th scope="col"><span className="sr-only">操作</span></th></tr></thead>
         <tbody>{logs.map((log) => (
           <tr key={log.id}>
