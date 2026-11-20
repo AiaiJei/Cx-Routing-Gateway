@@ -97,7 +97,7 @@ describe("SettingsPage", () => {
   });
   it("shows the installed product version in the desktop application section", async () => {
     render(<SettingsPage />);
-    expect(await screen.findByText("版本 1.1.0")).toBeVisible();
+    expect(await screen.findByText("版本 1.1.1")).toBeVisible();
     expect(screen.getByRole("heading", { name: "桌面应用" })).toBeVisible();
   });
   it("shows the GitHub release link when an update is available", async () => {
