@@ -1,117 +1,104 @@
 {
   "contract_version": 1,
-  "task_id": "CXRG-LOG-UPSTREAM-VERSION-2026-11-21",
-  "title": "请求日志来源与产品四段版本",
+  "task_id": "CXRG-RELEASE-1.1.2-2026-11-21",
+  "title": "Merge PR 14, publish Cx-Routing Gateway 1.1.2, install Portable",
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
-  "status": "complete",
-  "stage": "pr_open",
+  "status": "active",
+  "stage": "release-preparation",
   "base": "master",
-  "base_sha": "6446c470b6e71122d6f1dd3c5427f591ef8f2436",
-  "branch": "codex/request-log-upstream-1.1.1.1",
-  "worktree": ".worktree/request-log-upstream-1.1.1.1",
+  "base_sha": "c633a359dc76c9b5b48bb929870765e6ca85de5d",
+  "branch": "codex/upstream-payload-413",
+  "worktree": ".worktree/upstream-payload-413",
   "authorization": {
-    "source": "2026-11-21 user request: 请求日志调整，入口凭证放入详情，表头来源，值为上游服务名称；版本号定义为1.1.1.1；创建专属PR。",
+    "source": "2026-11-21 user request: PR#12已经合并，现状提交合并我们的PR，版本号递增1[1.1.2]。任务工作树合并主工作树并移除任务工作树；发布Github版本，发布信息注明修复内容和更新内容。同时，在本地桌面安装最新版本的Portable。",
     "operations": [
-      "reuse existing approved task worktree and branch",
-      "implement request-log source snapshot and detail-only credential display",
-      "define four-part product/build version while retaining npm SemVer 1.1.1",
-      "run focused/full verification and independent review",
-      "push branch and create one dedicated open PR against master"
+      "resolve PR #14 conflicts against merged master",
+      "bump product/package/build version to 1.1.2",
+      "run tests and build Windows x64 artifacts",
+      "merge PR #14 into master",
+      "fast-forward primary master and remove this task worktree",
+      "publish GitHub Release v1.1.2 with installer, blockmap, Portable and manifest",
+      "copy verified Portable 1.1.2 to Desktop without overwriting",
+      "record release hashes and rollback evidence"
     ],
     "not_authorized": [
-      "merge the dedicated PR",
-      "publish or rewrite an existing release/tag",
-      "delete branches, worktrees, probe files or unrelated untracked files"
+      "delete unrelated branches or worktrees",
+      "rewrite v1.1.1 release/tag",
+      "modify unrelated untracked governance/plugin files"
     ]
   },
   "scope": {
     "include": [
-      "services/gateway/src/server.mjs usage upstreamName snapshot",
-      "desktop request log source mapping and detail-only credential",
-      "desktop product metadata cxrgProductVersion 1.1.1.1",
-      "electron-builder buildVersion and four-part artifact verification",
-      "four-part updater comparison with three-part legacy compatibility",
-      "task design, plan, evidence and dedicated PR"
+      "PR #14 upstream payload/status fix",
+      "PR #12 merged request-log source and four-part version baseline",
+      "product version 1.1.2",
+      "Windows x64 NSIS/blockmap/Portable release",
+      "GitHub Release v1.1.2",
+      "Desktop Portable copy",
+      "merge and task worktree cleanup"
     ],
     "exclude": [
-      "raw credentials or request/response bodies in logs",
-      "routing/authentication/failover/retention behavior changes",
-      "rewriting existing v1.1.1 release/tag",
-      "merging PR or deleting existing worktrees"
+      "real provider acceptance",
+      "new routing/auth behavior",
+      "rewriting existing releases",
+      "deleting unrelated worktrees or branches"
     ]
   },
   "authorized_paths": [
     ".codex/awg-task.json",
     "services/gateway/src/server.mjs",
     "tests/runtime/gateway-server.test.mjs",
-    "tests/runtime/request-logs.test.mjs",
-    "apps/desktop/src/domain/types.ts",
-    "apps/desktop/src/data/workspace-client.ts",
-    "apps/desktop/src/data/workspace-client.test.ts",
-    "apps/desktop/src/pages/LogsPage.tsx",
-    "apps/desktop/src/pages/LogsPage.test.tsx",
+    "tests/runtime/route-batch.test.mjs",
+    "tests/runtime/check-update.test.mjs",
+    "tests/runtime/release-manifest.test.mjs",
+    "tests/runtime/github-update-ipc.test.mjs",
     "apps/desktop/package.json",
     "apps/desktop/package-lock.json",
     "apps/desktop/electron-builder.yml",
-    "apps/desktop/electron/main.cjs",
-    "apps/desktop/electron/github-update-ipc.cjs",
-    "apps/desktop/src/pages/SettingsPage.tsx",
     "apps/desktop/src/pages/SettingsPage.test.tsx",
-    "scripts/check-update.mjs",
     "scripts/verify-release.mjs",
-    "tests/runtime/check-update.test.mjs",
-    "tests/runtime/release-manifest.test.mjs",
-    "docs/superpowers/specs/2026-11-21-request-log-upstream-version-design.md",
-    "docs/superpowers/plans/2026-11-21-request-log-upstream-version.md",
-    "docs/tasks/2026-11-21-request-log-upstream-version.md",
-    "docs/tasks/archives/2026-11-20-tray-close-readme-awg-task.json",
-    "tests/runtime/route-batch.test.mjs",
-    "tests/runtime/request-logs.test.mjs"
+    "scripts/package-portable.ps1",
+    "docs/tasks/2026-11-21-release-1.1.2.md",
+    "docs/tasks/evidence/release-1.1.2/**",
+    "apps/desktop/release/1.1.2-final-reviewed/**"
   ],
   "acceptance": [
-    "usage records snapshot selected upstream service name with existing upstreamId",
-    "request table uses 来源 and service name, with no credential column",
-    "detail view retains only masked entry credential",
-    "product/build/release version is 1.1.1.1 while npm package/lock remain 1.1.1",
-    "updater compares four-part current version and accepts three-part legacy releases",
-    "focused/full tests, production build and whitespace verification pass",
-    "dedicated PR is open and unmerged",
-    "request table shows 推理 immediately after 来源 and missing values render -",
-    "request table renames 结果 to 状态 with Tooltip details and request details show sanitized error information"
-    ,"request-log table uses balanced explicit column widths while preserving narrow-screen internal scrolling"
+    "PR #14 merged after conflict resolution and successful CI",
+    "package and product version show 1.1.2",
+    "Runtime and Desktop tests/build pass",
+    "release verifier and Portable smoke pass",
+    "GitHub v1.1.2 contains verified assets and release notes",
+    "Desktop Portable 1.1.2 hash matches verified artifact",
+    "primary master contains merge and release documentation",
+    "this task worktree is removed after archiving required evidence"
   ],
-  "rollback": "Revert this branch commits only; preserve branch, worktree, probe files, existing release/tag and unrelated untracked files.",
-  "pull_request": {
-    "state": "open",
-    "number": 12,
-    "base": "master",
-    "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/12",
-    "head_sha": "4a55eed"
-  },
+  "rollback": "Restore master from merge commit and release manifest; delete only release artifacts or revert task commits through an authorized change. Preserve v1.1.1 and unrelated worktrees.",
+  "owner_acceptance": "pending until release assets, Desktop copy, merged master and worktree cleanup are verified",
   "verification": {
-    "status": "PASS",
-    "focused": "PASS: Gateway core 27/27; request logs 6/6; Desktop mapping/UI 24/24",
-    "full": "PASS: Runtime 116/116; Desktop 142/142 after balanced-layout revision",
-    "build": "PASS: npm run build --prefix apps/desktop",
-    "review": "PASS: independent read-only review found no Critical issues; two Important findings fixed test-first (builderVersion drift guard, failover selected-upstream snapshot regression); Minor unbounded numeric precision deferred.",
-    "ci": "PASS on PR #12 head 4a55eed002a97eca5bbb1b32db0e8f9bbb7d3587: Runtime and Desktop checks SUCCESS; package jobs SKIPPED by workflow condition.",
-    "whitespace": "PASS: git diff --check"
+    "pr14_ci": "PASS before master conflict; rerun after version/rebase",
+    "runtime": "pending",
+    "desktop": "pending",
+    "build": "pending",
+    "release": "pending",
+    "portable_smoke": "pending",
+    "desktop_copy": "pending",
+    "provider": "NOT_RUN",
+    "native_manual": "NOT_RUN"
+  },
+  "pull_request": {
+    "number": 14,
+    "state": "OPEN",
+    "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/14"
   },
   "capability": {
     "skills": [
       "using-superpowers",
       "awg-workspace-governance",
-      "brainstorming",
-      "using-git-worktrees",
-      "writing-plans",
-      "executing-plans",
-      "test-driven-development",
       "verification-before-completion",
-      "requesting-code-review"
+      "finishing-a-development-branch"
     ],
-    "repo_mcp": "NOT_RUN: no registered workspace_id in current contract; direct source inspection used.",
-    "native_manual": "NOT_RUN"
-  },
-  "owner_acceptance": "Native Electron tray/manual interaction and real provider acceptance remain NOT_RUN; PR #12 intentionally remains open and unmerged."
+    "repo_mcp": "NOT_RUN: no registered workspace_id",
+    "native_desktop": "NOT_RUN until Portable direct-launch smoke"
+  }
 }

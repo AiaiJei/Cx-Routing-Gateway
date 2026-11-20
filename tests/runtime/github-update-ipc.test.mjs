@@ -34,7 +34,7 @@ function setup({ trusted = true, tokenConfigured = true, verifyStoredToken = asy
     isTrustedSender: () => trusted,
     getTokenService: () => tokenService,
     loadUpdater: async () => updater,
-    getCurrentVersion: () => '1.1.1.1',
+    getCurrentVersion: () => '1.1.2',
     getDownloadDir: () => 'temp-updates',
     installDownloaded: async (result) => { installed.push(result); },
   });
@@ -44,7 +44,7 @@ function setup({ trusted = true, tokenConfigured = true, verifyStoredToken = asy
 test('update IPC passes the four-part product version to the updater', async () => {
   const { handlers, calls } = setup();
   await handlers.get('runtime:check-update')({ sender: {} });
-  assert.deepEqual(calls, ['getToken', ['checkUpdate', '1.1.1.1', token]]);
+  assert.deepEqual(calls, ['getToken', ['checkUpdate', '1.1.2', token]]);
 });
 
 test('update credential and release IPC rejects untrusted senders before invoking services', async () => {
@@ -68,14 +68,14 @@ test('update check IPC removes a token only after the repository verifier confir
   const { handlers, calls } = setup({ updateError: error, verifyStoredToken: async () => false });
   const result = await handlers.get('runtime:check-update')({ sender: {} });
   assert.deepEqual(result, { configured: false, available: false, tokenInvalid: true });
-  assert.deepEqual(calls, ['getToken', ['checkUpdate', '1.1.1.1', token], 'verifyStoredToken']);
+  assert.deepEqual(calls, ['getToken', ['checkUpdate', '1.1.2', token], 'verifyStoredToken']);
 });
 
 test('update check IPC preserves valid tokens on release-not-found responses', async () => {
   const error = Object.assign(new Error('GitHub Releases API returned 404'), { code: 'GITHUB_CREDENTIAL_RECHECK' });
   const { handlers, calls } = setup({ updateError: error, verifyStoredToken: async () => true });
   await assert.rejects(() => handlers.get('runtime:check-update')({ sender: {} }), /returned 404/);
-  assert.deepEqual(calls, ['getToken', ['checkUpdate', '1.1.1.1', token], 'verifyStoredToken']);
+  assert.deepEqual(calls, ['getToken', ['checkUpdate', '1.1.2', token], 'verifyStoredToken']);
 });
 
 test('install IPC launches only an installer returned by the digest-verifying updater', async () => {
@@ -83,5 +83,5 @@ test('install IPC launches only an installer returned by the digest-verifying up
   const result = await handlers.get('runtime:install-update')({ sender: {} });
   assert.deepEqual(installed, [{ version: '1.1.0', path: 'verified-installer.exe' }]);
   assert.deepEqual(result, { configured: true, installed: true, version: '1.1.0' });
-  assert.deepEqual(calls, ['getToken', ['installUpdate', '1.1.1.1', token]]);
+  assert.deepEqual(calls, ['getToken', ['installUpdate', '1.1.2', token]]);
 });

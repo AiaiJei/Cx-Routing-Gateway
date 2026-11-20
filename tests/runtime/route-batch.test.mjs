@@ -88,7 +88,7 @@ test('priority failover counts only configured errors, resets on success, and re
   const call = () => fetch(`${base}/v1/chat/completions`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer client' }, body: JSON.stringify({ model: 'm', messages: [{ role: 'user', content: 'test' }] }) });
   assert.equal((await call()).status, 502);
   primaryStatus = 200; assert.equal((await call()).status, 200);
-  primaryStatus = 400; assert.equal((await call()).status, 502);
+  primaryStatus = 400; assert.equal((await call()).status, 400);
   primaryStatus = 503; assert.equal((await call()).status, 502); assert.equal((await call()).status, 502);
   assert.equal((await (await call()).json()).choices[0].message.content, 'B');
   assert.deepEqual(calls, ['A', 'A', 'A', 'A', 'A', 'B']);
@@ -110,7 +110,7 @@ test('configured 4xx failures and network errors switch priority without retryin
   await store.update(config => ({ ...config, upstreams, routes: [{ id: 'r', alias: 'm', inboundProtocol: 'Chat', outboundProtocol: 'Chat', enabled: true, upstreamId: 'u0', modelId: 'm', targets: upstreams.map(up => ({ upstreamId: up.id, modelId: 'm' })), failover: { failureThreshold: 1, statusClasses: [4], cooldownSeconds: 60 } }], clientKeys: [{ id: 'k', keyHash: crypto.createHash('sha256').update('client').digest('hex'), enabled: true }] }));
   const gateway = createGatewayServer({ store, vault }); const base = await listen(gateway); t.after(() => gateway.close());
   const call = () => fetch(`${base}/v1/chat/completions`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer client' }, body: JSON.stringify({ model: 'm', messages: [{ role: 'user', content: 'test' }] }) });
-  assert.equal((await call()).status, 502);
+  assert.equal((await call()).status, 429);
   assert.equal(primaryCalls, 1); assert.equal(fallbackCalls, 0);
   assert.equal((await call()).status, 200); assert.equal(fallbackCalls, 1);
   await store.update(config => ({ ...config, upstreams: config.upstreams.map(up => up.id === 'u0' ? { ...up, baseUrl: 'http://127.0.0.1:1' } : up), routes: config.routes.map(route => ({ ...route, failover: { failureThreshold: 1, statusClasses: [5], cooldownSeconds: 60 } })) }));

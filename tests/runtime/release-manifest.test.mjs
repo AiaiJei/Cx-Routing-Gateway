@@ -39,7 +39,7 @@ test('release manifest includes packaged runtime resources', async (t) => {
   await fs.rename(`${metricsModule}.omitted`, metricsModule);
   const pkg = JSON.parse(await fs.readFile(new URL('../../apps/desktop/package.json', import.meta.url), 'utf8'));
   assert.equal(manifest.version, pkg.cxrgProductVersion);
-  assert.equal(pkg.version, '1.1.1');
+  assert.equal(pkg.version, '1.1.2');
   assert.equal(manifest.artifacts.some((item) => item.path === 'win-unpacked/resources/runtime/services/local-control/src/server.mjs'), true);
   assert.equal(manifest.artifacts.some((item) => item.path === 'win-unpacked/resources/runtime/packages/shared/src/config-store.mjs'), true);
   assert.equal(manifest.artifacts.some((item) => item.path === portableAsset), true);
