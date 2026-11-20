@@ -45,3 +45,5 @@ Revert this branch commits only. Keep the branch/worktree, .tmp-version-probe/, 
 - git diff --check: PASS.
 
 - Final PR state: OPEN, base master, head 2e44aec1ccf924abc3fa8449cefc0bf90ac5548e. No merge or release publication performed.
+
+- CI final head c24df15: Runtime SUCCESS; Desktop SUCCESS; package SKIPPED by workflow condition. PR #12 remains OPEN and unmerged.

@@ -91,7 +91,7 @@
     "full": "PASS: Runtime 113/113; Desktop 138/138 after review fixes",
     "build": "PASS: npm run build --prefix apps/desktop",
     "review": "PASS: independent read-only review found no Critical issues; two Important findings fixed test-first (builderVersion drift guard, failover selected-upstream snapshot regression); Minor unbounded numeric precision deferred.",
-    "ci": "PASS on PR #12 head 832be35 after documentation update: Runtime and Desktop checks pending fresh rerun; prior head 2e44aec checks SUCCESS; package job SKIPPED by workflow condition.",
+    "ci": "PASS on PR #12 head c24df15a1e3c79c64b6211f5d1fee18f17f04687: Runtime and Desktop checks SUCCESS; package jobs SKIPPED by workflow condition.",
     "whitespace": "PASS: git diff --check"
   },
   "capability": {
