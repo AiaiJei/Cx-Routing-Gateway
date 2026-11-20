@@ -1,7 +1,7 @@
 # Gateway 上游错误状态与 Payload 413 修复设计
 
-日期：2026-11-21  
-任务：CXRG-UPSTREAM-PAYLOAD-413-2026-11-21  
+日期：2026-11-21
+任务：CXRG-UPSTREAM-PAYLOAD-413-2026-11-21
 基线：'master' / '6446c470b6e71122d6f1dd3c5427f591ef8f2436'
 
 ## 意图
@@ -38,3 +38,4 @@
 ## 验收与回退
 
 先执行新增测试的 RED→GREEN，再执行 Runtime 全套、'git diff --check'，必要时执行生产构建相关回归。证据写入 '.task-evidence/upstream-payload-413/' 与任务记录。回退为撤销本任务提交/关闭 PR；不改 master、不删除其他任务工作树。
+
