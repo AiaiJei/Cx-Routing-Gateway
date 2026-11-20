@@ -87,15 +87,15 @@
     "number": 12,
     "base": "master",
     "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/12",
-    "head_sha": "6ebbd74"
+    "head_sha": "4a55eed"
   },
   "verification": {
     "status": "PASS",
     "focused": "PASS: Gateway core 27/27; request logs 6/6; Desktop mapping/UI 24/24",
-    "full": "PASS: Runtime 116/116; Desktop 142/142 after status/error revision",
+    "full": "PASS: Runtime 116/116; Desktop 142/142 after balanced-layout revision",
     "build": "PASS: npm run build --prefix apps/desktop",
     "review": "PASS: independent read-only review found no Critical issues; two Important findings fixed test-first (builderVersion drift guard, failover selected-upstream snapshot regression); Minor unbounded numeric precision deferred.",
-    "ci": "PASS on PR #12 head 6ebbd74c15cb835f0b724adc3f00422bbda69c60: Runtime and Desktop checks SUCCESS; package jobs SKIPPED by workflow condition.",
+    "ci": "PASS on PR #12 head 4a55eed002a97eca5bbb1b32db0e8f9bbb7d3587: Runtime and Desktop checks SUCCESS; package jobs SKIPPED by workflow condition.",
     "whitespace": "PASS: git diff --check"
   },
   "capability": {

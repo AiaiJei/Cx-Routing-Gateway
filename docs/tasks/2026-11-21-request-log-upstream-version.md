@@ -71,6 +71,8 @@ User requested renaming `结果` to `状态`, a full-status Tooltip including HT
 
 - Final status/error revision PR head 6ebbd74: Runtime 116/116; Desktop 142/142; build PASS; CI Runtime/Desktop SUCCESS; package SKIPPED. PR #12 remains OPEN and unmerged.
 
+- Final balanced-layout revision PR head 4a55eed: Desktop 142/142; build PASS; CI Runtime/Desktop SUCCESS; package SKIPPED. PR #12 remains OPEN and unmerged.
+
 ## 2026-11-21 revision: balanced layout verification
 
 - Selected approach: balanced explicit column widths.
