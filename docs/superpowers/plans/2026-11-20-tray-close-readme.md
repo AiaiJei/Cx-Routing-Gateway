@@ -101,4 +101,4 @@
 - [x] Commit `.gitignore`, task contract, plan and evidence as `docs: record tray and README verification` (`68b16f9`).
 - [x] Perform a fresh whole-branch code review against the spec and Review Focus; fix the Important activation-wiring coverage finding test-first. No Critical/security issues or deferred Minors were reported.
 - [x] Commit the review fix as `fix: cover main window activation handlers` (`07f3331`).
-- [ ] Commit and push the task branch, create the dedicated PR against `master`, and confirm its head/base and CI state. Do not merge.
+- [x] Commit and push the task branch; create PR #11 against `master` with head `2bcf6fc`; confirm its base/head and started CI. Do not merge.

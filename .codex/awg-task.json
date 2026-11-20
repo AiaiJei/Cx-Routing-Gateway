@@ -4,8 +4,8 @@
   "title": "窗口关闭驻留托盘与正式产品 README",
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
-  "status": "active",
-  "stage": "final-review",
+  "status": "pr-open",
+  "stage": "ci-running",
   "base": "master",
   "base_sha": "db1e32512953ba4f31fe8b109c2d6ded6bb2c498",
   "base_pr": 10,
@@ -78,7 +78,13 @@
   ],
   "rollback": "Revert task commits from the feature branch; no persisted data or release artifacts are modified.",
   "owner_acceptance": "pending",
-  "pull_request": null,
+  "pull_request": {
+    "state": "open",
+    "number": 11,
+    "base": "master",
+    "head_sha_at_creation": "2bcf6fc42d98dd21224b6164d8e01b540f53e69c",
+    "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/11"
+  },
   "verification": {
     "baseline": "Runtime 102/102, Desktop 134/134, Desktop production build passed on merged PR #10; initial missing-dist test failure was resolved by building from the lockfile",
     "implementation": "Tray lifecycle 9/9 (including 3 review-driven RED/GREEN cases); final Runtime 111/111; Desktop 134/134; Settings version 11/11; TypeScript/Vite production build passed; release manifest fixtures follow package version",
@@ -89,7 +95,7 @@
     "desktop_tests": "PASS: 134/134",
     "production_build": "PASS: TypeScript and Vite",
     "whitespace": "PASS: git diff --check",
-    "ci": "PENDING dedicated PR creation",
+    "ci": "PENDING on PR #11: Runtime and Desktop jobs; package job skipped for pull_request by workflow condition",
     "independent_review": "Fresh whole-branch review identified one Important missing test for second-instance/activate wiring; fixed test-first with 3 RED/GREEN cases. No Critical/security or Minor findings; no second review in inline execution workflow.",
     "native_manual": "NOT_RUN: Electron binary unavailable under user-level npm install-script policy; no policy change made"
   },
