@@ -89,6 +89,9 @@
     "final_runtime": "PASS: 125/125",
     "final_desktop": "PASS: 143/143",
     "final_diff_check": "PASS",
+    "post_review_rerun": "PASS: build; Runtime 125/125; Desktop 143/143; git diff --check",
+    "task3_evidence_commit": "ed936eb78dfa308f49aad8365bea35381284c12b",
+    "review_record_commit": "7fdc21c0d1322374344fdc653978987d9359ab53",
     "provider": "NOT_RUN",
     "independent_subagent_review": "PASS: no Critical, Important, or Minor findings on be4de092..bac1770",
     "pull_request_ci": "NOT_RUN"
