@@ -3,62 +3,130 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-function versionParts(value) {
-  const parts = String(value).split('.').map((part) => Number.parseInt(part, 10));
-  if (parts.length !== 3 || parts.some((part) => !Number.isFinite(part))) throw new Error(`Invalid version: ${value}`);
-  return parts;
+const DEFAULT_REPOSITORY = 'AiaiJei/Cx-Routing-Gateway';
+const REPOSITORY_CONTENTS_API = `https://api.github.com/repos/${DEFAULT_REPOSITORY}/contents`;
+const RELEASES_API = `https://api.github.com/repos/${DEFAULT_REPOSITORY}/releases`;
+
+function requireToken(token) {
+  if (typeof token !== 'string' || !token || token.trim() !== token || /[\r\n\0]/.test(token)) {
+    throw new Error('GitHub token is required');
+  }
+  return token;
 }
+
+function requireRepository(repository) {
+  if (repository !== DEFAULT_REPOSITORY) throw new Error('GitHub repository is fixed for this application');
+}
+
+function versionParts(value) {
+  const normalized = String(value).replace(/^v/, '');
+  if (!/^\d+\.\d+\.\d+$/.test(normalized)) throw new Error(`Invalid version: ${value}`);
+  return normalized.split('.').map(Number);
+}
+
 export function compareVersions(left, right) {
   const a = versionParts(left); const b = versionParts(right);
   for (let index = 0; index < 3; index += 1) if (a[index] !== b[index]) return a[index] > b[index] ? 1 : -1;
   return 0;
 }
 
-async function fetchManifest(manifestUrl) {
-  const response = await fetch(manifestUrl, { redirect: 'error' });
-  if (!response.ok) throw new Error(`Update manifest returned ${response.status}`);
-  return response.json();
+function authorizationHeaders(token) {
+  return {
+    accept: 'application/vnd.github+json',
+    'x-github-api-version': '2022-11-28',
+    authorization: `Bearer ${requireToken(token)}`,
+  };
 }
 
-function verifyManifest(manifest, product) {
-  if (manifest.product !== product) throw new Error('Update manifest product mismatch');
-  const { signature, publicKey, ...unsignedPayload } = manifest;
-  const signed = manifest.signed === true && typeof signature === 'string' && typeof publicKey === 'string' && crypto.verify(null, Buffer.from(JSON.stringify(unsignedPayload)), publicKey, Buffer.from(signature, 'base64'));
-  return { manifest, signed };
+export async function verifyGitHubToken({ token, repository = DEFAULT_REPOSITORY, fetchImpl = fetch } = {}) {
+  requireToken(token);
+  requireRepository(repository);
+  let response;
+  try {
+    response = await fetchImpl(REPOSITORY_CONTENTS_API, { headers: authorizationHeaders(token) });
+  } catch {
+    throw new Error('Unable to verify GitHub repository access');
+  }
+  if (!response.ok) throw new Error(`GitHub token cannot read repository contents (HTTP ${response.status})`);
+  let result;
+  try { result = await response.json(); } catch { throw new Error('GitHub returned invalid repository contents'); }
+  if (!Array.isArray(result)) throw new Error('GitHub token cannot read repository contents');
+  return { valid: true };
 }
 
-export async function checkUpdate({ manifestUrl, currentVersion, product = 'Cx-Routing Gateway' }) {
+function releaseVersion(release) {
+  if (!release || typeof release !== 'object' || release.draft !== false || release.prerelease !== false) throw new Error('GitHub latest release is not a stable published release');
+  if (typeof release.tag_name !== 'string' || !/^v\d+\.\d+\.\d+$/.test(release.tag_name)) throw new Error('GitHub release has an invalid version tag');
+  const expectedUrl = `https://github.com/${DEFAULT_REPOSITORY}/releases/tag/${release.tag_name}`;
+  if (release.html_url !== expectedUrl) throw new Error('GitHub release URL is invalid');
+  return release.tag_name.slice(1);
+}
+
+function installerAsset(release, version) {
+  const expectedName = `Cx-Routing Gateway Setup ${version}.exe`;
+  const asset = Array.isArray(release.assets) ? release.assets.find((item) => item?.name === expectedName) : null;
+  if (!asset || typeof asset.browser_download_url !== 'string') throw new Error(`GitHub release is missing ${expectedName}`);
+  if (!/^sha256:[a-f\d]{64}$/i.test(asset.digest || '')) throw new Error('GitHub release installer has no valid SHA-256 digest');
+  const url = new URL(asset.browser_download_url);
+  const expectedPath = `/AiaiJei/Cx-Routing-Gateway/releases/download/v${version}/`;
+  if (url.protocol !== 'https:' || url.hostname !== 'github.com' || !url.pathname.startsWith(expectedPath) || url.search || url.hash) {
+    throw new Error('GitHub release installer URL is invalid');
+  }
+  return { name: expectedName, url: url.href, sha256: asset.digest.slice('sha256:'.length).toLowerCase() };
+}
+
+async function fetchLatestRelease({ repository, token, fetchImpl }) {
+  requireToken(token);
+  requireRepository(repository);
+  let response;
+  try {
+    response = await fetchImpl(`${RELEASES_API}/latest`, { headers: authorizationHeaders(token) });
+  } catch {
+    throw new Error('Unable to contact GitHub Releases API');
+  }
+  if (!response.ok) throw new Error(`GitHub Releases API returned ${response.status}`);
+  let release;
+  try { release = await response.json(); } catch { throw new Error('GitHub Releases API returned invalid JSON'); }
+  const version = releaseVersion(release);
+  return { release, version, installer: installerAsset(release, version) };
+}
+
+export async function checkUpdate({ currentVersion, token, repository = DEFAULT_REPOSITORY, fetchImpl = fetch } = {}) {
   if (!currentVersion) throw new Error('currentVersion is required');
-  const { manifest, signed } = verifyManifest(await fetchManifest(manifestUrl), product);
-  const comparison = compareVersions(manifest.version, currentVersion);
-  return { available: comparison > 0 && signed, version: manifest.version, signed, artifacts: manifest.artifacts || [] };
+  const { release, version, installer } = await fetchLatestRelease({ repository, token, fetchImpl });
+  return {
+    configured: true,
+    available: compareVersions(version, currentVersion) > 0,
+    version,
+    releaseUrl: release.html_url,
+    installer: { name: installer.name, sha256: installer.sha256 },
+  };
 }
 
-export async function installUpdate({ manifestUrl, currentVersion, product = 'Cx-Routing Gateway', downloadDir }) {
+export async function installUpdate({ currentVersion, token, repository = DEFAULT_REPOSITORY, fetchImpl = fetch, downloadDir } = {}) {
   if (!currentVersion) throw new Error('currentVersion is required');
-  const { manifest, signed } = verifyManifest(await fetchManifest(manifestUrl), product);
-  if (!signed || compareVersions(manifest.version, currentVersion) <= 0) throw new Error('No verified update is available');
-  const artifact = (manifest.artifacts || []).find((item) => typeof item?.path === 'string' && /\.exe$/i.test(item.path) && !/blockmap|win-unpacked/i.test(item.path));
-  if (!artifact || typeof artifact.sha256 !== 'string') throw new Error('Update manifest has no verified installer artifact');
-  if (path.isAbsolute(artifact.path) || artifact.path.split(/[\\/]/).includes('..') || artifact.path.includes('://')) throw new Error('Invalid update artifact path');
-  const artifactUrl = new URL(artifact.path.replaceAll('\\', '/'), new URL('./', manifestUrl));
-  const response = await fetch(artifactUrl, { redirect: 'error' });
-  if (!response.ok) throw new Error(`Update artifact returned ${response.status}`);
+  const { version, installer } = await fetchLatestRelease({ repository, token, fetchImpl });
+  if (compareVersions(version, currentVersion) <= 0) throw new Error('No verified update is available');
+  let response;
+  try {
+    response = await fetchImpl(installer.url, { headers: authorizationHeaders(token) });
+  } catch {
+    throw new Error('Unable to download GitHub release installer');
+  }
+  if (!response.ok) throw new Error(`GitHub release installer returned ${response.status}`);
   const bytes = Buffer.from(await response.arrayBuffer());
-  const hash = crypto.createHash('sha256').update(bytes).digest('hex');
-  if (hash.toLowerCase() !== artifact.sha256.toLowerCase()) throw new Error('Update artifact hash mismatch');
+  const sha256 = crypto.createHash('sha256').update(bytes).digest('hex');
+  if (sha256 !== installer.sha256) throw new Error('GitHub release installer SHA-256 mismatch');
   const targetDir = downloadDir || path.join(process.env.TEMP || process.cwd(), 'cxrg-updates');
   await fs.mkdir(targetDir, { recursive: true });
-  const targetPath = path.join(targetDir, path.basename(artifact.path));
+  const targetPath = path.join(targetDir, installer.name);
   const temporaryPath = `${targetPath}.${process.pid}.part`;
   await fs.writeFile(temporaryPath, bytes, { mode: 0o700 });
   await fs.rename(temporaryPath, targetPath);
-  return { version: manifest.version, path: targetPath, bytes: bytes.length, sha256: hash };
+  return { version, path: targetPath, bytes: bytes.length, sha256 };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const manifestUrl = process.env.CXRG_UPDATE_MANIFEST_URL;
-  if (!manifestUrl) throw new Error('CXRG_UPDATE_MANIFEST_URL is required');
-  const currentVersion = process.env.CXRG_CURRENT_VERSION || JSON.parse(await fs.readFile(new URL('../apps/desktop/package.json', import.meta.url), 'utf8')).version;
-  console.log(JSON.stringify(await checkUpdate({ manifestUrl, currentVersion }), null, 2));
+  console.error('GitHub update checks require a token configured in Desktop settings.');
+  process.exitCode = 1;
 }

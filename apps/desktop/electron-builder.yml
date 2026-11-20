@@ -6,6 +6,7 @@ directories:
 files:
   - dist/**
   - electron/**
+  - build/icon.ico
   - package.json
 asar: true
 extraResources:
@@ -16,6 +17,7 @@ extraResources:
   - from: ../../scripts
     to: runtime/scripts
 win:
+  icon: build/icon.ico
   target:
     - target: dir
       arch:
@@ -24,6 +26,11 @@ win:
     - target: nsis
       arch:
         - x64
+    - target: portable
+      arch:
+        - x64
+portable:
+  artifactName: ${productName} Portable ${version}.${ext}
 nsis:
   oneClick: false
   perMachine: false

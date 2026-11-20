@@ -11,25 +11,71 @@ export function SettingsPage() {
   const { data, error, loading } = useWorkspace();
   const [updateMessage, setUpdateMessage] = useState("");
   const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [releaseUrl, setReleaseUrl] = useState("");
+  const [updateToken, setUpdateToken] = useState("");
+  const [tokenConfigured, setTokenConfigured] = useState(false);
+  const [secureStorageAvailable, setSecureStorageAvailable] = useState(true);
+  const [tokenMessage, setTokenMessage] = useState("");
   const [retention, setRetention] = useState("1000");
   const [settingsMessage, setSettingsMessage] = useState("");
   useEffect(() => {
     const value = data.settings.find((setting) => setting.label === "日志保留条数")?.value.match(/\d+/)?.[0];
     if (value) setRetention(value);
   }, [data.settings]);
+  useEffect(() => {
+    let active = true;
+    async function loadTokenStatus() {
+      if (!window.desktopControls?.getUpdateTokenStatus) return;
+      try {
+        const status = await window.desktopControls.getUpdateTokenStatus();
+        if (!active) return;
+        setTokenConfigured(status.configured);
+        setSecureStorageAvailable(status.secureStorageAvailable);
+      } catch (caught) {
+        if (active) setTokenMessage(caught instanceof Error ? caught.message : "无法读取 GitHub 更新凭据状态");
+      }
+    }
+    void loadTokenStatus();
+    return () => { active = false; };
+  }, []);
+  async function saveUpdateToken() {
+    if (!window.desktopControls?.saveUpdateToken) { setTokenMessage("令牌设置仅在 Desktop 运行时可用。"); return; }
+    if (!updateToken) { setTokenMessage("请输入 GitHub 更新访问令牌。"); return; }
+    try {
+      const result = await window.desktopControls.saveUpdateToken(updateToken);
+      setTokenConfigured(result.configured);
+      setUpdateToken("");
+      setTokenMessage("GitHub 更新令牌已验证并安全保存。");
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : "GitHub 更新令牌验证失败";
+      setTokenMessage(updateToken ? message.replaceAll(updateToken, "[已隐藏]") : message);
+    }
+  }
+  async function removeUpdateToken() {
+    if (!window.desktopControls?.removeUpdateToken) { setTokenMessage("令牌设置仅在 Desktop 运行时可用。"); return; }
+    try {
+      const result = await window.desktopControls.removeUpdateToken();
+      setTokenConfigured(result.configured);
+      setUpdateToken("");
+      setUpdateAvailable(false);
+      setReleaseUrl("");
+      setTokenMessage("GitHub 更新令牌已移除。");
+    } catch (caught) { setTokenMessage(caught instanceof Error ? caught.message : "GitHub 更新令牌移除失败"); }
+  }
   async function checkUpdate() {
     if (!window.desktopControls?.checkUpdate) { setUpdateMessage("更新检查仅在 Desktop 运行时可用。"); return; }
     try {
       const result = await window.desktopControls.checkUpdate();
       setUpdateAvailable(Boolean(result.available));
-      setUpdateMessage(!result.configured ? "未配置更新源。" : result.available ? `发现版本 ${result.version}；当前只提供检查，不会自动安装。` : "当前已是最新版本。");
+      setReleaseUrl(result.releaseUrl || "");
+      setUpdateMessage(!result.configured ? "请先配置并验证 GitHub 更新访问令牌。" : result.available ? `发现版本 ${result.version}；更新来自 GitHub Release。` : "当前已是最新版本。");
     } catch (caught) { setUpdateMessage(caught instanceof Error ? caught.message : "更新检查失败"); }
   }
   async function installUpdate() {
     if (!window.desktopControls?.installUpdate) { setUpdateMessage("更新安装仅在 Desktop 运行时可用。"); return; }
     try {
       const result = await window.desktopControls.installUpdate();
-      setUpdateMessage(result.installed ? `正在安装版本 ${result.version}，应用将退出。` : "没有可安装的已验证更新。");
+      setUpdateMessage(!result.configured ? "请先配置并验证 GitHub 更新访问令牌。" : result.installed ? `正在安装版本 ${result.version}，应用将退出。` : "没有可安装的已验证更新。");
     } catch (caught) { setUpdateMessage(caught instanceof Error ? caught.message : "更新安装失败"); }
   }
   async function saveRetention() {
@@ -58,7 +104,15 @@ export function SettingsPage() {
       {settingsMessage && <p className="action-feedback" role="status">{settingsMessage}</p>}
       </section>
       <section className="settings-section" aria-labelledby="desktop-settings-title"><h2 id="desktop-settings-title" className="section-title">桌面应用</h2>
-        <div className="settings-update"><div><p className="app-version">版本 {version}</p><p className="helper-text">更新由你发起，安装前验证版本与文件。</p></div><div className="settings-update-actions"><Button variant="secondary" size="small" onClick={() => void checkUpdate()}>检查更新</Button>{updateAvailable && <Button variant="primary" size="small" onClick={() => void installUpdate()}>安装更新</Button>}</div>{updateMessage && <p className="settings-update-message helper-text" role="status">{updateMessage}</p>}</div>
+        <div className="settings-update"><div><p className="app-version">版本 {version}</p><p className="helper-text">更新通过私有 GitHub Release 检查，安装前验证安装包 SHA-256。</p></div><div className="settings-update-actions"><Button variant="secondary" size="small" onClick={() => void checkUpdate()}>检查更新</Button>{updateAvailable && <Button variant="primary" size="small" onClick={() => void installUpdate()}>安装更新</Button>}</div>{updateMessage && <p className="settings-update-message helper-text" role="status">{updateMessage}{releaseUrl && <> · <a href={releaseUrl} target="_blank" rel="noreferrer">查看 GitHub 发布说明</a></>}</p>}</div>
+        <div className="settings-update">
+          <div><p className="app-version">GitHub 更新权限</p><p className="helper-text">使用仅有 Contents: Read 权限的细粒度令牌。令牌仅保存在本机安全存储中。</p></div>
+          {!secureStorageAvailable ? <p className="settings-update-message helper-text" role="status">当前系统无法安全保存 GitHub 更新令牌</p> : <>
+            <TextField label="GitHub 更新访问令牌" type="password" autoComplete="new-password" spellCheck={false} value={updateToken} onChange={(event) => setUpdateToken(event.target.value)} />
+            <div className="settings-update-actions"><Button variant="secondary" size="small" onClick={() => void saveUpdateToken()}>保存并验证</Button>{tokenConfigured && <Button variant="tertiary" size="small" onClick={() => void removeUpdateToken()}>移除令牌</Button>}</div>
+            <p className="settings-update-message helper-text" role="status">{tokenMessage || (tokenConfigured ? "已配置并验证 GitHub 更新访问令牌。" : "尚未配置 GitHub 更新令牌")}</p>
+          </>}
+        </div>
       </section>
       <section className="page-section"><h2 className="section-title">协议术语</h2><p className="body-copy">Res 为 Responses，Mes 为 Messages，Chat 为 Chat Completions。客户端请求决定入站协议，路由配置决定上游出站协议，响应返回原入站协议。</p></section>
     </div>

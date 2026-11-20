@@ -20,7 +20,10 @@ declare global {
       deleteRoute: (id: string) => Promise<unknown>;
       updateRoute: (id: string, input: { alias?: string; inboundProtocol?: string; outboundProtocol?: string; upstreamId?: string; modelId?: string; enabled?: boolean }) => Promise<unknown>;
       updateSettings: (input: { usageRetentionCount: number }) => Promise<unknown>;
-      checkUpdate: () => Promise<{ configured: boolean; available: boolean; version?: string }>;
+      getUpdateTokenStatus?: () => Promise<{ configured: boolean; secureStorageAvailable: boolean }>;
+      saveUpdateToken?: (token: string) => Promise<{ configured: boolean }>;
+      removeUpdateToken?: () => Promise<{ configured: boolean }>;
+      checkUpdate: () => Promise<{ configured: boolean; available: boolean; version?: string; releaseUrl?: string; installer?: { name: string; sha256: string } }>;
       installUpdate: () => Promise<{ configured: boolean; installed: boolean; version?: string }>;
     };
   }
