@@ -3,7 +3,11 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 
 const releaseDir = path.resolve(process.argv[2] || 'apps/desktop/release');
-const { version } = JSON.parse(await fs.readFile(new URL('../apps/desktop/package.json', import.meta.url), 'utf8'));
+const { version, cxrgProductVersion } = JSON.parse(await fs.readFile(new URL('../apps/desktop/package.json', import.meta.url), 'utf8'));
+const builderConfig = await fs.readFile(new URL('../apps/desktop/electron-builder.yml', import.meta.url), 'utf8');
+if (!builderConfig.split(/\r?\n/).some((line) => line.trim() === `buildVersion: ${cxrgProductVersion}`)) throw new Error('electron-builder buildVersion does not match cxrgProductVersion');
+if (version !== '1.1.1' || cxrgProductVersion !== '1.1.1.1') throw new Error('Invalid Cx-Routing Gateway package/product version metadata');
+const productVersion = cxrgProductVersion;
 const required = [
   'win-unpacked/Cx-Routing Gateway.exe',
   'win-unpacked/resources/app.asar',
@@ -13,9 +17,9 @@ const required = [
   'win-unpacked/resources/runtime/packages/shared/src/config-store.mjs',
   'win-unpacked/resources/runtime/packages/shared/src/secret-vault.mjs',
   'win-unpacked/resources/runtime/scripts/check-update.mjs',
-  `Cx-Routing Gateway Setup ${version}.exe`,
-  `Cx-Routing Gateway Setup ${version}.exe.blockmap`,
-  `Cx-Routing Gateway Portable ${version}.exe`,
+  `Cx-Routing Gateway Setup ${productVersion}.exe`,
+  `Cx-Routing Gateway Setup ${productVersion}.exe.blockmap`,
+  `Cx-Routing Gateway Portable ${productVersion}.exe`,
 ];
 
 const artifacts = [];
@@ -30,7 +34,7 @@ for (const relative of required) {
 
 const privateKey = process.env.CXRG_RELEASE_PRIVATE_KEY;
 const publicKey = process.env.CXRG_RELEASE_PUBLIC_KEY;
-const manifest = { product: 'Cx-Routing Gateway', version, platform: 'win32', generatedAt: new Date().toISOString(), signed: Boolean(privateKey && publicKey), artifacts };
+const manifest = { product: 'Cx-Routing Gateway', version: productVersion, packageVersion: version, platform: 'win32', generatedAt: new Date().toISOString(), signed: Boolean(privateKey && publicKey), artifacts };
 if (privateKey && publicKey) {
   manifest.signature = crypto.sign(null, Buffer.from(JSON.stringify(manifest)), privateKey).toString('base64');
   manifest.publicKey = publicKey;

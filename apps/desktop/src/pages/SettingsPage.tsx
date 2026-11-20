@@ -5,7 +5,7 @@ import { Button } from "../components/Button";
 import { useWorkspace } from "../data/use-workspace";
 import { defaultWorkspaceClient } from "../data/workspace-client";
 import { TextField } from "../components/TextField";
-import { version } from "../../package.json";
+import { cxrgProductVersion } from "../../package.json";
 
 export function SettingsPage() {
   const { data, error, loading } = useWorkspace();
@@ -127,7 +127,7 @@ export function SettingsPage() {
       {settingsMessage && <p className="action-feedback" role="status">{settingsMessage}</p>}
       </section>
       <section className="settings-section" aria-labelledby="desktop-settings-title"><h2 id="desktop-settings-title" className="section-title">桌面应用</h2>
-        <div className="settings-update"><div><p className="app-version">版本 {version}</p><p className="helper-text">更新通过私有 GitHub Release 检查，安装前验证安装包 SHA-256。</p></div><div className="settings-update-actions"><Button variant="secondary" size="small" disabled={checkingUpdate} onClick={() => void checkUpdate()}>{checkingUpdate ? "正在检查…" : "检查更新"}</Button>{needsUpdateToken && <Button variant="tertiary" size="small" onClick={focusUpdateToken}>配置更新令牌</Button>}{updateAvailable && <Button variant="primary" size="small" onClick={() => void installUpdate()}>安装更新</Button>}</div>{updateMessage && <p className="settings-update-message helper-text" role="status" aria-live="polite">{updateMessage}{releaseUrl && <> · <a href={releaseUrl} target="_blank" rel="noreferrer">查看 GitHub 发布说明</a></>}</p>}</div>
+        <div className="settings-update"><div><p className="app-version">版本 {cxrgProductVersion}</p><p className="helper-text">更新通过私有 GitHub Release 检查，安装前验证安装包 SHA-256。</p></div><div className="settings-update-actions"><Button variant="secondary" size="small" disabled={checkingUpdate} onClick={() => void checkUpdate()}>{checkingUpdate ? "正在检查…" : "检查更新"}</Button>{needsUpdateToken && <Button variant="tertiary" size="small" onClick={focusUpdateToken}>配置更新令牌</Button>}{updateAvailable && <Button variant="primary" size="small" onClick={() => void installUpdate()}>安装更新</Button>}</div>{updateMessage && <p className="settings-update-message helper-text" role="status" aria-live="polite">{updateMessage}{releaseUrl && <> · <a href={releaseUrl} target="_blank" rel="noreferrer">查看 GitHub 发布说明</a></>}</p>}</div>
         <div className="settings-update">
           <div><p className="app-version">GitHub 更新权限</p><p className="helper-text">使用仅有 Contents: Read 权限的细粒度令牌。令牌仅保存在本机安全存储中。</p></div>
           {!secureStorageAvailable ? <p className="settings-update-message helper-text" role="status">当前系统无法安全保存 GitHub 更新令牌</p> : <>

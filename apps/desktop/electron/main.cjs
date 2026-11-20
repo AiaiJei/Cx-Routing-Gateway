@@ -8,6 +8,7 @@ const { isTrustedDocumentUrl } = require("./security.cjs");
 const { createGitHubTokenStore } = require("./github-token-store.cjs");
 const { createGitHubTokenService } = require("./github-token-service.cjs");
 const { registerGitHubUpdateIpc } = require("./github-update-ipc.cjs");
+const { cxrgProductVersion } = require("../package.json");
 const { installTrayLifecycle, registerActivateHandler, registerSecondInstanceHandler } = require("./tray-lifecycle.cjs");
 
 const devServerUrl = process.env.CXRG_DEV_SERVER_URL;
@@ -230,7 +231,7 @@ registerGitHubUpdateIpc({
   isTrustedSender: trustedSender,
   getTokenService: getGitHubTokenService,
   loadUpdater: () => import(updateScriptPath()),
-  getCurrentVersion: () => app.getVersion(),
+  getCurrentVersion: () => cxrgProductVersion,
   getDownloadDir: () => path.join(app.getPath("temp"), "cxrg-updates"),
   installDownloaded: async (result) => {
   const installer = spawn(result.path, [], { detached: true, stdio: "ignore", windowsHide: false });
@@ -244,7 +245,7 @@ registerGitHubUpdateIpc({
 const versionOnly = process.argv.includes("--version");
 const lock = versionOnly ? true : app.requestSingleInstanceLock();
 if (versionOnly) {
-  app.whenReady().then(() => { console.log(app.getVersion()); app.exit(0); });
+  app.whenReady().then(() => { console.log(cxrgProductVersion); app.exit(0); });
 } else if (!lock) {
   app.quit();
 } else {

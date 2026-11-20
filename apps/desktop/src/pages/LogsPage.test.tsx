@@ -47,6 +47,10 @@ describe("LogsPage", () => {
     const tableViewport = container.querySelector(".table-scroll");
     expect(tableViewport).not.toBeNull();
     expect(getComputedStyle(tableViewport!).contain).toContain("paint");
+    const table = container.querySelector(".logs-table")!;
+    expect(table.querySelectorAll("col")).toHaveLength(10);
+    expect(getComputedStyle(table).tableLayout).toBe("fixed");
+    expect(table).toHaveClass("logs-table");
   });
 
   it("opens a redacted detail view without exposing request or response bodies", async () => {
@@ -60,6 +64,54 @@ describe("LogsPage", () => {
     expect(dialog).toHaveTextContent("Desktop client ·••••");
     expect(dialog).toHaveTextContent("请求和响应正文未记录");
     expect(screen.getByRole("button", { name: "关闭弹窗" })).toHaveTextContent("×");
+  });
+
+  it("shows the upstream service as 来源 and keeps the masked credential in details only", async () => {
+    const user = userEvent.setup();
+    render(<LogsPage />);
+    await screen.findByRole("searchbox", { name: "搜索请求日志" });
+    const table = within(screen.getByRole("region", { name: "请求日志列表" })).getByRole("table");
+    expect(within(table).getByRole("columnheader", { name: "来源" })).toBeVisible();
+    expect(within(table).queryByRole("columnheader", { name: "入口凭证" })).not.toBeInTheDocument();
+    expect(within(table).getAllByText("Northstar AI")).toHaveLength(2);
+    expect(within(table).queryByText(/Desktop client/)).not.toBeInTheDocument();
+    await user.click(within(table).getByRole("button", { name: "查看 req-7d3a9f21" }));
+    const dialog = screen.getByRole("dialog", { name: "请求 req-7d3a9f21 详情" });
+    expect(dialog).toHaveTextContent("入口凭证");
+    expect(dialog).toHaveTextContent("Desktop client ·••••");
+  });
+
+  it("shows 推理 immediately after 来源 and uses a dash when absent", async () => {
+    const user = userEvent.setup();
+    render(<LogsPage />);
+    await screen.findByRole("searchbox", { name: "搜索请求日志" });
+    const table = within(screen.getByRole("region", { name: "请求日志列表" })).getByRole("table");
+    const headers = within(table).getAllByRole("columnheader").map((header) => header.textContent);
+    expect(headers.indexOf("推理")).toBe(headers.indexOf("来源") + 1);
+    const firstRow = within(table).getAllByRole("row")[1];
+    expect(within(firstRow).getByText("high")).toBeVisible();
+    const missingRow = within(table).getAllByRole("row")[2];
+    expect(missingRow.textContent).toContain("-");
+    await user.click(within(firstRow).getByRole("button", { name: "查看 req-7d3a9f21" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("推理");
+    expect(screen.getByRole("dialog")).toHaveTextContent("high");
+  });
+
+  it("renames 结果 to 状态 and discloses HTTP status and sanitized error details", async () => {
+    const user = userEvent.setup();
+    render(<LogsPage />);
+    await screen.findByRole("searchbox", { name: "搜索请求日志" });
+    const table = within(screen.getByRole("region", { name: "请求日志列表" })).getByRole("table");
+    expect(within(table).getByRole("columnheader", { name: "状态" })).toBeVisible();
+    expect(within(table).queryByRole("columnheader", { name: "结果" })).not.toBeInTheDocument();
+    const failed = within(table).getByRole("button", { name: /失败/ });
+    await user.hover(failed);
+    expect(screen.getByRole("tooltip")).toHaveTextContent("HTTP");
+    await user.unhover(failed);
+    await user.click(within(table).getByRole("button", { name: "查看 req-29ab10ce" }));
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent("错误信息");
+    expect(dialog).toHaveTextContent("上游响应超时（示例错误）");
   });
 });
 
