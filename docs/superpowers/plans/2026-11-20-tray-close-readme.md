@@ -90,7 +90,7 @@
 - [x] Rewrite the root README in formal Chinese with version 1.1.1, verified platform, core capabilities/features, run/package entry points, actual screenshot embeds, and material security/release limits.
 - [x] Check every README image/link target exists and inspect all three screenshot files.
 - [x] Commit the version metadata, verifier fixture, README, and screenshot assets as `docs: publish 1.1.1 product README and screenshots` (`10fef03`).
-- [x] Add an immediate update-check status, prevent duplicate requests while pending, and guide unconfigured users to the token field; the Settings regression test failed before implementation and passed afterward. Full Desktop suite: 135/135; Runtime suite: 111/111; production build passed.
+- [x] Add an immediate update-check status, prevent duplicate requests while pending, and guide unconfigured users to the token field; the Settings regression test failed before implementation and passed afterward. Full Desktop suite: 135/135; Runtime suite: 111/111; production build passed. Commit `81d59dd`.
 
 ### Task 3: Verification, Evidence, and Dedicated PR
 
