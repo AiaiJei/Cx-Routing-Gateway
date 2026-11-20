@@ -21,6 +21,8 @@ test('release manifest includes packaged runtime resources', async (t) => {
   const releaseDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-release-test-'));
   t.after(() => fs.rm(releaseDir, { recursive: true, force: true }));
   const { version, cxrgProductVersion } = JSON.parse(await fs.readFile(new URL('../../apps/desktop/package.json', import.meta.url), 'utf8'));
+  const builderConfig = await fs.readFile(new URL('../../apps/desktop/electron-builder.yml', import.meta.url), 'utf8');
+  assert.equal(builderConfig.split(/\r?\n/).some((line) => line.trim() === `buildVersion: ${cxrgProductVersion}`), true);
   const portableAsset = `Cx-Routing Gateway Portable ${cxrgProductVersion}.exe`;
   const installerAsset = `Cx-Routing Gateway Setup ${cxrgProductVersion}.exe`;
   for (const relative of ['win-unpacked/Cx-Routing Gateway.exe', 'win-unpacked/resources/app.asar', 'win-unpacked/resources/runtime/services/local-control/src/server.mjs', 'win-unpacked/resources/runtime/services/gateway/src/server.mjs', 'win-unpacked/resources/runtime/services/gateway/src/request-metrics.mjs', 'win-unpacked/resources/runtime/packages/shared/src/config-store.mjs', 'win-unpacked/resources/runtime/packages/shared/src/secret-vault.mjs', 'win-unpacked/resources/runtime/scripts/check-update.mjs', installerAsset, `${installerAsset}.blockmap`, portableAsset]) {

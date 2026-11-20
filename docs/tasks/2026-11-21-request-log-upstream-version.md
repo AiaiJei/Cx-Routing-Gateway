@@ -1,0 +1,45 @@
+# CXRG-LOG-UPSTREAM-VERSION-2026-11-21
+
+Project/repo: Cx-Routing Gateway / AiaiJei/Cx-Routing-Gateway. Base: master at 6446c470b6e71122d6f1dd3c5427f591ef8f2436. Branch/worktree: codex/request-log-upstream-1.1.1.1 / .worktree/request-log-upstream-1.1.1.1. Dedicated PR remains uncreated until full verification and review pass.
+
+Design: docs/superpowers/specs/2026-11-21-request-log-upstream-version-design.md. Plan: docs/superpowers/plans/2026-11-21-request-log-upstream-version.md.
+
+## Authorization and boundaries
+
+User selected complete four-part product version support and authorized reuse of the existing matching worktree. npm package/lock version stays 1.1.1; product/build/release version is 1.1.1.1. Request table uses 来源 and configured upstream service name; entry credentials remain masked and detail-only. No merge, release publication, tag rewrite, branch/worktree deletion or probe-file deletion is authorized. Existing .tmp-version-probe/ and the archived prior contract are preserved.
+
+## TDD evidence
+
+- Task 1 RED: request log tests failed on missing upstreamName in two assertions. GREEN: gateway snapshots upstreamName beside upstreamId on HTTP failure, stream success, JSON success and exception paths; focused Runtime run passed 111/111.
+- Task 2 RED: adapter expected snapshot/ID fallback/unknown source and UI expected 来源/detail-only credential; focused Desktop initially failed 2 tests. GREEN: adapter maps persisted name first, current upstream by ID second, and — otherwise; LogsPage replaced the credential column and retained detail credential; focused Desktop passed 20/20.
+- Task 3 RED: release-manifest fixture requested four-part asset names while verifier still required package version 1.1.1. GREEN: cxrgProductVersion metadata, electron-builder buildVersion/artifact patterns and verifier use 1.1.1.1 while package version remains 1.1.1; release-manifest passed 2/2 and production build passed.
+- Task 4 RED: Settings still displayed 1.1.1. GREEN: updater accepts three or four numeric components, normalizes missing trailing component, Settings and Electron --version use 1.1.1.1, IPC passes product version; updater/IPC node tests 21/21 and Settings focused suite 13/13.
+
+## Verification ledger
+
+- [x] Full Runtime suite: PASS, 113/113.
+- [x] Full Desktop suite: PASS, 138/138.
+- [x] Desktop production build: PASS, TypeScript and Vite.
+- [x] Release-manifest/updater focused suites: PASS, 23/23; focused Desktop Settings 13/13; focused source mapping 20/20.
+- [x] git diff --check: PASS.
+- [x] Independent whole-branch review: no Critical findings; two Important findings fixed test-first; one Minor numeric-precision recommendation deferred.
+- [ ] Dedicated PR/CI: pending PR creation.
+
+## Rollback
+
+Revert this branch commits only. Keep the branch/worktree, .tmp-version-probe/, archived contract, existing v1.1.1 release/tag and unrelated untracked files.
+
+## Review and fix ledger
+
+- Independent reviewer found no Critical issues.
+- Important fix: electron-builder.yml buildVersion drift was made a verifier/test failure; RED with buildVersion 1.1.1, GREEN after restoring 1.1.1.1.
+- Important fix: failover route now names both targets and asserts the selected fallback usage row has upstreamId up-1 and upstreamName Upstream 1; route-batch 4/4 passed.
+- Minor deferred: updater numeric components use Number; requested versions are small bounded values, and no current behavior is affected.
+
+## Final verification
+
+- Runtime: 113/113.
+- Desktop: 138/138.
+- Build: TypeScript and Vite PASS.
+- Focused release/update/failover: 27/27.
+- git diff --check: PASS.

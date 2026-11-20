@@ -4,6 +4,8 @@ import crypto from 'node:crypto';
 
 const releaseDir = path.resolve(process.argv[2] || 'apps/desktop/release');
 const { version, cxrgProductVersion } = JSON.parse(await fs.readFile(new URL('../apps/desktop/package.json', import.meta.url), 'utf8'));
+const builderConfig = await fs.readFile(new URL('../apps/desktop/electron-builder.yml', import.meta.url), 'utf8');
+if (!builderConfig.split(/\r?\n/).some((line) => line.trim() === `buildVersion: ${cxrgProductVersion}`)) throw new Error('electron-builder buildVersion does not match cxrgProductVersion');
 if (version !== '1.1.1' || cxrgProductVersion !== '1.1.1.1') throw new Error('Invalid Cx-Routing Gateway package/product version metadata');
 const productVersion = cxrgProductVersion;
 const required = [
