@@ -21,7 +21,7 @@ async function setup(t, respond, outbound = 'Chat') {
   store.update = (...args) => update(...args).catch(error => { writeErrors.push({ code: error.code, message: error.message }); throw error; });
   const upstream = http.createServer(respond);
   const upPort = await listen(upstream);
-  await store.update(config => ({ ...config, upstreams: [{ id: 'up', enabled: true, baseUrl: `http://127.0.0.1:${upPort}`, trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'] }], routes: ['Chat', 'Res', 'Mes'].map(inbound => ({ id: inbound, alias: inbound, inboundProtocol: inbound, outboundProtocol: outbound, upstreamId: 'up', modelId: 'model', enabled: true })), clientKeys: [{ id: 'key', enabled: true, scope: [], keyHash: crypto.createHash('sha256').update('test-key').digest('hex') }] }));
+  await store.update(config => ({ ...config, upstreams: [{ id: 'up', name: 'Primary upstream', enabled: true, baseUrl: `http://127.0.0.1:${upPort}`, trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'] }], routes: ['Chat', 'Res', 'Mes'].map(inbound => ({ id: inbound, alias: inbound, inboundProtocol: inbound, outboundProtocol: outbound, upstreamId: 'up', modelId: 'model', enabled: true })), clientKeys: [{ id: 'key', enabled: true, scope: [], keyHash: crypto.createHash('sha256').update('test-key').digest('hex') }] }));
   const gateway = createGatewayServer({ store, vault: {} });
   const port = await listen(gateway);
   const control = createControlServer({ store, vault: {}, allowUnauthenticated: true });
@@ -53,6 +53,8 @@ test('JSON request logs carry real usage, request start and type through control
   assert.equal(log.stream, false);
   assert.deepEqual(log.tokens, { input: 10, output: 3, total: 13, cacheRead: 0 });
   assert.equal(log.firstTokenMs, undefined);
+  assert.equal(log.upstreamId, 'up');
+  assert.equal(log.upstreamName, 'Primary upstream');
   assert.ok(Date.parse(log.createdAt) >= before);
   assert.ok(Date.parse(log.createdAt) <= Date.now() - log.durationMs + 5);
   assert.doesNotMatch(JSON.stringify(log), /private-|test-key/);
@@ -96,5 +98,6 @@ test('failed upstream records known request type without inventing usage or firs
   assert.equal(log.tokens, undefined);
   assert.equal(log.firstTokenMs, undefined);
   assert.equal(log.errorCode, 'upstream_error');
+  assert.equal(log.upstreamName, 'Primary upstream');
   assert.doesNotMatch(JSON.stringify(log), /private-error/);
 });

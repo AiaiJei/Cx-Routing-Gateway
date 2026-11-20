@@ -1,143 +1,95 @@
 {
   "contract_version": 1,
-  "task_id": "CXRG-TRAY-README-2026-11-20",
-  "title": "窗口关闭驻留托盘与正式产品 README",
+  "task_id": "CXRG-LOG-UPSTREAM-VERSION-2026-11-21",
+  "title": "请求日志来源与产品四段版本",
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
-  "status": "complete",
-  "stage": "released",
+  "status": "active",
+  "stage": "implementing",
   "base": "master",
-  "base_sha": "db1e32512953ba4f31fe8b109c2d6ded6bb2c498",
-  "base_pr": 10,
-  "branch": "codex/tray-close-readme",
-  "worktree": ".worktree/tray-close-readme",
+  "base_sha": "6446c470b6e71122d6f1dd3c5427f591ef8f2436",
+  "branch": "codex/request-log-upstream-1.1.1.1",
+  "worktree": ".worktree/request-log-upstream-1.1.1.1",
   "authorization": {
-    "source": "2026-11-20 user request: 基于 PR #10，修复关闭窗口后收缩到托盘、仅通过托盘退出，并正式更新 README，加入程序截图、能力、功能和版本；创建专属 PR。",
+    "source": "2026-11-21 user request: 请求日志调整，入口凭证放入详情，表头来源，值为上游服务名称；版本号定义为1.1.1.1；创建专属PR。",
     "operations": [
-      "create isolated task worktree from merged PR #10",
-      "implement and verify close-to-tray lifecycle and README/screenshots",
-      "commit and push the task branch and create its dedicated PR",
-      "merge PR #11 after passing Runtime/Desktop checks",
-      "fast-forward primary master to PR #11 merge commit while preserving unrelated files",
-      "build and verify Windows x64 NSIS and portable 1.1.1 artifacts",
-      "copy the verified portable executable to the Desktop without overwriting",
-      "publish GitHub Release v1.1.1 with assets and release notes"
+      "reuse existing approved task worktree and branch",
+      "implement request-log source snapshot and detail-only credential display",
+      "define four-part product/build version while retaining npm SemVer 1.1.1",
+      "run focused/full verification and independent review",
+      "push branch and create one dedicated open PR against master"
     ],
     "not_authorized": [
-      "delete existing worktrees, branches, screenshots, or untracked files"
+      "merge the dedicated PR",
+      "publish or rewrite an existing release/tag",
+      "delete branches, worktrees, probe files or unrelated untracked files"
     ]
   },
-  "revisions": [
-    {
-      "date": "2026-11-20",
-      "request": "版本号递增小 1，即 1.1.1；继续完成剩余内容",
-      "scope": "Bump the desktop package and lockfile version to 1.1.1, update the Settings version expectation and README, and capture screenshots from the 1.1.1 renderer.",
-      "acceptance": "Package metadata, lockfile and Settings display show 1.1.1; README and screenshots identify/show that application version; all prior tray and PR requirements remain in scope."
-    },
-    {
-      "date": "2026-11-20",
-      "request": "应该要有反馈",
-      "scope": "Make update checks visibly responsive while pending, explain when no GitHub update token is configured, and provide a direct action to focus the token field.",
-      "acceptance": "The check action immediately announces a pending state and prevents duplicate requests; an unconfigured result explains that the check did not run and offers a button that focuses the token input."
-    },
-    {
-      "date": "2026-11-20",
-      "request": "发布1.1.1版，并在本地桌面生成直接可打开的程序",
-      "scope": "After PR #11 merge, build and verify Windows x64 NSIS and single-file portable 1.1.1 executables, copy the verified portable executable to the Desktop without overwriting an existing file, publish GitHub Release v1.1.1 with assets and release notes, and record hashes/evidence.",
-      "acceptance": "Release verifier passes; portable executable passes isolated direct-launch health smoke; final Desktop copy SHA-256 matches; GitHub Release v1.1.1 contains the verified installer and portable app; PR merge commit is integrated into the primary master worktree while preserving pre-existing files."
-    }
-  ],
   "scope": {
     "include": [
-      "Electron main-process window and tray lifecycle",
-      "focused Electron-independent lifecycle tests",
-      "desktop package/lock version 1.1.1 and Settings version regression",
-      "visible update-check pending, missing-token and token-field focus feedback",
-      "Windows x64 1.1.1 NSIS and single-file portable release assets",
-      "verified portable executable copied to Desktop",
-      "GitHub Release v1.1.1 and release evidence",
-      "release-manifest test fixtures derived from the desktop package version",
-      "formal Chinese root README for version 1.1.1",
-      "actual 1.1.1 application screenshots embedded in the README",
-      "task plan, verification evidence, and dedicated PR"
+      "services/gateway/src/server.mjs usage upstreamName snapshot",
+      "desktop request log source mapping and detail-only credential",
+      "desktop product metadata cxrgProductVersion 1.1.1.1",
+      "electron-builder buildVersion and four-part artifact verification",
+      "four-part updater comparison with three-part legacy compatibility",
+      "task design, plan, evidence and dedicated PR"
     ],
     "exclude": [
-      "backend, routing, credential, or updater behavior",
-      "new settings or startup-at-login behavior",
-      "new release infrastructure or update-protocol behavior",
-      "deleting or rewriting an existing release/tag"
+      "raw credentials or request/response bodies in logs",
+      "routing/authentication/failover/retention behavior changes",
+      "rewriting existing v1.1.1 release/tag",
+      "merging PR or deleting existing worktrees"
     ]
   },
   "authorized_paths": [
     ".codex/awg-task.json",
-    ".gitignore",
-    "apps/desktop/electron/main.cjs",
-    "apps/desktop/electron/tray-lifecycle.cjs",
-    "tests/runtime/tray-lifecycle.test.mjs",
+    "services/gateway/src/server.mjs",
+    "tests/runtime/gateway-server.test.mjs",
+    "tests/runtime/request-logs.test.mjs",
+    "apps/desktop/src/domain/types.ts",
+    "apps/desktop/src/data/workspace-client.ts",
+    "apps/desktop/src/data/workspace-client.test.ts",
+    "apps/desktop/src/pages/LogsPage.tsx",
+    "apps/desktop/src/pages/LogsPage.test.tsx",
     "apps/desktop/package.json",
     "apps/desktop/package-lock.json",
-    "apps/desktop/src/pages/SettingsPage.test.tsx",
+    "apps/desktop/electron-builder.yml",
+    "apps/desktop/electron/main.cjs",
+    "apps/desktop/electron/github-update-ipc.cjs",
     "apps/desktop/src/pages/SettingsPage.tsx",
-    "apps/desktop/release/1.1.1-final-reviewed/**",
-    "scripts/package-portable.ps1",
-    "scripts/smoke-portable.mjs",
-    "scripts/portable-smoke-config.mjs",
+    "apps/desktop/src/pages/SettingsPage.test.tsx",
+    "scripts/check-update.mjs",
     "scripts/verify-release.mjs",
-    "docs/tasks/2026-11-20-release-1.1.1.md",
-    "docs/tasks/evidence/release-1.1.1/**",
+    "tests/runtime/check-update.test.mjs",
     "tests/runtime/release-manifest.test.mjs",
-    "README.md",
-    "docs/screenshots/**",
-    "docs/superpowers/specs/2026-11-20-tray-close-readme-design.md",
-    "docs/superpowers/plans/2026-11-20-tray-close-readme.md",
-    "docs/tasks/2026-11-20-tray-close-readme.md",
-    "docs/tasks/evidence/tray-close-readme/**"
+    "docs/superpowers/specs/2026-11-21-request-log-upstream-version-design.md",
+    "docs/superpowers/plans/2026-11-21-request-log-upstream-version.md",
+    "docs/tasks/2026-11-21-request-log-upstream-version.md",
+    "docs/tasks/archives/2026-11-20-tray-close-readme-awg-task.json"
   ],
   "acceptance": [
-    "Closing the app window hides it and does not stop the runtime",
-    "Tray click restores and focuses the existing window",
-    "Tray Open restores the window; Tray Exit stops runtime once and fully exits",
-    "Package metadata, lockfile and Settings display show version 1.1.1",
-    "Root README clearly documents version 1.1.1, capabilities, functions, platform and material release limits",
-    "README embeds screenshots captured from the actual running 1.1.1 application",
-    "Release v1.1.1 contains SHA-256 verified Windows x64 NSIS and portable assets",
-    "Portable executable passes isolated direct-launch health smoke and Desktop copy hash matches",
-    "Primary master worktree includes PR #11 merge commit and preserves unrelated untracked files",
-    "Desktop and Runtime test suites, production build and whitespace check pass",
-    "PR #11 is merged into master and primary master is at merge commit ba4ad680485fc8001169b88557a42acda3d7246a",
-    "Windows x64 NSIS and single-file portable artifacts pass release verification",
-    "Portable executable direct-launch smoke passes and both service health endpoints return ok",
-    "Verified portable executable is copied to the Desktop with matching SHA-256",
-    "GitHub Release v1.1.1 contains verified installer and portable assets with Chinese release notes"
+    "usage records snapshot selected upstream service name with existing upstreamId",
+    "request table uses 来源 and service name, with no credential column",
+    "detail view retains only masked entry credential",
+    "product/build/release version is 1.1.1.1 while npm package/lock remain 1.1.1",
+    "updater compares four-part current version and accepts three-part legacy releases",
+    "focused/full tests, production build and whitespace verification pass",
+    "dedicated PR is open and unmerged"
   ],
-  "rollback": "Revert task commits from the feature branch; no persisted data or release artifacts are modified.",
-  "owner_acceptance": "v1.1.1 release and Desktop portable delivered by explicit request; native tray click/close verification NOT_RUN; in-app update compatibility is DEGRADED and documented pending an authorized follow-up",
+  "rollback": "Revert this branch commits only; preserve branch, worktree, probe files, existing release/tag and unrelated untracked files.",
   "pull_request": {
-    "state": "merged",
-    "number": 11,
+    "state": "not_created",
+    "number": null,
     "base": "master",
-    "head_sha_at_creation": "9c5c8de665769cb03137afb16d8e01b540f53e69c",
-    "merge_commit": "ba4ad680485fc8001169b88557a42acda3d7246a",
-    "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/11"
+    "url": null
   },
   "verification": {
-    "baseline": "Runtime 102/102, Desktop 134/134, Desktop production build passed on merged PR #10; initial missing-dist test failure was resolved by building from the lockfile",
-    "implementation": "Tray lifecycle 9/9 (including 3 review-driven RED/GREEN cases); final Runtime 111/111; Desktop 135/135; Settings version 12/12; update-check pending/unconfigured feedback regression passed RED/GREEN; TypeScript/Vite production build passed; release manifest fixtures follow package version",
-    "screenshots": "PASS: three 1440x980 captures from the local 1.1.1 browser renderer using repository read-only fixture data; targets and SHA-256 values recorded in docs/tasks/evidence/tray-close-readme/screenshots.json",
-    "native_electron": "PARTIAL: Windows x64 NSIS/portable packaging and portable direct-launch smoke PASS; tray icon/close interaction NOT_RUN",
-    "readme_links": "PASS: all local targets exist; package.json, lockfile root and package record all show 1.1.1",
-    "runtime_tests": "PASS: 111/111 after activation-handler coverage fix",
-    "desktop_tests": "PASS: 135/135 after update-check feedback change",
-    "production_build": "PASS: TypeScript and Vite",
-    "whitespace": "PASS: git diff --check",
-    "ci": "PASS on PR #11 head 9c5c8de6: Runtime and Desktop jobs passed; package job skipped for pull_request by workflow condition",
-    "independent_review": "Fresh whole-branch review identified one Important missing test for second-instance/activate wiring; fixed test-first with 3 RED/GREEN cases. No Critical/security or Minor findings; no second review in inline execution workflow.",
-    "native_manual": "NOT_RUN: tray icon/close behavior not manually tested",
-    "release_build": "PASS: NSIS installer, blockmap, win-unpacked runtime and portable executable verified; hashes recorded in docs/tasks/evidence/release-1.1.1/manifest.json",
-    "portable_smoke": "PASS: direct-launch with isolated user data and reserved non-default ports; local-control and gateway health checks returned ok",
-    "desktop_copy": "PASS: C:/Users/20142/Desktop/Cx-Routing Gateway Portable 1.1.1.exe; SHA-256 00d3036bd9c55f248ec3ea236a89c8cfc13d94b3e7a2e2a6cb5edd60be1bb675",
-    "github_release": "PASS: v1.1.1 published at https://github.com/AiaiJei/Cx-Routing-Gateway/releases/tag/v1.1.1 with NSIS, blockmap, portable executable, and manifest; tag points to ba4ad680485fc8001169b88557a42acda3d7246a",
-    "updater_asset_compatibility": "DEGRADED: GitHub API canonicalized spaces in uploaded asset names to periods, but the shipped updater matches the space-form name exactly. Existing v1.1.0 app in-app update will not find the v1.1.1 installer; users can use the published direct-download assets. Do not rewrite the published release/tag without user authorization."
+    "status": "NOT_RUN",
+    "focused": "NOT_RUN",
+    "full": "NOT_RUN",
+    "build": "NOT_RUN",
+    "review": "NOT_RUN",
+    "ci": "NOT_RUN"
   },
   "capability": {
     "skills": [
@@ -148,15 +100,10 @@
       "writing-plans",
       "executing-plans",
       "test-driven-development",
-      "systematic-debugging",
       "verification-before-completion",
-      "requesting-code-review",
-      "receiving-code-review",
-      "computer-use",
-      "finishing-a-development-branch"
+      "requesting-code-review"
     ],
-    "repo_mcp": "NOT_RUN: repository registration file is absent, so a registered workspace_id cannot be established; source inspection used.",
-    "computer_use": "INVOKED but blocked while activating the user's existing Chrome because the plugin could not verify its URL; screenshots were instead captured by isolated headless Chrome against the local fixture renderer.",
-    "electron_install_script": "NOT_RUN: user-level npm allow-scripts policy permits only @opencode/cli; package-local approval would override that user policy and was reverted."
+    "repo_mcp": "NOT_RUN: no registered workspace_id in current contract; direct source inspection used.",
+    "native_manual": "NOT_RUN"
   }
 }
