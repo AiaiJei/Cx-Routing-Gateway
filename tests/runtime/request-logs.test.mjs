@@ -55,6 +55,7 @@ test('JSON request logs carry real usage, request start and type through control
   assert.equal(log.firstTokenMs, undefined);
   assert.equal(log.upstreamId, 'up');
   assert.equal(log.upstreamName, 'Primary upstream');
+  assert.equal(log.httpStatus, 200);
   assert.ok(Date.parse(log.createdAt) >= before);
   assert.ok(Date.parse(log.createdAt) <= Date.now() - log.durationMs + 5);
   assert.doesNotMatch(JSON.stringify(log), /private-|test-key/);
@@ -99,6 +100,7 @@ test('failed upstream records known request type without inventing usage or firs
   assert.equal(log.firstTokenMs, undefined);
   assert.equal(log.errorCode, 'upstream_error');
   assert.equal(log.upstreamName, 'Primary upstream');
+  assert.equal(log.upstreamStatus, 500);
   assert.doesNotMatch(JSON.stringify(log), /private-error/);
 });
 
@@ -128,4 +130,13 @@ test('request logs omit missing, oversized, and non-string reasoning levels', as
   assert.equal('reasoningEffort' in logs[0], false);
   assert.equal('reasoningEffort' in logs[1], false);
   assert.equal('reasoningEffort' in logs[2], false);
+});
+
+test('request logs capture gateway status for sanitized gateway failures', async t => {
+  const app = await setup(t, (_req, res) => res.end(JSON.stringify({ choices: [{ message: { content: 'ok' } }] })));
+  const response = await app.request('Chat', false, { reasoning_effort: 'high', unsupported: true });
+  assert.equal(response.status, 200);
+  await response.text();
+  const [log] = await app.logs(1);
+  assert.equal(log.httpStatus, 200);
 });

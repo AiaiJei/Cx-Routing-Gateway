@@ -50,3 +50,7 @@ Revert only this task's commits from `codex/request-log-upstream-1.1.1.1`. No da
 ## 2026-11-21 revision: request reasoning level
 
 The request log table now adds a `推理` column immediately after `来源`. Gateway input accepts the transmitted reasoning level from `reasoning_effort`, `reasoning.effort`, or `thinking.effort`, in that order; only a trimmed string of 1–32 characters is retained as optional `reasoningEffort`. Invalid, oversized, or absent values are omitted from usage records and display as `-`. The Desktop adapter maps the optional field to `CallLog.reasoning`, and both the table and detail view display the same redacted value. No request/response body or full reasoning configuration is persisted.
+
+## 2026-11-21 revision: status and error disclosure
+
+Rename the request table header `结果` to `状态`. Preserve the compact success/failure badge, but make it a Tooltip disclosure that includes the observed HTTP status (for example `200`). For failed records, the disclosure and detail view show the upstream HTTP status when available and the sanitized gateway error definition derived from `errorCode`; request/response bodies and raw provider messages remain excluded. Runtime usage stores `httpStatus` for completed upstream responses, `upstreamStatus` for upstream HTTP failures, and `gatewayStatus` for gateway-side failures.

@@ -60,3 +60,11 @@ Revert this branch commits only. Keep the branch/worktree, .tmp-version-probe/, 
 User approved adding a `推理` column immediately after `来源`. The transmitted reasoning level is read from `reasoning_effort`, `reasoning.effort`, or `thinking.effort`; values are bounded to a trimmed 1–32 character string, otherwise usage omits the field and Desktop renders `-`. PR #12 remains the delivery vehicle and stays unmerged.
 
 - Final reasoning revision PR head 5cf3f64: Runtime 115/115; Desktop 140/140; build PASS; CI Runtime/Desktop SUCCESS; package SKIPPED. PR #12 remains OPEN and unmerged.
+
+## 2026-11-21 revision: status and error disclosure
+
+User requested renaming `结果` to `状态`, a full-status Tooltip including HTTP `200`, upstream and gateway-defined error information, and error information in details. The approved scope keeps bodies and raw provider errors out of logs.
+
+- RED: Runtime status snapshot, Desktop status/error mapping, header rename, Tooltip, and detail error tests failed before implementation.
+- GREEN: request-log focused 6/6; Desktop mapping/UI 24/24; full Runtime 116/116; full Desktop 142/142; production build PASS; git diff --check PASS.
+- Runtime stores HTTP/upstream/gateway status codes and Desktop maps only sanitized gateway error definitions; raw provider bodies remain excluded.
