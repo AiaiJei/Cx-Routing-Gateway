@@ -13,11 +13,13 @@
 - Desktop package metadata, lockfile and Settings display are synchronized to `1.1.1`. The release manifest test derives expected artifact names from the package version.
 - Replaced the planning-oriented root README with Chinese product documentation and three screenshots from the local 1.1.1 renderer using read-only repository fixtures.
 - Added a repository-root ignore rule for the designated `.worktree/` container.
+- Added immediate update-check feedback, duplicate-request prevention, and a missing-token action that focuses the credential field.
 
 ## Verification
 
 - Tray lifecycle tests: 9/9, including second-instance and activation registration; full Runtime suite: 111/111.
-- Desktop suite: 134/134; Settings version test: 11/11; production TypeScript/Vite build passed.
+- Desktop suite: 135/135; Settings tests: 12/12; update-check feedback regression passed RED/GREEN; production TypeScript/Vite build passed.
+- Update-check regression asserts immediate live status, pending button lockout, clear missing-token explanation, and token-field focus action.
 - README local links, screenshot files, synchronized version metadata, `.worktree/` ignore rule and `git diff --check` passed.
 - Electron main/tray modules pass `node --check`.
 - Screenshots are 1440x980. Capture source, fixture-mode limitation, and SHA-256 values are in `docs/tasks/evidence/tray-close-readme/screenshots.json`.

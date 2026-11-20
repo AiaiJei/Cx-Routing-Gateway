@@ -30,6 +30,7 @@
 - Existing single-instance and macOS activation behavior must still surface the main window; cover the second-instance restoration and activation path in Task 1.
 - Package-version changes must not leave the release verifier fixture pinned to older artifact names; derive fixture paths from package metadata in Task 2.
 - README screenshots and links must exist in the branch and accurately show the 1.1.1 UI; check all references and inspect captured images in Task 2.
+- Update checking must give immediate accessible feedback while awaiting IPC and explain an unconfigured private-repository token; cover pending and missing-token behavior in Task 2.
 
 ## File Structure
 
@@ -37,6 +38,7 @@
 - `apps/desktop/electron/main.cjs`: compose the tray lifecycle, wire each created window, route activate/second-instance to the existing window, and remove automatic quit when all windows are hidden.
 - `tests/runtime/tray-lifecycle.test.mjs`: Electron-free behavior tests using fake EventEmitter-based Electron primitives.
 - `apps/desktop/package.json`, `apps/desktop/package-lock.json`, `apps/desktop/src/pages/SettingsPage.test.tsx`: patch version metadata and display assertion for `1.1.1`.
+- `apps/desktop/src/pages/SettingsPage.tsx`: show immediate update-check progress, clear missing-token feedback and a focus-to-token action.
 - `tests/runtime/release-manifest.test.mjs`: derive expected artifact names from the package version so the release verifier regression tracks the version bump.
 - `.gitignore`: ignore the repository-local `.worktree/` container so linked worktrees do not appear as untracked project content.
 - `README.md`: product overview, version/platform, features, operation, security and release limits, and embedded screenshots.
@@ -72,6 +74,7 @@
 **Files:**
 - Modify: `README.md`
 - Modify: `apps/desktop/package.json`, `apps/desktop/package-lock.json`, `apps/desktop/src/pages/SettingsPage.test.tsx`
+- Modify: `apps/desktop/src/pages/SettingsPage.tsx`
 - Modify: `tests/runtime/release-manifest.test.mjs`
 - Create: `docs/screenshots/overview.png`, `docs/screenshots/routes.png`, `docs/screenshots/settings.png`
 
@@ -87,6 +90,7 @@
 - [x] Rewrite the root README in formal Chinese with version 1.1.1, verified platform, core capabilities/features, run/package entry points, actual screenshot embeds, and material security/release limits.
 - [x] Check every README image/link target exists and inspect all three screenshot files.
 - [x] Commit the version metadata, verifier fixture, README, and screenshot assets as `docs: publish 1.1.1 product README and screenshots` (`10fef03`).
+- [x] Add an immediate update-check status, prevent duplicate requests while pending, and guide unconfigured users to the token field; the Settings regression test failed before implementation and passed afterward. Full Desktop suite: 135/135; Runtime suite: 111/111; production build passed.
 
 ### Task 3: Verification, Evidence, and Dedicated PR
 

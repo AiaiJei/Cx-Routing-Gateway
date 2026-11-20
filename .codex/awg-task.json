@@ -30,6 +30,12 @@
       "request": "版本号递增小 1，即 1.1.1；继续完成剩余内容",
       "scope": "Bump the desktop package and lockfile version to 1.1.1, update the Settings version expectation and README, and capture screenshots from the 1.1.1 renderer.",
       "acceptance": "Package metadata, lockfile and Settings display show 1.1.1; README and screenshots identify/show that application version; all prior tray and PR requirements remain in scope."
+    },
+    {
+      "date": "2026-11-20",
+      "request": "应该要有反馈",
+      "scope": "Make update checks visibly responsive while pending, explain when no GitHub update token is configured, and provide a direct action to focus the token field.",
+      "acceptance": "The check action immediately announces a pending state and prevents duplicate requests; an unconfigured result explains that the check did not run and offers a button that focuses the token input."
     }
   ],
   "scope": {
@@ -37,6 +43,7 @@
       "Electron main-process window and tray lifecycle",
       "focused Electron-independent lifecycle tests",
       "desktop package/lock version 1.1.1 and Settings version regression",
+      "visible update-check pending, missing-token and token-field focus feedback",
       "release-manifest test fixtures derived from the desktop package version",
       "formal Chinese root README for version 1.1.1",
       "actual 1.1.1 application screenshots embedded in the README",
@@ -58,6 +65,7 @@
     "apps/desktop/package.json",
     "apps/desktop/package-lock.json",
     "apps/desktop/src/pages/SettingsPage.test.tsx",
+    "apps/desktop/src/pages/SettingsPage.tsx",
     "tests/runtime/release-manifest.test.mjs",
     "README.md",
     "docs/screenshots/**",
@@ -87,15 +95,15 @@
   },
   "verification": {
     "baseline": "Runtime 102/102, Desktop 134/134, Desktop production build passed on merged PR #10; initial missing-dist test failure was resolved by building from the lockfile",
-    "implementation": "Tray lifecycle 9/9 (including 3 review-driven RED/GREEN cases); final Runtime 111/111; Desktop 134/134; Settings version 11/11; TypeScript/Vite production build passed; release manifest fixtures follow package version",
+    "implementation": "Tray lifecycle 9/9 (including 3 review-driven RED/GREEN cases); final Runtime 111/111; Desktop 135/135; Settings version 12/12; update-check pending/unconfigured feedback regression passed RED/GREEN; TypeScript/Vite production build passed; release manifest fixtures follow package version",
     "screenshots": "PASS: three 1440x980 captures from the local 1.1.1 browser renderer using repository read-only fixture data; targets and SHA-256 values recorded in docs/tasks/evidence/tray-close-readme/screenshots.json",
     "native_electron": "NOT_RUN: Electron binary was absent because the existing user-level C:/Users/20142/.npmrc allows install scripts only for @opencode/cli; no user config changes made",
     "readme_links": "PASS: all local targets exist; package.json, lockfile root and package record all show 1.1.1",
     "runtime_tests": "PASS: 111/111 after activation-handler coverage fix",
-    "desktop_tests": "PASS: 134/134",
+    "desktop_tests": "PASS: 135/135 after update-check feedback change",
     "production_build": "PASS: TypeScript and Vite",
     "whitespace": "PASS: git diff --check",
-    "ci": "PASS on PR #11 head 5e456fac: Runtime and Desktop jobs passed; package job skipped for pull_request by workflow condition",
+    "ci": "RERUNNING on PR #11 after update-feedback change",
     "independent_review": "Fresh whole-branch review identified one Important missing test for second-instance/activate wiring; fixed test-first with 3 RED/GREEN cases. No Critical/security or Minor findings; no second review in inline execution workflow.",
     "native_manual": "NOT_RUN: Electron binary unavailable under user-level npm install-script policy; no policy change made"
   },
