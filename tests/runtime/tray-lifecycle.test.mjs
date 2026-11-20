@@ -4,7 +4,11 @@ import test from "node:test";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
-const { installTrayLifecycle } = require("../../apps/desktop/electron/tray-lifecycle.cjs");
+const {
+  installTrayLifecycle,
+  registerActivateHandler,
+  registerSecondInstanceHandler,
+} = require("../../apps/desktop/electron/tray-lifecycle.cjs");
 
 class FakeWindow extends EventEmitter {
   constructor() {
@@ -21,11 +25,19 @@ class FakeWindow extends EventEmitter {
   focus() { this.calls.push("focus"); }
 }
 
+class FakeApp extends EventEmitter {
+  constructor() {
+    super();
+    this.quitCalls = 0;
+  }
+  quit() { this.quitCalls += 1; }
+}
+
 function createHarness() {
   const windows = [];
   const trays = [];
   let quitting = false;
-  const app = { quitCalls: 0, quit() { this.quitCalls += 1; } };
+  const app = new FakeApp();
   class Tray extends EventEmitter {
     constructor(iconPath) {
       super();
@@ -128,4 +140,63 @@ test("one tray serves multiple windows and attach is idempotent", () => {
   assert.equal(trays.length, 1);
   assert.deepEqual(first.calls, ["hide"]);
   assert.deepEqual(second.calls, ["hide"]);
+});
+
+test("a second instance restores the existing main window", () => {
+  const { app, lifecycle, windows } = createHarness();
+  const window = new FakeWindow();
+  window.visible = false;
+  windows.push(window);
+  lifecycle.attachWindow(window);
+  registerSecondInstanceHandler({ app, showMainWindow: lifecycle.showMainWindow });
+
+  app.emit("second-instance");
+
+  assert.equal(window.visible, true);
+  assert.deepEqual(window.calls, ["show", "focus"]);
+  assert.equal(windows.length, 1);
+});
+
+test("activation restores an existing window without creating a duplicate", () => {
+  const { app, lifecycle, windows } = createHarness();
+  const window = new FakeWindow();
+  window.minimized = true;
+  window.visible = false;
+  windows.push(window);
+  lifecycle.attachWindow(window);
+  let createCalls = 0;
+  registerActivateHandler({
+    app,
+    showMainWindow: lifecycle.showMainWindow,
+    createWindow: () => { createCalls += 1; },
+  });
+
+  app.emit("activate");
+
+  assert.equal(window.visible, true);
+  assert.deepEqual(window.calls, ["restore", "show", "focus"]);
+  assert.equal(createCalls, 0);
+  assert.equal(windows.length, 1);
+});
+
+test("activation creates a window only when no main window exists", () => {
+  const { app, lifecycle, windows } = createHarness();
+  let createCalls = 0;
+  registerActivateHandler({
+    app,
+    showMainWindow: lifecycle.showMainWindow,
+    createWindow: () => {
+      createCalls += 1;
+      const window = new FakeWindow();
+      windows.push(window);
+      lifecycle.attachWindow(window);
+    },
+  });
+
+  app.emit("activate");
+  app.emit("activate");
+
+  assert.equal(createCalls, 1);
+  assert.equal(windows.length, 1);
+  assert.deepEqual(windows[0].calls, ["show", "focus"]);
 });

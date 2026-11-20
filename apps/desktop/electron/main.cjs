@@ -8,7 +8,7 @@ const { isTrustedDocumentUrl } = require("./security.cjs");
 const { createGitHubTokenStore } = require("./github-token-store.cjs");
 const { createGitHubTokenService } = require("./github-token-service.cjs");
 const { registerGitHubUpdateIpc } = require("./github-update-ipc.cjs");
-const { installTrayLifecycle } = require("./tray-lifecycle.cjs");
+const { installTrayLifecycle, registerActivateHandler, registerSecondInstanceHandler } = require("./tray-lifecycle.cjs");
 
 const devServerUrl = process.env.CXRG_DEV_SERVER_URL;
 const controlPort = Number(process.env.CXRG_CONTROL_PORT || 4319);
@@ -248,7 +248,7 @@ if (versionOnly) {
 } else if (!lock) {
   app.quit();
 } else {
-  app.on("second-instance", () => trayLifecycle?.showMainWindow());
+  registerSecondInstanceHandler({ app, showMainWindow: () => trayLifecycle?.showMainWindow() ?? false });
 
   app.whenReady().then(async () => {
     trayLifecycle = installTrayLifecycle({
@@ -267,9 +267,7 @@ if (versionOnly) {
       console.error("Gateway runtime failed to start", error);
     }
     createWindow();
-    app.on("activate", () => {
-      if (!trayLifecycle.showMainWindow()) createWindow();
-    });
+    registerActivateHandler({ app, showMainWindow: trayLifecycle.showMainWindow, createWindow });
   });
 
   app.on("before-quit", async (event) => {

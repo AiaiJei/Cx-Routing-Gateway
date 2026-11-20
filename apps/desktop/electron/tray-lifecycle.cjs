@@ -33,4 +33,14 @@ function installTrayLifecycle({ app, BrowserWindow, Tray, Menu, iconPath, should
   };
 }
 
-module.exports = { installTrayLifecycle };
+function registerSecondInstanceHandler({ app, showMainWindow }) {
+  app.on("second-instance", () => showMainWindow());
+}
+
+function registerActivateHandler({ app, showMainWindow, createWindow }) {
+  app.on("activate", () => {
+    if (!showMainWindow()) createWindow();
+  });
+}
+
+module.exports = { installTrayLifecycle, registerActivateHandler, registerSecondInstanceHandler };
