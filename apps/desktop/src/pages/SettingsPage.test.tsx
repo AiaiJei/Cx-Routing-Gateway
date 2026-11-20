@@ -19,6 +19,31 @@ describe("SettingsPage", () => {
       window.desktopControls = original;
     }
   });
+  it("shows an immediate checking status and guides unconfigured users to the token field", async () => {
+    const original = window.desktopControls;
+    let resolveCheck!: (result: { configured: boolean; available: boolean }) => void;
+    window.desktopControls = {
+      ...original,
+      getUpdateTokenStatus: async () => ({ configured: false, secureStorageAvailable: true }),
+      checkUpdate: () => new Promise((resolve) => { resolveCheck = resolve; }),
+    } as NonNullable<typeof window.desktopControls>;
+    try {
+      const user = userEvent.setup();
+      render(<SettingsPage />);
+      const checkButton = await screen.findByRole("button", { name: "检查更新" });
+      await user.click(checkButton);
+
+      expect(await screen.findByText("正在检查 GitHub Release…")).toHaveAttribute("role", "status");
+      expect(screen.getByRole("button", { name: "正在检查…" })).toBeDisabled();
+
+      resolveCheck({ configured: false, available: false });
+      expect(await screen.findByText("未检查：请先配置并验证 GitHub 更新访问令牌。" )).toBeVisible();
+      await user.click(screen.getByRole("button", { name: "配置更新令牌" }));
+      expect(screen.getByLabelText("GitHub 更新访问令牌")).toHaveFocus();
+    } finally {
+      window.desktopControls = original;
+    }
+  });
   it("validates and saves the GitHub token, clears the password field, and never displays its value", async () => {
     const original = window.desktopControls;
     const secret = "github_pat_example_token_value_123456789";
@@ -97,7 +122,7 @@ describe("SettingsPage", () => {
   });
   it("shows the installed product version in the desktop application section", async () => {
     render(<SettingsPage />);
-    expect(await screen.findByText("版本 1.1.0")).toBeVisible();
+    expect(await screen.findByText("版本 1.1.1")).toBeVisible();
     expect(screen.getByRole("heading", { name: "桌面应用" })).toBeVisible();
   });
   it("shows the GitHub release link when an update is available", async () => {

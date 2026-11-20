@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, safeStorage, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, safeStorage, shell, Tray, Menu } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs");
 const crypto = require("node:crypto");
@@ -8,6 +8,7 @@ const { isTrustedDocumentUrl } = require("./security.cjs");
 const { createGitHubTokenStore } = require("./github-token-store.cjs");
 const { createGitHubTokenService } = require("./github-token-service.cjs");
 const { registerGitHubUpdateIpc } = require("./github-update-ipc.cjs");
+const { installTrayLifecycle, registerActivateHandler, registerSecondInstanceHandler } = require("./tray-lifecycle.cjs");
 
 const devServerUrl = process.env.CXRG_DEV_SERVER_URL;
 const controlPort = Number(process.env.CXRG_CONTROL_PORT || 4319);
@@ -17,6 +18,7 @@ let startupState = "starting";
 let quitting = false;
 let githubTokenStore;
 let githubTokenService;
+let trayLifecycle;
 
 function updateScriptPath() {
   return process.resourcesPath && !process.defaultApp
@@ -90,6 +92,7 @@ function createWindow() {
       zoomFactor: 0.85,
     },
   });
+  trayLifecycle.attachWindow(window);
   window.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https:\/\/github\.com\/AiaiJei\/Cx-Routing-Gateway\/releases\/tag\/v\d+\.\d+\.\d+$/.test(url)) void shell.openExternal(url);
     return { action: "deny" };
@@ -245,15 +248,17 @@ if (versionOnly) {
 } else if (!lock) {
   app.quit();
 } else {
-  app.on("second-instance", () => {
-    const [window] = BrowserWindow.getAllWindows();
-    if (window) {
-      if (window.isMinimized()) window.restore();
-      window.focus();
-    }
-  });
+  registerSecondInstanceHandler({ app, showMainWindow: () => trayLifecycle?.showMainWindow() ?? false });
 
   app.whenReady().then(async () => {
+    trayLifecycle = installTrayLifecycle({
+      app,
+      BrowserWindow,
+      Tray,
+      Menu,
+      iconPath: path.join(__dirname, "..", "build", "icon.ico"),
+      shouldQuit: () => quitting,
+    });
     try {
       runtime = await startRuntime({ dataDir: path.join(app.getPath("userData"), "runtime"), masterKey: getMasterKey(), controlPort, gatewayPort });
       startupState = "running";
@@ -262,9 +267,7 @@ if (versionOnly) {
       console.error("Gateway runtime failed to start", error);
     }
     createWindow();
-    app.on("activate", () => {
-      if (BrowserWindow.getAllWindows().length === 0) createWindow();
-    });
+    registerActivateHandler({ app, showMainWindow: trayLifecycle.showMainWindow, createWindow });
   });
 
   app.on("before-quit", async (event) => {
@@ -274,7 +277,4 @@ if (versionOnly) {
     try { await runtime?.stop(); } finally { app.exit(0); }
   });
 
-  app.on("window-all-closed", () => {
-    if (process.platform !== "darwin") app.quit();
-  });
 }

@@ -1,137 +1,130 @@
 {
   "contract_version": 1,
-  "task_id": "CXRG-RELEASE-1.1.0-2026-11-20",
-  "title": "Cx-Routing Gateway 1.1.0 正式发布与 GitHub 更新检查",
+  "task_id": "CXRG-TRAY-README-2026-11-20",
+  "title": "窗口关闭驻留托盘与正式产品 README",
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
-  "status": "active",
-  "stage": "task-3",
+  "status": "pr-open",
+  "stage": "ci-passed",
   "base": "master",
-  "base_sha": "4534baab7f050ae26604012532282366da8fa8a6",
-  "base_pr": 9,
-  "branch": "codex/release-1.1.0",
-  "worktree": ".worktree/release-1.1.0",
-  "previous_contract": ".codex/awg-task.json from merged PR #9",
+  "base_sha": "db1e32512953ba4f31fe8b109c2d6ded6bb2c498",
+  "base_pr": 10,
+  "branch": "codex/tray-close-readme",
+  "worktree": ".worktree/tray-close-readme",
   "authorization": {
-    "source": "2026-11-20 user request: create dedicated PR #10 based on PR #9, release 1.1.0, replace app icon, publish GitHub release, put portable package on Desktop, and connect update checks to GitHub releases. User selected per-user fine-grained GitHub token, approved the revised safeStorage design and plan, and clarified the portable deliverable must be one directly launchable executable.",
+    "source": "2026-11-20 user request: 基于 PR #10，修复关闭窗口后收缩到托盘、仅通过托盘退出，并正式更新 README，加入程序截图、能力、功能和版本；创建专属 PR。",
     "operations": [
-      "isolated task worktree",
-      "implement and verify 1.1.0 release changes",
-      "commit and push task branch",
-      "create dedicated PR #10",
-      "prepare and publish the requested GitHub Release after PR #10 merges",
-      "copy verified Windows x64 single-file portable executable to the local Desktop",
-      "implement per-user Contents: Read GitHub token configuration and OS-backed encrypted storage"
+      "create isolated task worktree from merged PR #10",
+      "implement and verify close-to-tray lifecycle and README/screenshots",
+      "commit and push the task branch and create its dedicated PR"
     ],
     "not_authorized": [
-      "merge PR #10 without separate owner authorization",
-      "make the repository public or deploy an update proxy",
-      "embed a maintainer/shared GitHub token or store user tokens in plaintext",
-      "delete unrelated worktrees or untracked files",
-      "rewrite or remove an existing GitHub release/tag without explicit authorization"
-    ],
-    "design_basis": "Approved docs/superpowers/specs/2026-11-20-release-1.1.0-design.md and docs/superpowers/plans/2026-11-20-release-1.1.0.md"
+      "merge the dedicated PR",
+      "publish a new release",
+      "delete existing worktrees, branches, screenshots, or untracked files"
+    ]
   },
+  "revisions": [
+    {
+      "date": "2026-11-20",
+      "request": "版本号递增小 1，即 1.1.1；继续完成剩余内容",
+      "scope": "Bump the desktop package and lockfile version to 1.1.1, update the Settings version expectation and README, and capture screenshots from the 1.1.1 renderer.",
+      "acceptance": "Package metadata, lockfile and Settings display show 1.1.1; README and screenshots identify/show that application version; all prior tray and PR requirements remain in scope."
+    },
+    {
+      "date": "2026-11-20",
+      "request": "应该要有反馈",
+      "scope": "Make update checks visibly responsive while pending, explain when no GitHub update token is configured, and provide a direct action to focus the token field.",
+      "acceptance": "The check action immediately announces a pending state and prevents duplicate requests; an unconfigured result explains that the check did not run and offers a button that focuses the token input."
+    }
+  ],
   "scope": {
     "include": [
-      "GitHub stable Release API update check",
-      "SHA-256 verified NSIS update download",
-      "per-user encrypted GitHub token storage and trusted IPC",
-      "version 1.1.0 metadata",
-      "product-specific Windows icon",
-      "Windows x64 unpacked, NSIS installer and single-file portable executable packaging",
-      "formal release notes and task evidence",
-      "dedicated PR #10"
+      "Electron main-process window and tray lifecycle",
+      "focused Electron-independent lifecycle tests",
+      "desktop package/lock version 1.1.1 and Settings version regression",
+      "visible update-check pending, missing-token and token-field focus feedback",
+      "release-manifest test fixtures derived from the desktop package version",
+      "formal Chinese root README for version 1.1.1",
+      "actual 1.1.1 application screenshots embedded in the README",
+      "task plan, verification evidence, and dedicated PR"
     ],
     "exclude": [
-      "backend/storage/auth/protocol changes",
-      "real provider requests",
-      "automatic background installation",
-      "public repository or update proxy",
-      "shared maintainer credential",
-      "32-bit portable release",
-      "merge PR #10 without owner authorization"
+      "backend, routing, credential, or updater behavior",
+      "new settings or startup-at-login behavior",
+      "new release or installer changes",
+      "merge or deployment"
     ]
   },
   "authorized_paths": [
     ".codex/awg-task.json",
+    ".gitignore",
+    "apps/desktop/electron/main.cjs",
+    "apps/desktop/electron/tray-lifecycle.cjs",
+    "tests/runtime/tray-lifecycle.test.mjs",
     "apps/desktop/package.json",
     "apps/desktop/package-lock.json",
-    "apps/desktop/electron-builder.yml",
-    "apps/desktop/electron/main.cjs",
-    "apps/desktop/electron/preload.cjs",
-    "apps/desktop/electron/github-token-store.cjs",
-    "apps/desktop/electron/github-token-service.cjs",
-    "apps/desktop/electron/github-update-ipc.cjs",
-    "apps/desktop/src/window.d.ts",
-    "apps/desktop/src/pages/SettingsPage.tsx",
     "apps/desktop/src/pages/SettingsPage.test.tsx",
-    "apps/desktop/build/**",
-    "scripts/check-update.mjs",
-    "scripts/package-portable.ps1",
-    "scripts/smoke-portable.mjs",
-    "scripts/portable-smoke-config.mjs",
-    "scripts/verify-release.mjs",
-    "tests/runtime/check-update.test.mjs",
-    "tests/runtime/github-token-store.test.mjs",
-    "tests/runtime/github-token-service.test.mjs",
-    "tests/runtime/github-update-ipc.test.mjs",
-    "tests/runtime/portable-smoke-config.test.mjs",
+    "apps/desktop/src/pages/SettingsPage.tsx",
     "tests/runtime/release-manifest.test.mjs",
-    "docs/superpowers/specs/2026-11-20-release-1.1.0-design.md",
-    "docs/superpowers/plans/2026-11-20-release-1.1.0.md",
-    "docs/tasks/2026-11-20-release-1.1.0.md",
-    "docs/tasks/evidence/release-1.1.0/**"
+    "README.md",
+    "docs/screenshots/**",
+    "docs/superpowers/specs/2026-11-20-tray-close-readme-design.md",
+    "docs/superpowers/plans/2026-11-20-tray-close-readme.md",
+    "docs/tasks/2026-11-20-tray-close-readme.md",
+    "docs/tasks/evidence/tray-close-readme/**"
   ],
   "acceptance": [
-    "Desktop package version and settings display are 1.1.0",
-    "Stable GitHub Release API check compares v1.1.0-style tags and ignores drafts/prereleases",
-    "Expected NSIS installer is downloaded only when SHA-256 matches GitHub's digest",
-    "A repository-scoped Contents: Read token is verified, encrypted with safeStorage, never returned/logged, and cannot fall back to plaintext",
-    "A confirmed revoked token is removed from encrypted storage; transient network failures preserve the saved token",
-    "Product icon is used by Electron and Windows packaging",
-    "Windows x64 portable executable contains the app/runtime and launches directly without installation or manual archive extraction",
-    "Verified portable executable is copied to the user's Desktop",
-    "Desktop and Runtime tests, production build, release verifier and package checks pass",
-    "Dedicated PR #10 is created from merged PR #9"
+    "Closing the app window hides it and does not stop the runtime",
+    "Tray click restores and focuses the existing window",
+    "Tray Open restores the window; Tray Exit stops runtime once and fully exits",
+    "Package metadata, lockfile and Settings display show version 1.1.1",
+    "Root README clearly documents version 1.1.1, capabilities, functions, platform and material release limits",
+    "README embeds screenshots captured from the actual running 1.1.1 application",
+    "Desktop and Runtime test suites, production build and whitespace check pass",
+    "Dedicated PR targets master and is based on merged PR #10; merge is not performed"
   ],
-  "rollback": "Revert task commits before merge; preserve generated local artifacts and evidence. Any post-release tag/release removal requires explicit owner authorization.",
+  "rollback": "Revert task commits from the feature branch; no persisted data or release artifacts are modified.",
   "owner_acceptance": "pending",
   "pull_request": {
     "state": "open",
-    "number": 10,
+    "number": 11,
     "base": "master",
-    "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/10"
+    "head_sha_at_creation": "2bcf6fc42d98dd21224b6164d8e01b540f53e69c",
+    "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/11"
   },
   "verification": {
-    "baseline": "prior pre-auth source: Desktop 128/128, Runtime 75/75, production build passed; rerun after token changes",
-    "task_1": "28/28 token store, token service and authenticated updater tests pass; token verification proves Contents access and confirmed revocation clears credentials",
-    "task_2": "Settings token workflow 12/12; full Desktop suite 134/134; icon and token modules verified in app.asar",
-    "task_3": "single-file portable output rebuilt after review fixes in apps/desktop/release/1.1.0-final-reviewed; direct launch and isolated-port health smoke passed; Desktop copy hash matches",
-    "desktop": "134/134",
-    "runtime": "102/102",
-    "production_build": "passed after review fixes",
-    "native_electron": "unpacked app --version returned 1.1.0; portable direct launch and both isolated-port health checks passed; native screenshot capture timed out",
-    "portable_executable": "115021474 bytes; SHA-256 8244ba83fc911c7a72969cd8ffb9590413b28e7f77cf35aba3b80736ea2d7a02; Desktop Release Ready copy matched",
-    "github_release": "pending",
-    "owner": "pending"
+    "baseline": "Runtime 102/102, Desktop 134/134, Desktop production build passed on merged PR #10; initial missing-dist test failure was resolved by building from the lockfile",
+    "implementation": "Tray lifecycle 9/9 (including 3 review-driven RED/GREEN cases); final Runtime 111/111; Desktop 135/135; Settings version 12/12; update-check pending/unconfigured feedback regression passed RED/GREEN; TypeScript/Vite production build passed; release manifest fixtures follow package version",
+    "screenshots": "PASS: three 1440x980 captures from the local 1.1.1 browser renderer using repository read-only fixture data; targets and SHA-256 values recorded in docs/tasks/evidence/tray-close-readme/screenshots.json",
+    "native_electron": "NOT_RUN: Electron binary was absent because the existing user-level C:/Users/20142/.npmrc allows install scripts only for @opencode/cli; no user config changes made",
+    "readme_links": "PASS: all local targets exist; package.json, lockfile root and package record all show 1.1.1",
+    "runtime_tests": "PASS: 111/111 after activation-handler coverage fix",
+    "desktop_tests": "PASS: 135/135 after update-check feedback change",
+    "production_build": "PASS: TypeScript and Vite",
+    "whitespace": "PASS: git diff --check",
+    "ci": "PASS on PR #11 head b94e9d56: Runtime and Desktop jobs passed; package job skipped for pull_request by workflow condition",
+    "independent_review": "Fresh whole-branch review identified one Important missing test for second-instance/activate wiring; fixed test-first with 3 RED/GREEN cases. No Critical/security or Minor findings; no second review in inline execution workflow.",
+    "native_manual": "NOT_RUN: Electron binary unavailable under user-level npm install-script policy; no policy change made"
   },
   "capability": {
     "skills": [
       "using-superpowers",
       "awg-workspace-governance",
       "brainstorming",
+      "using-git-worktrees",
       "writing-plans",
       "executing-plans",
-      "using-git-worktrees",
       "test-driven-development",
+      "systematic-debugging",
       "verification-before-completion",
       "requesting-code-review",
+      "receiving-code-review",
+      "computer-use",
       "finishing-a-development-branch"
     ],
-    "repo_mcp": "UNAVAILABLE: repo-map registration file is absent; source search/read used.",
-    "sdd_scripts": "UNAVAILABLE: supplied scripts are Bash and this Windows host has no /bin/bash; equivalent ledger checks maintained manually.",
-    "native_runtime": "NOT_RUN",
-    "independent_review": "reviewed commit 587e02b; all P2 findings fixed with RED-GREEN tests and full suites green; no second review under inline workflow"
+    "repo_mcp": "NOT_RUN: repository registration file is absent, so a registered workspace_id cannot be established; source inspection used.",
+    "computer_use": "INVOKED but blocked while activating the user's existing Chrome because the plugin could not verify its URL; screenshots were instead captured by isolated headless Chrome against the local fixture renderer.",
+    "electron_install_script": "NOT_RUN: user-level npm allow-scripts policy permits only @opencode/cli; package-local approval would override that user policy and was reverted."
   }
 }

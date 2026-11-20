@@ -10,6 +10,8 @@ import { version } from "../../package.json";
 export function SettingsPage() {
   const { data, error, loading } = useWorkspace();
   const [updateMessage, setUpdateMessage] = useState("");
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [needsUpdateToken, setNeedsUpdateToken] = useState(false);
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [releaseUrl, setReleaseUrl] = useState("");
   const [updateToken, setUpdateToken] = useState("");
@@ -44,6 +46,7 @@ export function SettingsPage() {
     try {
       const result = await window.desktopControls.saveUpdateToken(updateToken);
       setTokenConfigured(result.configured);
+      setNeedsUpdateToken(false);
       setUpdateToken("");
       setTokenMessage("GitHub 更新令牌已验证并安全保存。");
     } catch (caught) {
@@ -64,14 +67,30 @@ export function SettingsPage() {
   }
   async function checkUpdate() {
     if (!window.desktopControls?.checkUpdate) { setUpdateMessage("更新检查仅在 Desktop 运行时可用。"); return; }
+    if (checkingUpdate) return;
+    setCheckingUpdate(true);
+    setNeedsUpdateToken(false);
+    setUpdateAvailable(false);
+    setReleaseUrl("");
+    setUpdateMessage("正在检查 GitHub Release…");
     try {
       const result = await window.desktopControls.checkUpdate();
       setTokenConfigured(result.configured);
       if (result.tokenInvalid) setTokenMessage("GitHub 更新令牌已失效，请重新配置。");
       setUpdateAvailable(Boolean(result.available));
       setReleaseUrl(result.releaseUrl || "");
-      setUpdateMessage(!result.configured ? "请先配置并验证 GitHub 更新访问令牌。" : result.available ? `发现版本 ${result.version}；更新来自 GitHub Release。` : "当前已是最新版本。");
-    } catch (caught) { setUpdateMessage(caught instanceof Error ? caught.message : "更新检查失败"); }
+      setNeedsUpdateToken(!result.configured);
+      setUpdateMessage(!result.configured ? "未检查：请先配置并验证 GitHub 更新访问令牌。" : result.available ? `发现版本 ${result.version}；更新来自 GitHub Release。` : "当前已是最新版本。");
+    } catch (caught) {
+      setUpdateMessage(caught instanceof Error ? caught.message : "更新检查失败");
+    } finally {
+      setCheckingUpdate(false);
+    }
+  }
+  function focusUpdateToken() {
+    const input = document.getElementById("github-update-token");
+    input?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+    input?.focus();
   }
   async function installUpdate() {
     if (!window.desktopControls?.installUpdate) { setUpdateMessage("更新安装仅在 Desktop 运行时可用。"); return; }
@@ -108,11 +127,11 @@ export function SettingsPage() {
       {settingsMessage && <p className="action-feedback" role="status">{settingsMessage}</p>}
       </section>
       <section className="settings-section" aria-labelledby="desktop-settings-title"><h2 id="desktop-settings-title" className="section-title">桌面应用</h2>
-        <div className="settings-update"><div><p className="app-version">版本 {version}</p><p className="helper-text">更新通过私有 GitHub Release 检查，安装前验证安装包 SHA-256。</p></div><div className="settings-update-actions"><Button variant="secondary" size="small" onClick={() => void checkUpdate()}>检查更新</Button>{updateAvailable && <Button variant="primary" size="small" onClick={() => void installUpdate()}>安装更新</Button>}</div>{updateMessage && <p className="settings-update-message helper-text" role="status">{updateMessage}{releaseUrl && <> · <a href={releaseUrl} target="_blank" rel="noreferrer">查看 GitHub 发布说明</a></>}</p>}</div>
+        <div className="settings-update"><div><p className="app-version">版本 {version}</p><p className="helper-text">更新通过私有 GitHub Release 检查，安装前验证安装包 SHA-256。</p></div><div className="settings-update-actions"><Button variant="secondary" size="small" disabled={checkingUpdate} onClick={() => void checkUpdate()}>{checkingUpdate ? "正在检查…" : "检查更新"}</Button>{needsUpdateToken && <Button variant="tertiary" size="small" onClick={focusUpdateToken}>配置更新令牌</Button>}{updateAvailable && <Button variant="primary" size="small" onClick={() => void installUpdate()}>安装更新</Button>}</div>{updateMessage && <p className="settings-update-message helper-text" role="status" aria-live="polite">{updateMessage}{releaseUrl && <> · <a href={releaseUrl} target="_blank" rel="noreferrer">查看 GitHub 发布说明</a></>}</p>}</div>
         <div className="settings-update">
           <div><p className="app-version">GitHub 更新权限</p><p className="helper-text">使用仅有 Contents: Read 权限的细粒度令牌。令牌仅保存在本机安全存储中。</p></div>
           {!secureStorageAvailable ? <p className="settings-update-message helper-text" role="status">当前系统无法安全保存 GitHub 更新令牌</p> : <>
-            <TextField label="GitHub 更新访问令牌" type="password" autoComplete="new-password" spellCheck={false} value={updateToken} onChange={(event) => setUpdateToken(event.target.value)} />
+            <TextField id="github-update-token" label="GitHub 更新访问令牌" type="password" autoComplete="new-password" spellCheck={false} value={updateToken} onChange={(event) => setUpdateToken(event.target.value)} />
             <div className="settings-update-actions"><Button variant="secondary" size="small" onClick={() => void saveUpdateToken()}>保存并验证</Button>{tokenConfigured && <Button variant="tertiary" size="small" onClick={() => void removeUpdateToken()}>移除令牌</Button>}</div>
             <p className="settings-update-message helper-text" role="status">{tokenMessage || (tokenConfigured ? "已配置并验证 GitHub 更新访问令牌。" : "尚未配置 GitHub 更新令牌")}</p>
           </>}
