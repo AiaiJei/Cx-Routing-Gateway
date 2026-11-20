@@ -8,8 +8,24 @@ import dns from 'node:dns/promises';
 import net from 'node:net';
 import { Readable } from 'node:stream';
 
-const MAX_BODY = 1024 * 1024;
+const MAX_BODY = 4 * 1024 * 1024;
 const pathProtocols = { '/v1/responses': 'Res', '/v1/messages': 'Mes', '/v1/chat/completions': 'Chat' };
+const upstreamStatusMap = new Map([
+  [400, { clientStatus: 400, errorCode: 'upstream_http_400' }],
+  [401, { clientStatus: 401, errorCode: 'upstream_http_401' }],
+  [402, { clientStatus: 402, errorCode: 'upstream_http_402' }],
+  [403, { clientStatus: 403, errorCode: 'upstream_http_403' }],
+  [404, { clientStatus: 404, errorCode: 'upstream_http_404' }],
+  [408, { clientStatus: 408, errorCode: 'upstream_http_408' }],
+  [409, { clientStatus: 409, errorCode: 'upstream_http_409' }],
+  [413, { clientStatus: 413, errorCode: 'upstream_payload_too_large' }],
+  [415, { clientStatus: 415, errorCode: 'upstream_http_415' }],
+  [422, { clientStatus: 422, errorCode: 'upstream_http_422' }],
+  [429, { clientStatus: 429, errorCode: 'upstream_rate_limited' }],
+]);
+export function classifyUpstreamStatus(status) {
+  return upstreamStatusMap.get(status) || { clientStatus: 502, errorCode: 'upstream_error' };
+}
 function upstreamUrl(baseUrl, endpoint) {
   const base = baseUrl.replace(/\/$/, '');
   return base.endsWith('/v1') && endpoint.startsWith('/v1/') ? `${base}${endpoint.slice(3)}` : `${base}${endpoint}`;
@@ -25,13 +41,13 @@ function send(res, status, body, requestId) {
 }
 
 async function bodyOf(req, timeoutMs = 30_000) {
-  let size = 0; let data = '';
+  let size = 0; const chunks = [];
   let timer;
   try {
-    const stream = (async () => { for await (const chunk of req) { size += chunk.length; if (size > MAX_BODY) throw Object.assign(new Error('Request body too large'), { statusCode: 413 }); data += chunk; } })();
+    const stream = (async () => { for await (const chunk of req) { size += chunk.length; if (size > MAX_BODY) throw Object.assign(new Error('Request body too large'), { code: 'request_body_too_large', statusCode: 413 }); chunks.push(chunk); } })();
     await Promise.race([stream, new Promise((_, reject) => { timer = setTimeout(() => reject(Object.assign(new Error('Request body timeout'), { code: 'request_timeout', statusCode: 408 })), timeoutMs); })]);
   } finally { clearTimeout(timer); }
-  try { return JSON.parse(data); } catch { throw Object.assign(new Error('Invalid JSON'), { statusCode: 400 }); }
+  try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw Object.assign(new Error('Invalid JSON'), { statusCode: 400 }); }
 }
 
 function keyFrom(req) {
@@ -419,12 +435,15 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
         payload.stream = true;
         if (route.outboundProtocol === 'Chat') payload.stream_options = { ...payload.stream_options, include_usage: true };
       }
-      const upstreamResponse = await fetchWithTimeout(upstreamUrl(upstream.baseUrl, outboundPath), { method: 'POST', headers, body: JSON.stringify(payload) }, addresses, upstreamTimeoutMs, requestController.signal, () => { upstreamTimedOut = true; });
+      const serializedPayload = JSON.stringify(payload);
+      headers['content-length'] = String(Buffer.byteLength(serializedPayload, 'utf8'));
+      const upstreamResponse = await fetchWithTimeout(upstreamUrl(upstream.baseUrl, outboundPath), { method: 'POST', headers, body: serializedPayload }, addresses, upstreamTimeoutMs, requestController.signal, () => { upstreamTimedOut = true; });
       if (upstreamResponse.status >= 300) {
         await upstreamResponse.body?.cancel().catch(() => {});
         recordOutcome(policy.statusClasses.includes(Math.floor(upstreamResponse.status / 100)));
         await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Date.now() - startedAt, ...metrics?.snapshot(), inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, modelId: route.modelId, status: 'failed', errorCode: 'upstream_error', upstreamStatus: upstreamResponse.status });
-        return send(res, 502, { error: 'upstream_error', requestId }, requestId);
+        const classified = classifyUpstreamStatus(upstreamResponse.status);
+        return send(res, classified.clientStatus, { error: classified.errorCode, requestId }, requestId);
       }
       if (input.stream === true) {
         res.statusCode = upstreamResponse.status;
@@ -489,7 +508,7 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
       const result = await response.json().catch(() => ({}));
       const durationMs = Math.max(0, now() - startedAt);
       if (!response.ok) {
-        const errors = { all_upstreams_unavailable: '所有上游当前均不可用', upstream_error: '上游请求失败，请检查上游状态和日志', upstream_timeout: '上游响应超时', unsupported_feature: '当前请求包含不支持的协议特性', route_not_found: '路由未匹配到此请求协议' };
+        const errors = { all_upstreams_unavailable: '所有上游当前均不可用', upstream_error: '上游请求失败，请检查上游状态和日志', upstream_rate_limited: '上游请求被限流，请稍后重试', upstream_payload_too_large: '上游拒绝了过大的请求体', request_body_too_large: '请求体超过网关限制', upstream_timeout: '上游响应超时', unsupported_feature: '当前请求包含不支持的协议特性', route_not_found: '路由未匹配到此请求协议' };
         return { routeAlias: route.alias, text: '', requestId, durationMs, status: response.status, error: errors[result.error] || `Gateway 请求失败（${response.status}）` };
       }
       const resultText = extractText(route.inboundProtocol, result);

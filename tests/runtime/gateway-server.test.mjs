@@ -98,8 +98,8 @@ test('gateway testRoute executes a route through normal auth, forwarding, and us
   }
   assert.deepEqual(results.map(result => result.routeAlias), ['gateway-fast-Chat', 'gateway-fast-Res', 'gateway-fast-Mes']);
   const failed = await gateway.testRoute('test-route-Chat', 'fail-me');
-  assert.equal(failed.status, 502);
-  assert.equal(failed.error, '上游请求失败，请检查上游状态和日志');
+  assert.equal(failed.status, 429);
+  assert.equal(failed.error, '上游请求被限流，请稍后重试');
   assert.match(failed.requestId, /^[0-9a-f-]{36}$/);
   assert.equal('provider detail must remain private'.includes(failed.error), false);
   const refused = await gateway.testRoute('test-route-Chat', 'refuse');
@@ -193,6 +193,116 @@ test('gateway sanitizes upstream failures and records the failure code', async (
   const config = await store.read();
   assert.equal(config.usage.at(-1).status, 'failed');
   assert.equal(config.usage.at(-1).errorCode, 'upstream_error');
+});
+
+test('gateway forwards a UTF-8 JSON body above 1 MiB with an exact byte Content-Length', async (t) => {
+  let upstreamCalls = 0;
+  const largeText = '汉'.repeat(600_000);
+  const upstream = http.createServer(async (req, res) => {
+    upstreamCalls += 1;
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    const body = Buffer.concat(chunks);
+    assert.equal(Number(req.headers['content-length']), body.byteLength);
+    const parsed = JSON.parse(body.toString('utf8'));
+    assert.equal(parsed.messages[0].content, largeText);
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'accepted' } }] }));
+  });
+  const upstreamPort = await listen(upstream);
+  t.after(() => upstream.close());
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-large-body-'));
+  const store = new ConfigStore(path.join(dir, 'config.json'));
+  const vault = new SecretVault(path.join(dir, 'secrets.json'), 'test-master-key');
+  const clientKey = 'cxrg_' + crypto.randomBytes(18).toString('base64url');
+  await store.update((config) => ({ ...config,
+    upstreams: [{ id: 'large-body-upstream', name: 'Large body', baseUrl: 'http://127.0.0.1:' + upstreamPort, protocol: 'Chat', trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'], enabled: true }],
+    routes: [{ id: 'large-body-route', alias: 'large-body', inboundProtocol: 'Chat', outboundProtocol: 'Chat', upstreamId: 'large-body-upstream', modelId: 'large-body', enabled: true }],
+    clientKeys: [{ id: 'large-body-key', keyHash: crypto.createHash('sha256').update(clientKey).digest('hex'), scope: [], createdAt: new Date().toISOString(), enabled: true, name: 'large-body' }],
+  }));
+  const gateway = createGatewayServer({ store, vault });
+  await listen(gateway);
+  t.after(() => gateway.close());
+  const response = await fetch('http://127.0.0.1:' + gateway.address().port + '/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: 'Bearer ' + clientKey },
+    body: JSON.stringify({ model: 'large-body', messages: [{ role: 'user', content: largeText }] }),
+  });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).choices[0].message.content, 'accepted');
+  assert.equal(upstreamCalls, 1);
+});
+
+test('gateway classifies allowlisted upstream statuses and sanitizes unknown failures', async (t) => {
+  const upstream = http.createServer(async (req, res) => {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    const body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    const status = Number(body.metadata?.status);
+    res.statusCode = status;
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify({ error: { message: 'provider-secret-' + status } }));
+  });
+  const upstreamPort = await listen(upstream);
+  t.after(() => upstream.close());
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-status-map-'));
+  const store = new ConfigStore(path.join(dir, 'config.json'));
+  const vault = new SecretVault(path.join(dir, 'secrets.json'), 'test-master-key');
+  const clientKey = 'cxrg_' + crypto.randomBytes(18).toString('base64url');
+  await store.update((config) => ({ ...config,
+    upstreams: [{ id: 'status-map-upstream', name: 'Status map', baseUrl: 'http://127.0.0.1:' + upstreamPort, protocol: 'Chat', trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'], enabled: true }],
+    routes: [{ id: 'status-map-route', alias: 'status-map', inboundProtocol: 'Chat', outboundProtocol: 'Chat', upstreamId: 'status-map-upstream', modelId: 'status-map', enabled: true }],
+    clientKeys: [{ id: 'status-map-key', keyHash: crypto.createHash('sha256').update(clientKey).digest('hex'), scope: [], createdAt: new Date().toISOString(), enabled: true, name: 'status-map' }],
+  }));
+  const gateway = createGatewayServer({ store, vault });
+  await listen(gateway);
+  t.after(() => gateway.close());
+  const cases = [[400, 400, 'upstream_http_400'], [413, 413, 'upstream_payload_too_large'], [429, 429, 'upstream_rate_limited'], [500, 502, 'upstream_error'], [599, 502, 'upstream_error']];
+  for (const [upstreamStatus, clientStatus, errorCode] of cases) {
+    const response = await fetch('http://127.0.0.1:' + gateway.address().port + '/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: 'Bearer ' + clientKey },
+      body: JSON.stringify({ model: 'status-map', metadata: { status: upstreamStatus }, messages: [{ role: 'user', content: 'status' }] }),
+    });
+    assert.equal(response.status, clientStatus);
+    const body = await response.json();
+    assert.equal(body.error, errorCode);
+    assert.match(body.requestId, /^[0-9a-f-]{36}$/);
+    assert.equal(body.message, undefined);
+    assert.doesNotMatch(JSON.stringify(body), /provider-secret/);
+    const usage = await store.read();
+    assert.equal(usage.usage.at(-1).upstreamStatus, upstreamStatus);
+  }
+});
+
+test('gateway rejects an inbound JSON body above 4 MiB before upstream I/O', async (t) => {
+  let upstreamCalls = 0;
+  const upstream = http.createServer((_req, res) => {
+    upstreamCalls += 1;
+    res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'unexpected' } }] }));
+  });
+  const upstreamPort = await listen(upstream);
+  t.after(() => upstream.close());
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-over-limit-'));
+  const store = new ConfigStore(path.join(dir, 'config.json'));
+  const vault = new SecretVault(path.join(dir, 'secrets.json'), 'test-master-key');
+  const clientKey = 'cxrg_' + crypto.randomBytes(18).toString('base64url');
+  await store.update((config) => ({ ...config,
+    upstreams: [{ id: 'over-limit-upstream', name: 'Over limit', baseUrl: 'http://127.0.0.1:' + upstreamPort, protocol: 'Chat', trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'], enabled: true }],
+    routes: [{ id: 'over-limit-route', alias: 'over-limit', inboundProtocol: 'Chat', outboundProtocol: 'Chat', upstreamId: 'over-limit-upstream', modelId: 'over-limit', enabled: true }],
+    clientKeys: [{ id: 'over-limit-key', keyHash: crypto.createHash('sha256').update(clientKey).digest('hex'), scope: [], createdAt: new Date().toISOString(), enabled: true, name: 'over-limit' }],
+  }));
+  const gateway = createGatewayServer({ store, vault });
+  await listen(gateway);
+  t.after(() => gateway.close());
+  const response = await fetch('http://127.0.0.1:' + gateway.address().port + '/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: 'Bearer ' + clientKey },
+    body: JSON.stringify({ model: 'over-limit', messages: [{ role: 'user', content: 'x'.repeat(4 * 1024 * 1024) }] }),
+  });
+  assert.equal(response.status, 413);
+  assert.equal((await response.json()).error, 'request_body_too_large');
+  assert.equal(upstreamCalls, 0);
 });
 
 test('gateway converts Chat text requests to Messages and returns Chat response shape', async (t) => {
