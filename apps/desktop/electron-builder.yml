@@ -1,5 +1,6 @@
 appId: com.cxrouting.gateway
 productName: Cx-Routing Gateway
+buildVersion: 1.1.1.1
 directories:
   output: release
   buildResources: build
@@ -30,9 +31,10 @@ win:
       arch:
         - x64
 portable:
-  artifactName: ${productName} Portable ${version}.${ext}
+  artifactName: ${productName} Portable ${buildVersion}.${ext}
 nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
+  artifactName: ${productName} Setup ${buildVersion}.${ext}
 publish: null
