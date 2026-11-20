@@ -5,7 +5,7 @@
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
   "status": "active",
-  "stage": "pr-ready",
+  "stage": "pr-open",
   "base": "master",
   "base_sha": "be4de0924091c351864013e4ca53520f9d8ef226",
   "branch": "codex/gateway-timeout-metrics",
@@ -67,7 +67,7 @@
     "one dedicated PR is open against master and remains unmerged"
   ],
   "rollback": "Revert only this task's PR commits; no data migration is required. Preserve the branch/worktree and unrelated worktrees.",
-  "owner_acceptance": "Design approved and final whole-branch review passed; PR CI pending. Merge, release, provider calls, and installer validation remain NOT_RUN.",
+  "owner_acceptance": "PR #15 open and unmerged; final whole-branch review and GitHub Runtime/Desktop checks passed. Merge, release, provider calls, and installer validation remain NOT_RUN.",
   "verification": {
     "baseline_focused_runtime": "PASS: 44/44",
     "baseline_full_runtime": "PASS: 119/119 after Desktop production build generated apps/desktop/dist/index.html",
@@ -94,9 +94,15 @@
     "review_record_commit": "7fdc21c0d1322374344fdc653978987d9359ab53",
     "provider": "NOT_RUN",
     "independent_subagent_review": "PASS: no Critical, Important, or Minor findings on be4de092..bac1770",
-    "pull_request_ci": "NOT_RUN"
+    "pull_request_ci": "PASS: PR #15 Runtime and Desktop; package job SKIPPED by workflow condition"
   },
-  "pull_request": null,
+  "pull_request": {
+    "number": 15,
+    "state": "OPEN",
+    "base": "master",
+    "head": "04528e6da7fae2811554ab338b6881ca23814c00",
+    "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/15"
+  },
   "capability": {
     "skills": [
       "using-superpowers",

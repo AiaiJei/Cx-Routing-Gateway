@@ -7,7 +7,7 @@
 - Design: `docs/superpowers/specs/2026-11-21-gateway-timeout-metrics-design.md`.
 - Plan: `docs/superpowers/plans/2026-11-21-gateway-timeout-metrics.md`.
 - Previous completed contract preserved at `docs/tasks/2026-11-21-release-1.1.2-contract.json`.
-- Status: design approved by the user's `执行` instruction; Tasks 1 and 2 are committed, final verification and independent review passed; PR creation is next.
+- Status: PR #15 is open and unmerged; Tasks 1 and 2 are committed, local verification and independent review passed.
 
 ## User authorization
 
@@ -45,7 +45,9 @@ Not authorized: merge, release/publish, delete branches or worktrees, or alter u
 - Task 2 production build: PASS; full Runtime: PASS 125/125; full Desktop: PASS 143/143; `git diff --check`: PASS.
 - Task 2 commit: `5f138d923b9f58cb3e351c7748f6360112fedaf5` (`fix: measure request timing monotonically`).
 - Final verification: PASS; TypeScript/Vite build, Runtime 125/125, Desktop 143/143, and `git diff --check`.
-- Final whole-branch independent review: PASS on `be4de092..bac1770`, no Critical, Important, or Minor findings. Real provider, installer, release, merge, and GitHub PR CI remain `NOT_RUN`.
+- Final whole-branch independent review: PASS on `be4de092..bac1770`, no Critical, Important, or Minor findings.
+- Dedicated PR: #15, base `master`, state OPEN and unmerged.
+- GitHub CI on PR #15: Runtime PASS, Desktop PASS, package job SKIPPED by workflow condition. Real provider, installer, release, and merge remain `NOT_RUN`.
 
 ## Rollback
 
