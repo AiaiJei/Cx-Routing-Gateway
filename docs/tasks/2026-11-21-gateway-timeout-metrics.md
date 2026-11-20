@@ -7,7 +7,7 @@
 - Design: `docs/superpowers/specs/2026-11-21-gateway-timeout-metrics-design.md`.
 - Plan: `docs/superpowers/plans/2026-11-21-gateway-timeout-metrics.md`.
 - Previous completed contract preserved at `docs/tasks/2026-11-21-release-1.1.2-contract.json`.
-- Status: design approved by the user's `执行` instruction; Tasks 1 and 2 are committed, final verification passes, and the independent review is pending.
+- Status: design approved by the user's `执行` instruction; Tasks 1 and 2 are committed, final verification and independent review passed; PR creation is next.
 
 ## User authorization
 
@@ -45,9 +45,13 @@ Not authorized: merge, release/publish, delete branches or worktrees, or alter u
 - Task 2 production build: PASS; full Runtime: PASS 125/125; full Desktop: PASS 143/143; `git diff --check`: PASS.
 - Task 2 commit: `5f138d923b9f58cb3e351c7748f6360112fedaf5` (`fix: measure request timing monotonically`).
 - Final verification: PASS; TypeScript/Vite build, Runtime 125/125, Desktop 143/143, and `git diff --check`.
-- Whole-branch review: `PENDING`; real provider, installer, release, merge, and GitHub PR CI remain `NOT_RUN`.
-- Final whole-branch independent review: `PENDING`; real provider, packaged installer, release: `NOT_RUN`.
+- Final whole-branch independent review: PASS on `be4de092..bac1770`, no Critical, Important, or Minor findings. Real provider, installer, release, merge, and GitHub PR CI remain `NOT_RUN`.
 
 ## Rollback
 
 Revert only this PR's commits. Timing records need no migration. Preserve the branch, worktree, previous task contract history, and unrelated pre-existing untracked paths.
+
+## Review Notes
+
+- After SSE response headers are sent, a body timeout is recorded as failed `upstream_timeout` and closes the stream; the already-sent HTTP status cannot be changed to 504.
+- A downstream SDK/client may impose a shorter timeout and abort before the Gateway's 10-minute deadline.

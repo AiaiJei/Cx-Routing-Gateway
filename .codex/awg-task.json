@@ -5,7 +5,7 @@
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
   "status": "active",
-  "stage": "review",
+  "stage": "pr-ready",
   "base": "master",
   "base_sha": "be4de0924091c351864013e4ca53520f9d8ef226",
   "branch": "codex/gateway-timeout-metrics",
@@ -67,7 +67,7 @@
     "one dedicated PR is open against master and remains unmerged"
   ],
   "rollback": "Revert only this task's PR commits; no data migration is required. Preserve the branch/worktree and unrelated worktrees.",
-  "owner_acceptance": "Design approved; final whole-branch review and PR CI pending. Merge, release, provider calls, and installer validation remain NOT_RUN.",
+  "owner_acceptance": "Design approved and final whole-branch review passed; PR CI pending. Merge, release, provider calls, and installer validation remain NOT_RUN.",
   "verification": {
     "baseline_focused_runtime": "PASS: 44/44",
     "baseline_full_runtime": "PASS: 119/119 after Desktop production build generated apps/desktop/dist/index.html",
@@ -90,7 +90,7 @@
     "final_desktop": "PASS: 143/143",
     "final_diff_check": "PASS",
     "provider": "NOT_RUN",
-    "independent_subagent_review": "PENDING: required final whole-branch review under executing-plans",
+    "independent_subagent_review": "PASS: no Critical, Important, or Minor findings on be4de092..bac1770",
     "pull_request_ci": "NOT_RUN"
   },
   "pull_request": null,
@@ -108,6 +108,6 @@
       "finishing-a-development-branch"
     ],
     "repo_mcp": "NOT_RUN: no registered workspace_id",
-    "independent_subagent_review": "PENDING: final whole-branch review"
+    "independent_subagent_review": "PASS: no findings on be4de092..bac1770"
   }
 }

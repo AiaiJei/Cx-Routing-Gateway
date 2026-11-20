@@ -44,9 +44,15 @@
 
 - The branch diff is reviewed against `origin/master` and limited to the task contract, design/plan/evidence, Gateway timeout and metrics code, their Runtime tests, and the Desktop request-duration component/test.
 - The previous completed release contract is preserved verbatim at `docs/tasks/2026-11-21-release-1.1.2-contract.json`.
-- Real provider calls, installer/package validation, GitHub CI, whole-branch independent review, merge, and release publication are pending or `NOT_RUN` at this checkpoint.
+- Final whole-branch independent review on `be4de092..bac1770`: PASS, no Critical, Important, or Minor findings.
+- GitHub PR CI, merge, and release publication remain `NOT_RUN` pending PR creation/Owner action.
 - Downstream SDK/client timeouts remain outside Gateway control.
 
 ## Rollback
 
 Revert only this task's PR commits. No persisted data migration is required. Keep this task branch and worktree; do not merge or delete them in this task.
+
+## Review Boundaries
+
+- If an SSE deadline expires after response headers are sent, the Gateway records `upstream_timeout` and closes the partial stream; it cannot replace the already-sent HTTP status with 504.
+- A downstream SDK/client may impose its own shorter timeout and abort before the Gateway's 10-minute deadline.
