@@ -54,11 +54,13 @@
 
 **Interfaces:**
 - `installTrayLifecycle({ app, BrowserWindow, Tray, Menu, iconPath, shouldQuit })` creates one tray and returns `{ attachWindow(window), showMainWindow() }`.
+- `registerSecondInstanceHandler({ app, showMainWindow })` routes the second-instance event to the existing-window restore handler.
+- `registerActivateHandler({ app, showMainWindow, createWindow })` restores an existing window or creates one only when none exists.
 - `attachWindow(window)` hides on ordinary close by calling `preventDefault()` then `hide()`; when `shouldQuit()` is true, it lets the window close.
 - Tray click and the Open menu item restore a minimized window if needed, then show and focus it; Exit calls `app.quit()`.
 - `main.cjs` creates the lifecycle after Electron is ready, attaches each created window, and keeps runtime shutdown in the existing `before-quit` handler.
 
-- [x] Write tests for close-to-hide, close during quit, tray-click restore/focus, Open restore/focus, Exit calling `app.quit()`, and no duplicate tray/window creation.
+- [x] Write tests for close-to-hide, close during quit, tray-click restore/focus, Open restore/focus, Exit calling `app.quit()`, activation paths and no duplicate window creation.
 - [x] Run `node --test tests/runtime/tray-lifecycle.test.mjs`; confirm failure because the lifecycle module does not exist.
 - [x] Implement the injected tray lifecycle and wire it from `main.cjs`; remove `window-all-closed` auto-quit and make app activation/second-instance show the existing hidden window.
 - [x] Run `node --test tests/runtime/tray-lifecycle.test.mjs` and `npm test`; expect focused lifecycle tests and the full Runtime suite to pass.
@@ -84,7 +86,7 @@
 - [x] Inspect the screenshots for correct rendering, legible text, and absence of secrets or unrelated desktop content.
 - [x] Rewrite the root README in formal Chinese with version 1.1.1, verified platform, core capabilities/features, run/package entry points, actual screenshot embeds, and material security/release limits.
 - [x] Check every README image/link target exists and inspect all three screenshot files.
-- [ ] Commit the version metadata, verifier fixture, README, and screenshot assets as `docs: publish 1.1.1 product README and screenshots`.
+- [x] Commit the version metadata, verifier fixture, README, and screenshot assets as `docs: publish 1.1.1 product README and screenshots` (`10fef03`).
 
 ### Task 3: Verification, Evidence, and Dedicated PR
 
@@ -93,9 +95,10 @@
 - Create: `docs/tasks/2026-11-20-tray-close-readme.md`, `docs/tasks/evidence/tray-close-readme/`
 
 - [x] Add `.worktree/` to `.gitignore`; verify the ignore rule with `git check-ignore`.
-- [x] Run `npm test` (108/108), `npm --prefix apps/desktop test -- --run` (134/134), `npm --prefix apps/desktop run build`, and `git diff --check`.
+- [x] Run `npm test` (final 111/111), `npm --prefix apps/desktop test -- --run` (134/134), `npm --prefix apps/desktop run build`, and `git diff --check`.
 - [x] Attempt native Electron verification; record `NOT_RUN` because the user-level npm policy only permits `@opencode/cli` install scripts and no Electron binary is present.
 - [x] Update the contract and task evidence with completed scope, test results, screenshot paths, owner-acceptance state, and capability gaps.
-- [ ] Commit `.gitignore`, task contract, plan and evidence as `docs: record tray and README verification`.
-- [ ] Perform a fresh whole-branch code review against the spec and Review Focus; fix Critical/Important findings test-first and record any deferred Minor findings.
+- [x] Commit `.gitignore`, task contract, plan and evidence as `docs: record tray and README verification` (`68b16f9`).
+- [x] Perform a fresh whole-branch code review against the spec and Review Focus; fix the Important activation-wiring coverage finding test-first. No Critical/security issues or deferred Minors were reported.
+- [x] Commit the review fix as `fix: cover main window activation handlers` (`07f3331`).
 - [ ] Commit and push the task branch, create the dedicated PR against `master`, and confirm its head/base and CI state. Do not merge.

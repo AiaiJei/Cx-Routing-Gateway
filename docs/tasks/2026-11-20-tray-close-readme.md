@@ -15,13 +15,14 @@
 
 ## Verification
 
-- Tray lifecycle tests: 6/6; full Runtime suite: 108/108.
+- Tray lifecycle tests: 9/9, including second-instance and activation registration; full Runtime suite: 111/111.
 - Desktop suite: 134/134; Settings version test: 11/11; production TypeScript/Vite build passed.
 - README local links, screenshot files, synchronized version metadata, `.worktree/` ignore rule and `git diff --check` passed.
 - Electron main/tray modules pass `node --check`.
 - Screenshots are 1440x980. Capture source, fixture-mode limitation, and SHA-256 values are in `docs/tasks/evidence/tray-close-readme/screenshots.json`.
 - Native Electron tray interaction is `NOT_RUN`: `C:\Users\20142\.npmrc` permits dependency install scripts only for `@opencode/cli`, so the Electron executable was unavailable. The user-level npm policy was left unchanged; tray behavior is covered by the Electron-independent lifecycle tests.
-- Independent review, GitHub CI and owner acceptance remain pending until the dedicated PR is created and reviewed.
+- Independent review found one Important coverage gap in main-process event wiring. Three tests were observed failing before implementation and passing afterward; no Critical/security or Minor findings were reported. The inline workflow did not dispatch a second review.
+- GitHub CI and owner acceptance remain pending until the dedicated PR is created and reviewed.
 
 ## Integration Boundary
 

@@ -81,16 +81,16 @@
   "pull_request": null,
   "verification": {
     "baseline": "Runtime 102/102, Desktop 134/134, Desktop production build passed on merged PR #10; initial missing-dist test failure was resolved by building from the lockfile",
-    "implementation": "Task 1 lifecycle 6/6; final Runtime 108/108; Desktop 134/134; Settings version 11/11; TypeScript/Vite production build passed; release manifest fixtures now follow package version",
+    "implementation": "Tray lifecycle 9/9 (including 3 review-driven RED/GREEN cases); final Runtime 111/111; Desktop 134/134; Settings version 11/11; TypeScript/Vite production build passed; release manifest fixtures follow package version",
     "screenshots": "PASS: three 1440x980 captures from the local 1.1.1 browser renderer using repository read-only fixture data; targets and SHA-256 values recorded in docs/tasks/evidence/tray-close-readme/screenshots.json",
     "native_electron": "NOT_RUN: Electron binary was absent because the existing user-level C:/Users/20142/.npmrc allows install scripts only for @opencode/cli; no user config changes made",
     "readme_links": "PASS: all local targets exist; package.json, lockfile root and package record all show 1.1.1",
-    "runtime_tests": "PASS: 108/108",
+    "runtime_tests": "PASS: 111/111 after activation-handler coverage fix",
     "desktop_tests": "PASS: 134/134",
     "production_build": "PASS: TypeScript and Vite",
     "whitespace": "PASS: git diff --check",
     "ci": "PENDING dedicated PR creation",
-    "independent_review": "PENDING fresh whole-branch reviewer",
+    "independent_review": "Fresh whole-branch review identified one Important missing test for second-instance/activate wiring; fixed test-first with 3 RED/GREEN cases. No Critical/security or Minor findings; no second review in inline execution workflow.",
     "native_manual": "NOT_RUN: Electron binary unavailable under user-level npm install-script policy; no policy change made"
   },
   "capability": {
@@ -105,6 +105,7 @@
       "systematic-debugging",
       "verification-before-completion",
       "requesting-code-review",
+      "receiving-code-review",
       "computer-use",
       "finishing-a-development-branch"
     ],
