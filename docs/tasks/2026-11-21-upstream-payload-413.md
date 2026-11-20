@@ -24,4 +24,3 @@ Design: 'docs/superpowers/specs/2026-11-21-upstream-payload-413-design.md'
 - Skills applied: using-superpowers, awg-workspace-governance, brainstorming, using-git-worktrees, systematic-debugging, writing-plans, test-driven-development, executing-plans, verification-before-completion, requesting-code-review.
 - Repo MCP: NOT_RUN; repository registration/workspace identity was unavailable, so bounded source inspection and local tests were used.
 - Reference evidence read-only: QuantumNous/new-api `service/error.go` (`RelayErrorHandler`, `ResetStatusCode`) and Wei-Shaw/sub2api `openai_body_limit_failover_test.go`; no reference files were modified.
-

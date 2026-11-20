@@ -68,4 +68,3 @@
 - [ ] Save command outputs and final counts under `.task-evidence/upstream-payload-413/`; update contract/record with exact results and remaining `NOT_RUN` boundaries.
 - [ ] Perform a fresh read-only branch review before commit/PR.
 - [ ] Commit, push the task branch, and create the dedicated PR against `master`; do not merge.
-

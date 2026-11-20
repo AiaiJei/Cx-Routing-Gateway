@@ -38,4 +38,3 @@
 ## 验收与回退
 
 先执行新增测试的 RED→GREEN，再执行 Runtime 全套、'git diff --check'，必要时执行生产构建相关回归。证据写入 '.task-evidence/upstream-payload-413/' 与任务记录。回退为撤销本任务提交/关闭 PR；不改 master、不删除其他任务工作树。
-
