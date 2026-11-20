@@ -5,7 +5,7 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { checkUpdate, installUpdate, verifyGitHubToken } from '../../scripts/check-update.mjs';
+import { checkUpdate, compareVersions, installUpdate, verifyGitHubToken } from '../../scripts/check-update.mjs';
 
 const token = 'github_pat_fixture_token_123456789';
 const repositoryContentsUrl = 'https://api.github.com/repos/AiaiJei/Cx-Routing-Gateway/contents';
@@ -99,6 +99,22 @@ test('checkUpdate finds a higher stable GitHub release using the token header on
   assert.equal(calls[0].url, releaseUrl);
   assertBearerOnly(calls[0]);
   assert.equal(JSON.stringify(result).includes(token), false);
+});
+
+test('four-part product versions compare numerically and accept four-part release assets', async () => {
+  assert.equal(compareVersions('1.1.2.1', '1.1.2'), 1);
+  assert.equal(compareVersions('1.1.2', '1.1.2.0'), 0);
+  assert.equal(compareVersions('1.1.2.1', '1.1.3'), -1);
+  const fourPart = release({
+    tag_name: 'v1.1.2.1',
+    html_url: 'https://github.com/AiaiJei/Cx-Routing-Gateway/releases/tag/v1.1.2.1',
+    assets: [{ name: 'Cx-Routing Gateway Setup 1.1.2.1.exe', digest: `sha256:${digest}`, browser_download_url: 'https://github.com/AiaiJei/Cx-Routing-Gateway/releases/download/v1.1.2.1/Cx-Routing%20Gateway%20Setup%201.1.2.1.exe' }],
+  });
+  const { fetchImpl } = fetchFixture(fourPart);
+  const result = await checkUpdate({ currentVersion: '1.1.2', token, fetchImpl });
+  assert.equal(result.available, true);
+  assert.equal(result.version, '1.1.2.1');
+  assert.equal(result.installer.name, 'Cx-Routing Gateway Setup 1.1.2.1.exe');
 });
 
 test('checkUpdate reports no update for equal or newer installed versions', async () => {

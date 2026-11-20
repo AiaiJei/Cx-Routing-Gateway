@@ -5,6 +5,11 @@ import userEvent from "@testing-library/user-event";
 import { defaultWorkspaceClient } from "../data/workspace-client";
 
 describe("SettingsPage", () => {
+  it("shows the four-part product version", async () => {
+    render(<SettingsPage />);
+    expect(await screen.findByText("版本 1.1.2")).toBeVisible();
+  });
+
   it("shows the unconfigured GitHub token state without disabling the update control", async () => {
     const original = window.desktopControls;
     window.desktopControls = {
@@ -122,7 +127,7 @@ describe("SettingsPage", () => {
   });
   it("shows the installed product version in the desktop application section", async () => {
     render(<SettingsPage />);
-    expect(await screen.findByText("版本 1.1.1")).toBeVisible();
+    expect(await screen.findByText("版本 1.1.2")).toBeVisible();
     expect(screen.getByRole("heading", { name: "桌面应用" })).toBeVisible();
   });
   it("shows the GitHub release link when an update is available", async () => {

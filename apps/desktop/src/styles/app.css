@@ -276,9 +276,6 @@ td.row-actions-cell { white-space: nowrap; }
 }
 
 /* Dense data remains readable inside the local scroll region at narrow widths. */
-.logs-table { min-width: 1080px; }
-.logs-table td:nth-child(1) { min-width: 172px; }
-.logs-table td:nth-child(2), .logs-table td:nth-child(3) { min-width: 150px; }
 .logs-table time, .logs-table code { white-space: nowrap; }
 .credentials-table { min-width: 980px; }
 .credentials-table td:first-child { min-width: 150px; }

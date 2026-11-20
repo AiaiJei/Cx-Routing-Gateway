@@ -56,6 +56,14 @@ function keyFrom(req) {
   return req.headers['x-api-key'];
 }
 
+function reasoningEffortOf(input) {
+  const candidates = [input?.reasoning_effort, input?.reasoning?.effort, input?.thinking?.effort];
+  const value = candidates.find((item) => typeof item === 'string' && item.trim());
+  if (typeof value !== 'string') return undefined;
+  const normalized = value.trim();
+  return normalized.length <= 32 ? normalized : undefined;
+}
+
 function classifyAddress(raw) {
   const address = String(raw).toLowerCase().replace(/^::ffff:/, '');
   if (net.isIP(address) === 4) {
@@ -356,6 +364,7 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
     let upstream;
     let targetHealth;
     let requestGeneration;
+    let reasoningEffort;
     let upstreamStarted = false;
     let outcomeRecorded = false;
     let hasFallback = false;
@@ -399,6 +408,7 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
       if (recent.length >= rateLimitPerMinute) return send(res, 429, { error: 'rate_limited', requestId }, requestId);
       recent.push(timestamp); rateBuckets.set(keyHash, recent);
       const input = await bodyOf(req);
+      reasoningEffort = reasoningEffortOf(input);
       route = config.routes.find((item) => item.enabled && item.alias === input.model && item.inboundProtocol === inbound);
       if (!route) return send(res, 404, { error: 'route_not_found', requestId }, requestId);
       if (credential.routeId && credential.routeId !== route.id) return send(res, 403, { error: 'forbidden', requestId }, requestId);
@@ -441,8 +451,8 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
       if (upstreamResponse.status >= 300) {
         await upstreamResponse.body?.cancel().catch(() => {});
         recordOutcome(policy.statusClasses.includes(Math.floor(upstreamResponse.status / 100)));
-        await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Date.now() - startedAt, ...metrics?.snapshot(), inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, modelId: route.modelId, status: 'failed', errorCode: 'upstream_error', upstreamStatus: upstreamResponse.status });
         const classified = classifyUpstreamStatus(upstreamResponse.status);
+        await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Date.now() - startedAt, ...metrics?.snapshot(), ...(reasoningEffort ? { reasoningEffort } : {}), inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, upstreamName: upstream.name, modelId: route.modelId, status: 'failed', errorCode: classified.errorCode, upstreamStatus: upstreamResponse.status, gatewayStatus: classified.clientStatus });
         return send(res, classified.clientStatus, { error: classified.errorCode, requestId }, requestId);
       }
       if (input.stream === true) {
@@ -452,20 +462,20 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
         if (route.outboundProtocol === inbound) await pipeStream(upstreamResponse, res, metrics);
         else await pipeConvertedStream(upstreamResponse, res, route.outboundProtocol, inbound, requestId, metrics);
         recordOutcome(false);
-        await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Date.now() - startedAt, ...metrics?.snapshot(), inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, modelId: route.modelId, status: 'completed' });
+        await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Date.now() - startedAt, ...metrics?.snapshot(), ...(reasoningEffort ? { reasoningEffort } : {}), httpStatus: upstreamResponse.status, inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, upstreamName: upstream.name, modelId: route.modelId, status: 'completed' });
         if (!credential.temporary) await store.update((value) => ({ ...value, clientKeys: value.clientKeys.map((item) => item.id === credential.id ? { ...item, lastUsedAt: new Date().toISOString() } : item) }));
         return;
       }
       const upstreamBody = await readJson(upstreamResponse);
       metrics.observeJson(upstreamBody);
       recordOutcome(false);
-      await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Date.now() - startedAt, ...metrics?.snapshot(), inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, modelId: route.modelId, status: 'completed' });
+      await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Date.now() - startedAt, ...metrics?.snapshot(), ...(reasoningEffort ? { reasoningEffort } : {}), httpStatus: upstreamResponse.status, inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, upstreamName: upstream.name, modelId: route.modelId, status: 'completed' });
       if (!credential.temporary) await store.update((value) => ({ ...value, clientKeys: value.clientKeys.map((item) => item.id === credential.id ? { ...item, lastUsedAt: new Date().toISOString() } : item) }));
       return send(res, 200, route.outboundProtocol === inbound ? upstreamBody : inboundResponse(inbound, route.outboundProtocol, upstreamBody, requestId), requestId);
     } catch (error) {
       if (upstreamTimedOut) error = Object.assign(new Error('Upstream timeout'), { code: 'upstream_timeout', statusCode: 504 });
       if (upstreamStarted && (error.code === 'upstream_error' || error.code === 'upstream_timeout' || !error.statusCode)) recordOutcome(true);
-      if (route && upstream) await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Date.now() - startedAt, ...metrics?.snapshot(), inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, modelId: route.modelId, status: error.statusCode === 400 ? 'rejected' : 'failed', errorCode: error.code || 'gateway_error' });
+      if (route && upstream) await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Date.now() - startedAt, ...metrics?.snapshot(), ...(reasoningEffort ? { reasoningEffort } : {}), ...(error.statusCode ? { gatewayStatus: error.statusCode } : {}), inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, upstreamName: upstream.name, modelId: route.modelId, status: error.statusCode === 400 ? 'rejected' : 'failed', errorCode: error.code || 'gateway_error' });
       if (requestController.signal.aborted || res.destroyed) return;
       if (res.headersSent) return res.destroy();
       return send(res, error.statusCode || 500, { error: error.code || 'internal_error', message: error.statusCode ? error.message : undefined, requestId }, requestId);

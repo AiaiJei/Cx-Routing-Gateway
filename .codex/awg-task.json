@@ -1,83 +1,104 @@
 {
   "contract_version": 1,
-  "task_id": "CXRG-UPSTREAM-PAYLOAD-413-2026-11-21",
-  "title": "Fix gateway payload-size and upstream error status handling",
+  "task_id": "CXRG-RELEASE-1.1.2-2026-11-21",
+  "title": "Merge PR 14, publish Cx-Routing Gateway 1.1.2, install Portable",
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
   "status": "active",
-  "stage": "pr-ready",
+  "stage": "release-preparation",
   "base": "master",
-  "base_sha": "6446c470b6e71122d6f1dd3c5427f591ef8f2436",
+  "base_sha": "c633a359dc76c9b5b48bb929870765e6ca85de5d",
   "branch": "codex/upstream-payload-413",
   "worktree": ".worktree/upstream-payload-413",
   "authorization": {
-    "source": "2026-11-21 user request: 建立专属PR，修复经网关请求被上游以 HTTP 413 拒绝的问题；用户选择组合修复",
+    "source": "2026-11-21 user request: PR#12已经合并，现状提交合并我们的PR，版本号递增1[1.1.2]。任务工作树合并主工作树并移除任务工作树；发布Github版本，发布信息注明修复内容和更新内容。同时，在本地桌面安装最新版本的Portable。",
     "operations": [
-      "create isolated branch/worktree",
-      "write design and implementation plan",
-      "implement and test gateway fix",
-      "commit and push task branch",
-      "create dedicated pull request"
+      "resolve PR #14 conflicts against merged master",
+      "bump product/package/build version to 1.1.2",
+      "run tests and build Windows x64 artifacts",
+      "merge PR #14 into master",
+      "fast-forward primary master and remove this task worktree",
+      "publish GitHub Release v1.1.2 with installer, blockmap, Portable and manifest",
+      "copy verified Portable 1.1.2 to Desktop without overwriting",
+      "record release hashes and rollback evidence"
     ],
     "not_authorized": [
-      "merge PR",
-      "push master",
-      "delete branches or worktrees",
-      "modify unrelated parallel task worktrees"
+      "delete unrelated branches or worktrees",
+      "rewrite v1.1.1 release/tag",
+      "modify unrelated untracked governance/plugin files"
     ]
   },
   "scope": {
     "include": [
-      "gateway inbound JSON request limit",
-      "gateway upstream JSON request framing",
-      "sanitized upstream status classification and 413 mapping",
-      "focused runtime regression tests",
-      "task design/plan/evidence"
+      "PR #14 upstream payload/status fix",
+      "PR #12 merged request-log source and four-part version baseline",
+      "product version 1.1.2",
+      "Windows x64 NSIS/blockmap/Portable release",
+      "GitHub Release v1.1.2",
+      "Desktop Portable copy",
+      "merge and task worktree cleanup"
     ],
     "exclude": [
-      "provider-specific payload redesign",
-      "response-size limit changes",
-      "auth, storage schema, concurrency or timeout changes",
-      "real provider calls",
-      "desktop UI changes"
+      "real provider acceptance",
+      "new routing/auth behavior",
+      "rewriting existing releases",
+      "deleting unrelated worktrees or branches"
     ]
   },
   "authorized_paths": [
     ".codex/awg-task.json",
     "services/gateway/src/server.mjs",
     "tests/runtime/gateway-server.test.mjs",
-    "docs/superpowers/specs/2026-11-21-upstream-payload-413-design.md",
-    "docs/superpowers/plans/2026-11-21-upstream-payload-413.md",
-    "docs/tasks/2026-11-21-upstream-payload-413.md",
-    ".task-evidence/upstream-payload-413/**",
-    "tests/runtime/route-batch.test.mjs"
+    "tests/runtime/route-batch.test.mjs",
+    "tests/runtime/check-update.test.mjs",
+    "tests/runtime/release-manifest.test.mjs",
+    "tests/runtime/github-update-ipc.test.mjs",
+    "apps/desktop/package.json",
+    "apps/desktop/package-lock.json",
+    "apps/desktop/electron-builder.yml",
+    "apps/desktop/src/pages/SettingsPage.test.tsx",
+    "scripts/verify-release.mjs",
+    "scripts/package-portable.ps1",
+    "docs/tasks/2026-11-21-release-1.1.2.md",
+    "docs/tasks/evidence/release-1.1.2/**",
+    "apps/desktop/release/1.1.2-final-reviewed/**"
   ],
   "acceptance": [
-    "A valid JSON request between 1 MiB and 4 MiB reaches the upstream when other limits permit",
-    "Gateway sends exact UTF-8 Content-Length for serialized upstream JSON",
-    "Allowlisted upstream 4xx statuses return stable sanitized client statuses and error codes, including HTTP 413 upstream_payload_too_large and HTTP 429 upstream_rate_limited",
-    "5xx and unknown upstream statuses remain sanitized HTTP 502 upstream_error while usage records keep upstreamStatus",
-    "Focused and full Runtime tests pass; git diff --check passes",
-    "Dedicated PR is created against master with evidence and no merge performed"
+    "PR #14 merged after conflict resolution and successful CI",
+    "package and product version show 1.1.2",
+    "Runtime and Desktop tests/build pass",
+    "release verifier and Portable smoke pass",
+    "GitHub v1.1.2 contains verified assets and release notes",
+    "Desktop Portable 1.1.2 hash matches verified artifact",
+    "primary master contains merge and release documentation",
+    "this task worktree is removed after archiving required evidence"
   ],
-  "rollback": "Revert the task commit(s) or close the dedicated PR; no persisted data or release artifacts are changed.",
-  "owner_acceptance": "pending; real provider reproduction and native Desktop acceptance remain NOT_RUN",
+  "rollback": "Restore master from merge commit and release manifest; delete only release artifacts or revert task commits through an authorized change. Preserve v1.1.1 and unrelated worktrees.",
+  "owner_acceptance": "pending until release assets, Desktop copy, merged master and worktree cleanup are verified",
   "verification": {
-    "baseline": "Runtime focused baseline 27/27; full suite baseline required desktop build and was rerun after npm ci",
+    "pr14_ci": "PASS before master conflict; rerun after version/rebase",
+    "runtime": "pending",
+    "desktop": "pending",
+    "build": "pending",
+    "release": "pending",
+    "portable_smoke": "pending",
+    "desktop_copy": "pending",
     "provider": "NOT_RUN",
-    "native_desktop": "NOT_RUN",
-    "ci": "IN_PROGRESS on PR #14 at head e33090c3; package jobs skipped by workflow",
-    "focused_runtime": "30/30 PASS",
-    "runtime": "114/114 PASS",
-    "desktop_build": "PASS: npm --prefix apps/desktop run build",
-    "whitespace": "PASS: git diff --check",
-    "independent_review": "DEGRADED: delegated reviewer returned no actionable code-review verdict; author self-review completed against plan and full suite"
+    "native_manual": "NOT_RUN"
   },
   "pull_request": {
-    "state": "OPEN",
     "number": 14,
-    "base": "master",
-    "head_sha": "e33090c3a2685e908e97031cc8761acd9f4df607",
+    "state": "OPEN",
     "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/14"
+  },
+  "capability": {
+    "skills": [
+      "using-superpowers",
+      "awg-workspace-governance",
+      "verification-before-completion",
+      "finishing-a-development-branch"
+    ],
+    "repo_mcp": "NOT_RUN: no registered workspace_id",
+    "native_desktop": "NOT_RUN until Portable direct-launch smoke"
   }
 }

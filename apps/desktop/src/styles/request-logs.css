@@ -1,11 +1,25 @@
 /* 9 compact columns fit the PR #6 desktop sheet; narrow screens scroll inside it. */
-.logs-table { min-width: 1000px; }
-.logs-table th, .logs-table td { padding-inline: 12px; }
+.logs-table { width: 100%; min-width: 1120px; table-layout: fixed; }
+.logs-table th, .logs-table td { padding-inline: 10px; }
 .logs-table td { padding-block: 12px; }
+.logs-table .log-col-time { width: 13%; }
+.logs-table .log-col-model { width: 14%; }
+.logs-table .log-col-source { width: 11%; }
+.logs-table .log-col-reasoning { width: 8%; }
+.logs-table .log-col-inbound { width: 7%; }
+.logs-table .log-col-type { width: 7%; }
+.logs-table .log-col-tokens { width: 16%; }
+.logs-table .log-col-status { width: 10%; }
+.logs-table .log-col-duration { width: 10%; }
+.logs-table .log-col-actions { width: 4%; }
 .logs-table time { white-space: nowrap; font-variant-numeric: tabular-nums; font-size: 13px; }
-.logs-table .log-model { min-width: 130px; max-width: 230px; }
+.logs-table .log-model { min-width: 0; max-width: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .logs-table .log-type { white-space: nowrap; color: var(--muted); font-size: 13px; }
-.logs-table .log-status { min-width: 72px; max-width: 150px; }
+.logs-table .log-status { min-width: 0; max-width: none; }
+.logs-table td:nth-child(1), .logs-table td:nth-child(2), .logs-table td:nth-child(3) { min-width: 0; }
+.logs-table td:nth-child(4) { white-space: nowrap; }
+.logs-table td:nth-child(7) { padding-inline: 6px; }
+.logs-table td:nth-child(8), .logs-table td:nth-child(9), .logs-table td:nth-child(10) { white-space: nowrap; }
 .detail-trigger { appearance: none; border: 0; border-radius: 4px; background: transparent; padding: 4px 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .detail-trigger:hover { background: var(--raised); }
 .detail-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }

@@ -36,6 +36,10 @@ export type CallLog = {
   model: string;
   credential: string;
   upstream: string;
+  reasoning?: string;
+  httpStatus?: number;
+  upstreamStatus?: number;
+  gatewayStatus?: number;
   direction: string;
   status: "成功（模拟）" | "失败（模拟）" | "成功" | "失败";
   durationMs: number | null;
