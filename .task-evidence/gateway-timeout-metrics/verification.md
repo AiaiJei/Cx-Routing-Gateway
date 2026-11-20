@@ -12,6 +12,7 @@
 - `npm run build` in `apps/desktop`: PASS, TypeScript and Vite.
 - `npm test` at repository root: PASS, Runtime 125/125.
 - `npm test` in `apps/desktop`: PASS, Desktop 143/143.
+- Pre-PR rerun after independent review: build PASS; Runtime 125/125; Desktop 143/143; `git diff --check` PASS.
 - Focused Task 2 Runtime tests: PASS, request metrics/logs 16/16.
 - Focused Task 2 Desktop test: PASS, timing tooltip 1/1.
 - Task 1 focused Gateway/request-log tests: PASS, 40/40.
