@@ -18,6 +18,9 @@ contextBridge.exposeInMainWorld("desktopControls", {
   deleteRoute: (id) => ipcRenderer.invoke("runtime:delete-route", id),
   updateRoute: (id, input) => ipcRenderer.invoke("runtime:update-route", id, input),
   updateSettings: (input) => ipcRenderer.invoke("runtime:update-settings", input),
+  getUpdateTokenStatus: () => ipcRenderer.invoke("runtime:get-update-token-status"),
+  saveUpdateToken: (token) => ipcRenderer.invoke("runtime:save-update-token", token),
+  removeUpdateToken: () => ipcRenderer.invoke("runtime:remove-update-token"),
   checkUpdate: () => ipcRenderer.invoke("runtime:check-update"),
   installUpdate: () => ipcRenderer.invoke("runtime:install-update"),
 });

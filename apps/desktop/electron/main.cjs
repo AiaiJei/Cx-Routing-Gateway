@@ -1,16 +1,52 @@
-const { app, BrowserWindow, ipcMain, safeStorage } = require("electron");
+const { app, BrowserWindow, ipcMain, safeStorage, shell } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs");
 const crypto = require("node:crypto");
 const { spawn } = require("node:child_process");
 const { startRuntime } = require("./runtime-supervisor.cjs");
 const { isTrustedDocumentUrl } = require("./security.cjs");
+const { createGitHubTokenStore } = require("./github-token-store.cjs");
+const { createGitHubTokenService } = require("./github-token-service.cjs");
+const { registerGitHubUpdateIpc } = require("./github-update-ipc.cjs");
 
 const devServerUrl = process.env.CXRG_DEV_SERVER_URL;
 const controlPort = Number(process.env.CXRG_CONTROL_PORT || 4319);
+const gatewayPort = Number(process.env.CXRG_GATEWAY_PORT || 4318);
 let runtime;
 let startupState = "starting";
 let quitting = false;
+let githubTokenStore;
+let githubTokenService;
+
+function updateScriptPath() {
+  return process.resourcesPath && !process.defaultApp
+    ? path.join(process.resourcesPath, "runtime", "scripts", "check-update.mjs")
+    : path.join(__dirname, "..", "..", "..", "scripts", "check-update.mjs");
+}
+
+function getGitHubTokenStore() {
+  if (!githubTokenStore) {
+    githubTokenStore = createGitHubTokenStore({
+      filePath: path.join(app.getPath("userData"), "github-update-token.bin"),
+      safeStorage,
+    });
+  }
+  return githubTokenStore;
+}
+
+function getGitHubTokenService() {
+  if (!githubTokenService) {
+    githubTokenService = createGitHubTokenService({
+      store: getGitHubTokenStore(),
+      safeStorage,
+      verifyToken: async ({ token }) => {
+        const { verifyGitHubToken } = await import(updateScriptPath());
+        return verifyGitHubToken({ token });
+      },
+    });
+  }
+  return githubTokenService;
+}
 
 function masterKeyPath() {
   return path.join(app.getPath("userData"), "runtime-master.key");
@@ -42,6 +78,7 @@ function createWindow() {
     height: 765,
     minWidth: 816,
     minHeight: 544,
+    icon: path.join(__dirname, "..", "build", "icon.ico"),
     frame: false,
     show: false,
     backgroundColor: "#f9fbfc",
@@ -53,7 +90,10 @@ function createWindow() {
       zoomFactor: 0.85,
     },
   });
-  window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  window.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https:\/\/github\.com\/AiaiJei\/Cx-Routing-Gateway\/releases\/tag\/v\d+\.\d+\.\d+$/.test(url)) void shell.openExternal(url);
+    return { action: "deny" };
+  });
   window.webContents.on("will-navigate", (event, url) => {
     if (!isTrustedDocumentUrl({ url, appIndexPath: path.join(__dirname, "..", "dist", "index.html"), devServerUrl })) event.preventDefault();
   });
@@ -182,28 +222,20 @@ ipcMain.handle("runtime:update-settings", async (event, input) => {
   return response.json();
 });
 
-ipcMain.handle("runtime:check-update", async (event) => {
-  if (!trustedSender(event)) throw new Error("Untrusted runtime request");
-  const manifestUrl = process.env.CXRG_UPDATE_MANIFEST_URL;
-  if (!manifestUrl) return { configured: false, available: false };
-  const scriptPath = process.resourcesPath && !process.defaultApp ? path.join(process.resourcesPath, "runtime", "scripts", "check-update.mjs") : path.join(__dirname, "..", "..", "..", "scripts", "check-update.mjs");
-  const { checkUpdate } = await import(scriptPath);
-  return { configured: true, ...(await checkUpdate({ manifestUrl, currentVersion: app.getVersion() })) };
-});
-
-ipcMain.handle("runtime:install-update", async (event) => {
-  if (!trustedSender(event)) throw new Error("Untrusted runtime request");
-  const manifestUrl = process.env.CXRG_UPDATE_MANIFEST_URL;
-  if (!manifestUrl) return { configured: false, installed: false };
-  const scriptPath = process.resourcesPath && !process.defaultApp ? path.join(process.resourcesPath, "runtime", "scripts", "check-update.mjs") : path.join(__dirname, "..", "..", "..", "scripts", "check-update.mjs");
-  const { installUpdate } = await import(scriptPath);
-  const result = await installUpdate({ manifestUrl, currentVersion: app.getVersion(), downloadDir: path.join(app.getPath("temp"), "cxrg-updates") });
+registerGitHubUpdateIpc({
+  ipcMain,
+  isTrustedSender: trustedSender,
+  getTokenService: getGitHubTokenService,
+  loadUpdater: () => import(updateScriptPath()),
+  getCurrentVersion: () => app.getVersion(),
+  getDownloadDir: () => path.join(app.getPath("temp"), "cxrg-updates"),
+  installDownloaded: async (result) => {
   const installer = spawn(result.path, [], { detached: true, stdio: "ignore", windowsHide: false });
   installer.unref();
   quitting = true;
   await runtime?.stop();
   app.exit(0);
-  return { configured: true, installed: true, version: result.version };
+  },
 });
 
 const versionOnly = process.argv.includes("--version");
@@ -223,7 +255,7 @@ if (versionOnly) {
 
   app.whenReady().then(async () => {
     try {
-      runtime = await startRuntime({ dataDir: path.join(app.getPath("userData"), "runtime"), masterKey: getMasterKey() });
+      runtime = await startRuntime({ dataDir: path.join(app.getPath("userData"), "runtime"), masterKey: getMasterKey(), controlPort, gatewayPort });
       startupState = "running";
     } catch (error) {
       startupState = "failed";

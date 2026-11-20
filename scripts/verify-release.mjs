@@ -15,6 +15,7 @@ const required = [
   'win-unpacked/resources/runtime/scripts/check-update.mjs',
   `Cx-Routing Gateway Setup ${version}.exe`,
   `Cx-Routing Gateway Setup ${version}.exe.blockmap`,
+  `Cx-Routing Gateway Portable ${version}.exe`,
 ];
 
 const artifacts = [];
