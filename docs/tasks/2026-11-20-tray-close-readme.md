@@ -20,7 +20,7 @@
 - Tray lifecycle tests: 9/9, including second-instance and activation registration; full Runtime suite: 111/111.
 - Desktop suite: 135/135; Settings tests: 12/12; update-check feedback regression passed RED/GREEN; production TypeScript/Vite build passed.
 - Update-check regression asserts immediate live status, pending button lockout, clear missing-token explanation, and token-field focus action.
-- PR #11 includes this update-feedback fix at `81d59dd`; its CI rerun is pending.
+- PR #11 includes this update-feedback fix at `81d59dd`; Runtime and Desktop CI passed on head `b94e9d56`, while the package job was skipped by the PR workflow condition.
 - README local links, screenshot files, synchronized version metadata, `.worktree/` ignore rule and `git diff --check` passed.
 - Electron main/tray modules pass `node --check`.
 - Screenshots are 1440x980. Capture source, fixture-mode limitation, and SHA-256 values are in `docs/tasks/evidence/tray-close-readme/screenshots.json`.
