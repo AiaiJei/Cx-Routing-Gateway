@@ -23,7 +23,7 @@
 - Screenshots are 1440x980. Capture source, fixture-mode limitation, and SHA-256 values are in `docs/tasks/evidence/tray-close-readme/screenshots.json`.
 - Native Electron tray interaction is `NOT_RUN`: `C:\Users\20142\.npmrc` permits dependency install scripts only for `@opencode/cli`, so the Electron executable was unavailable. The user-level npm policy was left unchanged; tray behavior is covered by the Electron-independent lifecycle tests.
 - Independent review found one Important coverage gap in main-process event wiring. Three tests were observed failing before implementation and passing afterward; no Critical/security or Minor findings were reported. The inline workflow did not dispatch a second review.
-- GitHub Runtime/Desktop CI is running on PR #11; the package job is skipped for pull requests by workflow condition. Owner acceptance remains pending.
+- GitHub Runtime and Desktop CI passed on PR #11 head `1d276a88`; the package job was skipped for pull requests by workflow condition. Owner acceptance remains pending.
 
 ## Integration Boundary
 
