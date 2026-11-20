@@ -66,7 +66,7 @@
     "baseline": "Runtime focused baseline 27/27; full suite baseline required desktop build and was rerun after npm ci",
     "provider": "NOT_RUN",
     "native_desktop": "NOT_RUN",
-    "ci": "pending after push",
+    "ci": "IN_PROGRESS on PR #14 at head e33090c3; package jobs skipped by workflow",
     "focused_runtime": "30/30 PASS",
     "runtime": "114/114 PASS",
     "desktop_build": "PASS: npm --prefix apps/desktop run build",
@@ -74,9 +74,10 @@
     "independent_review": "DEGRADED: delegated reviewer returned no actionable code-review verdict; author self-review completed against plan and full suite"
   },
   "pull_request": {
-    "state": "pending",
+    "state": "OPEN",
+    "number": 14,
     "base": "master",
-    "number": null,
-    "url": null
+    "head_sha": "e33090c3a2685e908e97031cc8761acd9f4df607",
+    "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/14"
   }
 }
