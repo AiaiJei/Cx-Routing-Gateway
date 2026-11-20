@@ -2,18 +2,18 @@
   "product": "Cx-Routing Gateway",
   "version": "1.1.0",
   "platform": "win32",
-  "generatedAt": "2026-11-20T09:26:25.431Z",
+  "generatedAt": "2026-11-20T10:27:18.020Z",
   "signed": false,
   "artifacts": [
     {
       "path": "win-unpacked/Cx-Routing Gateway.exe",
       "bytes": 249906688,
-      "sha256": "58720c1113594e79d973b43b7aca74b7e4d10c6bdb4c95ee76f24bce23f9c7c4"
+      "sha256": "16a06527e14e9000d4dd042e183104e272d3a780861a996940b53a1c814d2923"
     },
     {
       "path": "win-unpacked/resources/app.asar",
-      "bytes": 13829258,
-      "sha256": "621d55402aedf79a3277310ae0e3bff15275c4ab6e207544cfcbddcb0dc06c76"
+      "bytes": 13832399,
+      "sha256": "ee61a21193b20da1eb376ba0aa5ecab44568dba49fd4ef91bbb0ac2f6ae4775c"
     },
     {
       "path": "win-unpacked/resources/runtime/services/local-control/src/server.mjs",
@@ -42,23 +42,23 @@
     },
     {
       "path": "win-unpacked/resources/runtime/scripts/check-update.mjs",
-      "bytes": 6398,
-      "sha256": "1f56cc0b92df747a66623da6163ea56ab36ac78195ba8166a0379d502acc8e87"
+      "bytes": 7087,
+      "sha256": "9a70abb39837da9c628d2ba7c9f22180a09d129df140a9b1b6dc0dd76efde7f8"
     },
     {
       "path": "Cx-Routing Gateway Setup 1.1.0.exe",
-      "bytes": 126496741,
-      "sha256": "ae032dfb97ba393c500253df834e4ff5bcb4c197f126876a8c8258e2e9545a00"
+      "bytes": 126498521,
+      "sha256": "e5c7e9bc5ace0193ea01675bbbd28d5d8f91d38297517f9f00d06faf24732728"
     },
     {
       "path": "Cx-Routing Gateway Setup 1.1.0.exe.blockmap",
-      "bytes": 133116,
-      "sha256": "a8dcea83f8e22f4332702a07eac2c864a5e084e14bbd063735969c94832f2e32"
+      "bytes": 133188,
+      "sha256": "dc574dc16f8a51d5fa311a64604f00b0f915752dcc38a3157a1459e22ee58dd2"
     },
     {
       "path": "Cx-Routing Gateway Portable 1.1.0.exe",
-      "bytes": 115017353,
-      "sha256": "c2cd7606b02fe4fc3f9526ddaacc0ac323e0e7cdfb349aad1fec4800cb663a36"
+      "bytes": 115021474,
+      "sha256": "8244ba83fc911c7a72969cd8ffb9590413b28e7f77cf35aba3b80736ea2d7a02"
     }
   ]
 }

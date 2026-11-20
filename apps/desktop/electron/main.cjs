@@ -7,9 +7,11 @@ const { startRuntime } = require("./runtime-supervisor.cjs");
 const { isTrustedDocumentUrl } = require("./security.cjs");
 const { createGitHubTokenStore } = require("./github-token-store.cjs");
 const { createGitHubTokenService } = require("./github-token-service.cjs");
+const { registerGitHubUpdateIpc } = require("./github-update-ipc.cjs");
 
 const devServerUrl = process.env.CXRG_DEV_SERVER_URL;
 const controlPort = Number(process.env.CXRG_CONTROL_PORT || 4319);
+const gatewayPort = Number(process.env.CXRG_GATEWAY_PORT || 4318);
 let runtime;
 let startupState = "starting";
 let quitting = false;
@@ -220,41 +222,20 @@ ipcMain.handle("runtime:update-settings", async (event, input) => {
   return response.json();
 });
 
-ipcMain.handle("runtime:get-update-token-status", async (event) => {
-  if (!trustedSender(event)) throw new Error("Untrusted runtime request");
-  return getGitHubTokenService().getStatus();
-});
-
-ipcMain.handle("runtime:save-update-token", async (event, token) => {
-  if (!trustedSender(event) || typeof token !== "string") throw new Error("Invalid GitHub token request");
-  return getGitHubTokenService().save(token);
-});
-
-ipcMain.handle("runtime:remove-update-token", async (event) => {
-  if (!trustedSender(event)) throw new Error("Untrusted runtime request");
-  return getGitHubTokenService().remove();
-});
-
-ipcMain.handle("runtime:check-update", async (event) => {
-  if (!trustedSender(event)) throw new Error("Untrusted runtime request");
-  const token = await getGitHubTokenService().getToken();
-  if (!token) return { configured: false, available: false };
-  const { checkUpdate } = await import(updateScriptPath());
-  return checkUpdate({ currentVersion: app.getVersion(), token });
-});
-
-ipcMain.handle("runtime:install-update", async (event) => {
-  if (!trustedSender(event)) throw new Error("Untrusted runtime request");
-  const token = await getGitHubTokenService().getToken();
-  if (!token) return { configured: false, installed: false };
-  const { installUpdate } = await import(updateScriptPath());
-  const result = await installUpdate({ currentVersion: app.getVersion(), token, downloadDir: path.join(app.getPath("temp"), "cxrg-updates") });
+registerGitHubUpdateIpc({
+  ipcMain,
+  isTrustedSender: trustedSender,
+  getTokenService: getGitHubTokenService,
+  loadUpdater: () => import(updateScriptPath()),
+  getCurrentVersion: () => app.getVersion(),
+  getDownloadDir: () => path.join(app.getPath("temp"), "cxrg-updates"),
+  installDownloaded: async (result) => {
   const installer = spawn(result.path, [], { detached: true, stdio: "ignore", windowsHide: false });
   installer.unref();
   quitting = true;
   await runtime?.stop();
   app.exit(0);
-  return { configured: true, installed: true, version: result.version };
+  },
 });
 
 const versionOnly = process.argv.includes("--version");
@@ -274,7 +255,7 @@ if (versionOnly) {
 
   app.whenReady().then(async () => {
     try {
-      runtime = await startRuntime({ dataDir: path.join(app.getPath("userData"), "runtime"), masterKey: getMasterKey() });
+      runtime = await startRuntime({ dataDir: path.join(app.getPath("userData"), "runtime"), masterKey: getMasterKey(), controlPort, gatewayPort });
       startupState = "running";
     } catch (error) {
       startupState = "failed";

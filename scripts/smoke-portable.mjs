@@ -3,14 +3,21 @@ import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { reservePortableSmokePorts } from './portable-smoke-config.mjs';
 
 const executable = process.argv[2];
 if (!executable) throw new Error('Usage: node scripts/smoke-portable.mjs <portable-executable>');
+const ports = await reservePortableSmokePorts();
+await ports.release();
 const userData = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-portable-userdata-'));
-const child = spawn(executable, [`--user-data-dir=${userData}`], { stdio: 'ignore', windowsHide: true });
+const child = spawn(executable, [`--user-data-dir=${userData}`], {
+  env: { ...process.env, ...ports.environment },
+  stdio: 'ignore',
+  windowsHide: true,
+});
 const endpoints = [
-  ['control', 'http://127.0.0.1:4319/health'],
-  ['gateway', 'http://127.0.0.1:4318/health'],
+  ['control', ports.controlUrl],
+  ['gateway', ports.gatewayUrl],
 ];
 
 try {

@@ -1,5 +1,5 @@
 param(
-  [string]$OutputDirectory = "apps/desktop/release/1.1.0-final-portable"
+  [string]$OutputDirectory = "apps/desktop/release/1.1.0-final-reviewed"
 )
 
 $ErrorActionPreference = "Stop"

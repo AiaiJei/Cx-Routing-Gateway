@@ -38,6 +38,12 @@ function authorizationHeaders(token) {
   };
 }
 
+function githubError(message, code) {
+  const error = new Error(message);
+  error.code = code;
+  return error;
+}
+
 export async function verifyGitHubToken({ token, repository = DEFAULT_REPOSITORY, fetchImpl = fetch } = {}) {
   requireToken(token);
   requireRepository(repository);
@@ -47,7 +53,10 @@ export async function verifyGitHubToken({ token, repository = DEFAULT_REPOSITORY
   } catch {
     throw new Error('Unable to verify GitHub repository access');
   }
-  if (!response.ok) throw new Error(`GitHub token cannot read repository contents (HTTP ${response.status})`);
+  if (!response.ok) {
+    const code = [401, 403, 404].includes(response.status) ? 'GITHUB_ACCESS_DENIED' : undefined;
+    throw githubError(`GitHub token cannot read repository contents (HTTP ${response.status})`, code);
+  }
   let result;
   try { result = await response.json(); } catch { throw new Error('GitHub returned invalid repository contents'); }
   if (!Array.isArray(result)) throw new Error('GitHub token cannot read repository contents');
@@ -69,7 +78,9 @@ function installerAsset(release, version) {
   if (!/^sha256:[a-f\d]{64}$/i.test(asset.digest || '')) throw new Error('GitHub release installer has no valid SHA-256 digest');
   const url = new URL(asset.browser_download_url);
   const expectedPath = `/AiaiJei/Cx-Routing-Gateway/releases/download/v${version}/`;
-  if (url.protocol !== 'https:' || url.hostname !== 'github.com' || !url.pathname.startsWith(expectedPath) || url.search || url.hash) {
+  let urlFilename;
+  try { urlFilename = decodeURIComponent(url.pathname.slice(url.pathname.lastIndexOf('/') + 1)); } catch { throw new Error('GitHub release installer URL is invalid'); }
+  if (url.protocol !== 'https:' || url.hostname !== 'github.com' || !url.pathname.startsWith(expectedPath) || urlFilename !== expectedName || url.search || url.hash) {
     throw new Error('GitHub release installer URL is invalid');
   }
   return { name: expectedName, url: url.href, sha256: asset.digest.slice('sha256:'.length).toLowerCase() };
@@ -84,7 +95,10 @@ async function fetchLatestRelease({ repository, token, fetchImpl }) {
   } catch {
     throw new Error('Unable to contact GitHub Releases API');
   }
-  if (!response.ok) throw new Error(`GitHub Releases API returned ${response.status}`);
+  if (!response.ok) {
+    const code = [401, 403, 404].includes(response.status) ? 'GITHUB_CREDENTIAL_RECHECK' : undefined;
+    throw githubError(`GitHub Releases API returned ${response.status}`, code);
+  }
   let release;
   try { release = await response.json(); } catch { throw new Error('GitHub Releases API returned invalid JSON'); }
   const version = releaseVersion(release);
@@ -113,7 +127,10 @@ export async function installUpdate({ currentVersion, token, repository = DEFAUL
   } catch {
     throw new Error('Unable to download GitHub release installer');
   }
-  if (!response.ok) throw new Error(`GitHub release installer returned ${response.status}`);
+  if (!response.ok) {
+    const code = [401, 403, 404].includes(response.status) ? 'GITHUB_CREDENTIAL_RECHECK' : undefined;
+    throw githubError(`GitHub release installer returned ${response.status}`, code);
+  }
   const bytes = Buffer.from(await response.arrayBuffer());
   const sha256 = crypto.createHash('sha256').update(bytes).digest('hex');
   if (sha256 !== installer.sha256) throw new Error('GitHub release installer SHA-256 mismatch');

@@ -66,6 +66,8 @@ export function SettingsPage() {
     if (!window.desktopControls?.checkUpdate) { setUpdateMessage("更新检查仅在 Desktop 运行时可用。"); return; }
     try {
       const result = await window.desktopControls.checkUpdate();
+      setTokenConfigured(result.configured);
+      if (result.tokenInvalid) setTokenMessage("GitHub 更新令牌已失效，请重新配置。");
       setUpdateAvailable(Boolean(result.available));
       setReleaseUrl(result.releaseUrl || "");
       setUpdateMessage(!result.configured ? "请先配置并验证 GitHub 更新访问令牌。" : result.available ? `发现版本 ${result.version}；更新来自 GitHub Release。` : "当前已是最新版本。");
@@ -75,6 +77,8 @@ export function SettingsPage() {
     if (!window.desktopControls?.installUpdate) { setUpdateMessage("更新安装仅在 Desktop 运行时可用。"); return; }
     try {
       const result = await window.desktopControls.installUpdate();
+      setTokenConfigured(result.configured);
+      if (result.tokenInvalid) setTokenMessage("GitHub 更新令牌已失效，请重新配置。");
       setUpdateMessage(!result.configured ? "请先配置并验证 GitHub 更新访问令牌。" : result.installed ? `正在安装版本 ${result.version}，应用将退出。` : "没有可安装的已验证更新。");
     } catch (caught) { setUpdateMessage(caught instanceof Error ? caught.message : "更新安装失败"); }
   }

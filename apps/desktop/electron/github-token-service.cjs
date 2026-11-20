@@ -1,8 +1,10 @@
+const { isSecureStorageAvailable } = require("./github-token-store.cjs");
+
 function createGitHubTokenService({ store, safeStorage, verifyToken }) {
   if (!store || !safeStorage || typeof verifyToken !== "function") throw new Error("GitHub token service configuration is invalid");
 
   async function getStatus() {
-    const secureStorageAvailable = typeof safeStorage.isEncryptionAvailable === "function" && safeStorage.isEncryptionAvailable();
+    const secureStorageAvailable = await isSecureStorageAvailable(safeStorage);
     if (!secureStorageAvailable) return { configured: false, secureStorageAvailable: false };
     return { configured: await store.hasToken(), secureStorageAvailable: true };
   }
@@ -11,7 +13,7 @@ function createGitHubTokenService({ store, safeStorage, verifyToken }) {
     if (typeof token !== "string" || !token || token.length > 8192 || token.trim() !== token || /[\r\n\0]/.test(token)) {
       throw new Error("Invalid GitHub token");
     }
-    if (typeof safeStorage.isEncryptionAvailable !== "function" || !safeStorage.isEncryptionAvailable()) {
+    if (!(await isSecureStorageAvailable(safeStorage))) {
       throw new Error("GitHub token secure storage is unavailable");
     }
     try {
@@ -28,11 +30,26 @@ function createGitHubTokenService({ store, safeStorage, verifyToken }) {
     return store.getToken();
   }
 
+  async function verifyStoredToken() {
+    const token = await store.getToken();
+    if (!token) return false;
+    try {
+      const result = await verifyToken({ token });
+      if (result?.valid === true) return true;
+      await store.removeToken();
+      return false;
+    } catch (error) {
+      if (error?.code !== "GITHUB_ACCESS_DENIED") throw error;
+      await store.removeToken();
+      return false;
+    }
+  }
+
   async function remove() {
     return store.removeToken();
   }
 
-  return { getStatus, save, getToken, remove };
+  return { getStatus, save, getToken, verifyStoredToken, remove };
 }
 
 module.exports = { createGitHubTokenService };

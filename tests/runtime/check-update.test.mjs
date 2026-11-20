@@ -122,11 +122,24 @@ test('checkUpdate rejects drafts, prereleases, malformed tags and missing instal
   }
 });
 
+test('checkUpdate rejects a URL whose filename does not match the expected installer asset', async () => {
+  const mismatched = release({ assets: [{ ...release().assets[0], browser_download_url: 'https://github.com/AiaiJei/Cx-Routing-Gateway/releases/download/v1.1.0/Other.exe' }] });
+  const { fetchImpl } = fetchFixture(mismatched);
+  await assert.rejects(() => checkUpdate({ currentVersion: '1.0.3', token, fetchImpl }), /installer URL is invalid/i);
+});
+
 test('checkUpdate rejects invalid JSON, malformed API responses and fetch failures', async () => {
   await assert.rejects(() => checkUpdate({ currentVersion: '1.0.3', token, fetchImpl: async () => new Response('{', { status: 200 }) }));
   await assert.rejects(() => checkUpdate({ currentVersion: '1.0.3', token, fetchImpl: async () => new Response('missing', { status: 500 }) }));
   const { fetchImpl } = fetchFixture(new Error('network unavailable'));
   await assert.rejects(() => checkUpdate({ currentVersion: '1.0.3', token, fetchImpl }), /Unable to contact GitHub Releases API/);
+});
+
+test('checkUpdate marks HTTP authorization or private-resource failures for token revalidation', async () => {
+  for (const status of [401, 403, 404]) {
+    const { fetchImpl } = fetchFixture(new Response('{}', { status }));
+    await assert.rejects(() => checkUpdate({ currentVersion: '1.0.3', token, fetchImpl }), (error) => error.code === 'GITHUB_CREDENTIAL_RECHECK');
+  }
 });
 
 test('installUpdate authenticates the asset request and verifies GitHub SHA-256 before writing', async (t) => {
@@ -147,4 +160,15 @@ test('installUpdate rejects tampered installer bytes before writing them', async
   t.after(() => fs.rm(downloadDir, { recursive: true, force: true }));
   await assert.rejects(() => installUpdate({ currentVersion: '1.0.3', token, fetchImpl, downloadDir }), /SHA-256 mismatch/);
   assert.deepEqual(await fs.readdir(downloadDir), []);
+});
+
+test('installUpdate marks private asset authorization failures for token revalidation', async () => {
+  for (const status of [401, 403, 404]) {
+    const { fetchImpl } = fetchFixture(release());
+    const deniedFetch = async (url, options) => {
+      if (String(url).includes('/releases/download/')) return new Response('{}', { status });
+      return fetchImpl(url, options);
+    };
+    await assert.rejects(() => installUpdate({ currentVersion: '1.0.3', token, fetchImpl: deniedFetch }), (error) => error.code === 'GITHUB_CREDENTIAL_RECHECK');
+  }
 });

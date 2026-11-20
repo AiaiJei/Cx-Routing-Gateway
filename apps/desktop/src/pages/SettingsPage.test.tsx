@@ -116,6 +116,23 @@ describe("SettingsPage", () => {
       window.desktopControls = original;
     }
   });
+  it("clears configured status when the main process reports a revoked token", async () => {
+    const original = window.desktopControls;
+    window.desktopControls = {
+      ...original!,
+      getUpdateTokenStatus: async () => ({ configured: true, secureStorageAvailable: true }),
+      checkUpdate: async () => ({ configured: false, available: false, tokenInvalid: true }),
+    };
+    try {
+      const user = userEvent.setup();
+      render(<SettingsPage />);
+      await user.click(await screen.findByRole("button", { name: "检查更新" }));
+      expect(await screen.findByText("GitHub 更新令牌已失效，请重新配置。" )).toBeVisible();
+      expect(screen.queryByRole("button", { name: "移除令牌" })).not.toBeInTheDocument();
+    } finally {
+      window.desktopControls = original;
+    }
+  });
   it("reports GitHub update check failures", async () => {
     const original = window.desktopControls;
     window.desktopControls = { ...original!, checkUpdate: async () => { throw new Error("GitHub Releases API returned 503"); } };

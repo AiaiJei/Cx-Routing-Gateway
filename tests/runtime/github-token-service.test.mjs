@@ -13,7 +13,7 @@ function setup({ available = true, verifyToken = async () => ({ valid: true }) }
     async setToken(value) { calls.push(['setToken', value]); return { configured: true }; },
     async removeToken() { calls.push('removeToken'); return { configured: false }; },
   };
-  const service = createGitHubTokenService({ store, safeStorage: { isEncryptionAvailable: () => available }, verifyToken: async (input) => { calls.push(['verifyToken', input.token]); return verifyToken(input); } });
+  const service = createGitHubTokenService({ store, safeStorage: { isAsyncEncryptionAvailable: async () => available, getSelectedStorageBackend: () => 'win32' }, verifyToken: async (input) => { calls.push(['verifyToken', input.token]); return verifyToken(input); } });
   return { service, calls };
 }
 
@@ -49,4 +49,17 @@ test('token service exposes credential reads only to its main-process caller and
   assert.equal(await service.getToken(), token);
   assert.deepEqual(await service.remove(), { configured: false });
   assert.deepEqual(calls, ['getToken', 'removeToken']);
+});
+
+test('token service clears a stored credential only after repository verification confirms revocation', async () => {
+  const revoked = Object.assign(new Error('GitHub token cannot read repository contents'), { code: 'GITHUB_ACCESS_DENIED' });
+  const { service, calls } = setup({ verifyToken: async () => { throw revoked; } });
+  assert.equal(await service.verifyStoredToken(), false);
+  assert.deepEqual(calls, ['getToken', ['verifyToken', token], 'removeToken']);
+});
+
+test('token service preserves a stored credential when revalidation fails due to network error', async () => {
+  const { service, calls } = setup({ verifyToken: async () => { throw new Error('network unavailable'); } });
+  await assert.rejects(() => service.verifyStoredToken(), /network unavailable/);
+  assert.deepEqual(calls, ['getToken', ['verifyToken', token]]);
 });

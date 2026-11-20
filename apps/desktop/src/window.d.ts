@@ -23,8 +23,8 @@ declare global {
       getUpdateTokenStatus?: () => Promise<{ configured: boolean; secureStorageAvailable: boolean }>;
       saveUpdateToken?: (token: string) => Promise<{ configured: boolean }>;
       removeUpdateToken?: () => Promise<{ configured: boolean }>;
-      checkUpdate: () => Promise<{ configured: boolean; available: boolean; version?: string; releaseUrl?: string; installer?: { name: string; sha256: string } }>;
-      installUpdate: () => Promise<{ configured: boolean; installed: boolean; version?: string }>;
+      checkUpdate: () => Promise<{ configured: boolean; available: boolean; tokenInvalid?: boolean; version?: string; releaseUrl?: string; installer?: { name: string; sha256: string } }>;
+      installUpdate: () => Promise<{ configured: boolean; installed: boolean; tokenInvalid?: boolean; version?: string }>;
     };
   }
 }

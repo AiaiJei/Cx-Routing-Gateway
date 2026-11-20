@@ -13,6 +13,11 @@
 - **安装版：** `Cx-Routing Gateway Setup 1.1.0.exe`，Windows x64 NSIS 安装包。
 - **免安装版：** `Cx-Routing Gateway Portable 1.1.0.exe`，下载后双击运行，无需安装或手动解压。
 
+SHA-256:
+
+- 安装版：`e5c7e9bc5ace0193ea01675bbbd28d5d8f91d38297517f9f00d06faf24732728`
+- 免安装版：`8244ba83fc911c7a72969cd8ffb9590413b28e7f77cf35aba3b80736ea2d7a02`
+
 ## 校验与兼容
 
 - 免安装版是单个 Windows x64 便携可执行文件；下载后双击启动，已验证本地控制服务和 Gateway 健康状态。
