@@ -5,7 +5,7 @@
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
   "status": "pr-open",
-  "stage": "ci-passed",
+  "stage": "pr-open",
   "base": "master",
   "base_sha": "ba4ad680485fc8001169b88557a42acda3d7246a",
   "branch": "codex/request-body-413",
@@ -73,7 +73,7 @@
     "state": "open",
     "number": 13,
     "base": "master",
-    "head_sha": "e251071e1d197913bc7834beaf26b45a9ae841b5",
+    "head_sha": "de5de9d9935861f194424334399ae4d8bcf165c1",
     "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/13",
     "mergeable": "MERGEABLE"
   }
