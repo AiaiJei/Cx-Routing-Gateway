@@ -68,3 +68,5 @@ User requested renaming `结果` to `状态`, a full-status Tooltip including HT
 - RED: Runtime status snapshot, Desktop status/error mapping, header rename, Tooltip, and detail error tests failed before implementation.
 - GREEN: request-log focused 6/6; Desktop mapping/UI 24/24; full Runtime 116/116; full Desktop 142/142; production build PASS; git diff --check PASS.
 - Runtime stores HTTP/upstream/gateway status codes and Desktop maps only sanitized gateway error definitions; raw provider bodies remain excluded.
+
+- Final status/error revision PR head 6ebbd74: Runtime 116/116; Desktop 142/142; build PASS; CI Runtime/Desktop SUCCESS; package SKIPPED. PR #12 remains OPEN and unmerged.
