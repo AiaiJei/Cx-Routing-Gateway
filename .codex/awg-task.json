@@ -98,9 +98,10 @@
   "rollback": "Revert task commits before merge; preserve generated local artifacts and evidence. Any post-release tag/release removal requires explicit owner authorization.",
   "owner_acceptance": "pending",
   "pull_request": {
-    "state": "not-created",
+    "state": "open",
     "number": 10,
-    "base": "master"
+    "base": "master",
+    "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/10"
   },
   "verification": {
     "baseline": "prior pre-auth source: Desktop 128/128, Runtime 75/75, production build passed; rerun after token changes",
