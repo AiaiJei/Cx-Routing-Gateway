@@ -362,7 +362,7 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
   let inFlight = 0;
   const server = http.createServer(async (req, res) => {
     const requestId = crypto.randomUUID();
-    const startedAt = Date.now();
+    const startedAt = now();
     const requestStartedMonotonic = monotonicNow();
     const requestDeadline = requestStartedMonotonic + maxRequestDurationMs;
     const requestController = new AbortController();
@@ -441,7 +441,7 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
       requestGeneration = targetHealth.generation;
       upstream = selected.upstream;
       route = { ...route, upstreamId: selected.target.upstreamId, modelId: selected.target.modelId };
-      metrics = createRequestMetrics({ protocol: route.outboundProtocol, stream: input.stream === true, startedAt });
+      metrics = createRequestMetrics({ protocol: route.outboundProtocol, stream: input.stream === true, startedAt: requestStartedMonotonic, clock: monotonicNow });
       const normalized = route.outboundProtocol === inbound ? null : normalize(inbound, input);
       upstreamStarted = true;
       const addresses = await validateDestination(upstream.baseUrl, upstream.trustedPrivateNetwork === true, upstream.approvedAddresses || [], dnsLookup);
@@ -462,7 +462,7 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
         await upstreamResponse.body?.cancel().catch(() => {});
         recordOutcome(policy.statusClasses.includes(Math.floor(upstreamResponse.status / 100)));
         const classified = classifyUpstreamStatus(upstreamResponse.status);
-        await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Date.now() - startedAt, ...metrics?.snapshot(), ...(reasoningEffort ? { reasoningEffort } : {}), inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, upstreamName: upstream.name, modelId: route.modelId, status: 'failed', errorCode: classified.errorCode, upstreamStatus: upstreamResponse.status, gatewayStatus: classified.clientStatus });
+        await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Math.max(0, monotonicNow() - requestStartedMonotonic), ...metrics?.snapshot(), ...(reasoningEffort ? { reasoningEffort } : {}), inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, upstreamName: upstream.name, modelId: route.modelId, status: 'failed', errorCode: classified.errorCode, upstreamStatus: upstreamResponse.status, gatewayStatus: classified.clientStatus });
         return send(res, classified.clientStatus, { error: classified.errorCode, requestId }, requestId);
       }
       if (input.stream === true) {
@@ -472,20 +472,20 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
         if (route.outboundProtocol === inbound) await pipeStream(upstreamResponse, res, metrics, requestDeadline, monotonicNow);
         else await pipeConvertedStream(upstreamResponse, res, route.outboundProtocol, inbound, requestId, metrics, requestDeadline, monotonicNow);
         recordOutcome(false);
-        await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Date.now() - startedAt, ...metrics?.snapshot(), ...(reasoningEffort ? { reasoningEffort } : {}), httpStatus: upstreamResponse.status, inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, upstreamName: upstream.name, modelId: route.modelId, status: 'completed' });
+        await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Math.max(0, monotonicNow() - requestStartedMonotonic), ...metrics?.snapshot(), ...(reasoningEffort ? { reasoningEffort } : {}), httpStatus: upstreamResponse.status, inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, upstreamName: upstream.name, modelId: route.modelId, status: 'completed' });
         if (!credential.temporary) await store.update((value) => ({ ...value, clientKeys: value.clientKeys.map((item) => item.id === credential.id ? { ...item, lastUsedAt: new Date().toISOString() } : item) }));
         return;
       }
       const upstreamBody = await readJson(upstreamResponse, requestDeadline, monotonicNow);
       metrics.observeJson(upstreamBody);
       recordOutcome(false);
-      await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Date.now() - startedAt, ...metrics?.snapshot(), ...(reasoningEffort ? { reasoningEffort } : {}), httpStatus: upstreamResponse.status, inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, upstreamName: upstream.name, modelId: route.modelId, status: 'completed' });
+      await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Math.max(0, monotonicNow() - requestStartedMonotonic), ...metrics?.snapshot(), ...(reasoningEffort ? { reasoningEffort } : {}), httpStatus: upstreamResponse.status, inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, upstreamName: upstream.name, modelId: route.modelId, status: 'completed' });
       if (!credential.temporary) await store.update((value) => ({ ...value, clientKeys: value.clientKeys.map((item) => item.id === credential.id ? { ...item, lastUsedAt: new Date().toISOString() } : item) }));
       return send(res, 200, route.outboundProtocol === inbound ? upstreamBody : inboundResponse(inbound, route.outboundProtocol, upstreamBody, requestId), requestId);
     } catch (error) {
       if (upstreamTimedOut) error = Object.assign(new Error('Upstream timeout'), { code: 'upstream_timeout', statusCode: 504 });
       if (upstreamStarted && (error.code === 'upstream_error' || error.code === 'upstream_timeout' || !error.statusCode)) recordOutcome(true);
-      if (route && upstream) await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Date.now() - startedAt, ...metrics?.snapshot(), ...(reasoningEffort ? { reasoningEffort } : {}), ...(error.statusCode ? { gatewayStatus: error.statusCode } : {}), inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, upstreamName: upstream.name, modelId: route.modelId, status: error.statusCode === 400 ? 'rejected' : 'failed', errorCode: error.code || 'gateway_error' });
+      if (route && upstream) await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Math.max(0, monotonicNow() - requestStartedMonotonic), ...metrics?.snapshot(), ...(reasoningEffort ? { reasoningEffort } : {}), ...(error.statusCode ? { gatewayStatus: error.statusCode } : {}), inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, upstreamName: upstream.name, modelId: route.modelId, status: error.statusCode === 400 ? 'rejected' : 'failed', errorCode: error.code || 'gateway_error' });
       if (requestController.signal.aborted || res.destroyed) return;
       if (res.headersSent) return res.destroy();
       return send(res, error.statusCode || 500, { error: error.code || 'internal_error', message: error.statusCode ? error.message : undefined, requestId }, requestId);
@@ -516,7 +516,7 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
       : route.inboundProtocol === 'Mes'
         ? { model: route.alias, max_tokens: 256, messages: [{ role: 'user', content: text }] }
         : { model: route.alias, max_completion_tokens: 256, messages: [{ role: 'user', content: text }] };
-    const startedAt = now();
+    const startedAt = monotonicNow();
     try {
       const response = await fetch(`http://127.0.0.1:${address.port}${endpoint}`, {
         method: 'POST',
@@ -526,7 +526,7 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
       });
       const requestId = response.headers.get('x-request-id') || '';
       const result = await response.json().catch(() => ({}));
-      const durationMs = Math.max(0, now() - startedAt);
+      const durationMs = Math.max(0, monotonicNow() - startedAt);
       if (!response.ok) {
         const errors = { all_upstreams_unavailable: '所有上游当前均不可用', upstream_error: '上游请求失败，请检查上游状态和日志', upstream_rate_limited: '上游请求被限流，请稍后重试', upstream_payload_too_large: '上游拒绝了过大的请求体', request_body_too_large: '请求体超过网关限制', upstream_timeout: '上游响应超时', unsupported_feature: '当前请求包含不支持的协议特性', route_not_found: '路由未匹配到此请求协议' };
         return { routeAlias: route.alias, text: '', requestId, durationMs, status: response.status, error: errors[result.error] || `Gateway 请求失败（${response.status}）` };
