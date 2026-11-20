@@ -245,7 +245,7 @@ registerGitHubUpdateIpc({
 const versionOnly = process.argv.includes("--version");
 const lock = versionOnly ? true : app.requestSingleInstanceLock();
 if (versionOnly) {
-  app.whenReady().then(() => { console.log(app.getVersion()); app.exit(0); });
+  app.whenReady().then(() => { console.log(cxrgProductVersion); app.exit(0); });
 } else if (!lock) {
   app.quit();
 } else {
