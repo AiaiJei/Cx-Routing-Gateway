@@ -5,7 +5,7 @@
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
   "status": "pr-open",
-  "stage": "ci-pending",
+  "stage": "ci-passed",
   "base": "master",
   "base_sha": "ba4ad680485fc8001169b88557a42acda3d7246a",
   "branch": "codex/request-body-413",
@@ -59,19 +59,22 @@
   "owner_acceptance": "pending",
   "verification": {
     "focused": "PASS: Gateway 34/34",
-    "desktop": "PASS: 135/135",
     "full_runtime": "PASS: 118/118",
-    "production_build": "NOT_RUN: no Desktop source changed",
+    "desktop": "PASS: 135/135",
+    "production_build": "PASS: TypeScript and Vite",
     "whitespace": "PASS: git diff --check",
     "independent_review": "PENDING: subagent reviewer unavailable in child task; author self-review not counted",
     "real_provider": "NOT_RUN",
     "native_desktop": "NOT_RUN",
-    "merge": "NOT_AUTHORIZED"
+    "merge": "NOT_AUTHORIZED",
+    "ci": "PASS: GitHub pull_request and push Run/Desktop checks; package skipped by workflow condition"
   },
   "pull_request": {
-    "state": "creating",
+    "state": "open",
+    "number": 13,
     "base": "master",
-    "commit": "78f67de96e13ff9e3a37f2d8b62095679a06c2db",
-    "url": null
+    "head_sha": "e251071e1d197913bc7834beaf26b45a9ae841b5",
+    "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/13",
+    "mergeable": "MERGEABLE"
   }
 }
