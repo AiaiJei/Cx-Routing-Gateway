@@ -75,6 +75,8 @@
     "task1_focused_tests": "PASS: Gateway/request-log focused suite 40/40",
     "task1_runtime": "PASS: 123/123",
     "task1_desktop": "PASS: 142/142",
+    "task1_diff_check": "PASS",
+    "task1_commit": "6037cae9f7935ca0ba79c910fdd8902629cf9df8",
     "provider": "NOT_RUN",
     "independent_subagent_review": "PENDING: required final whole-branch review under executing-plans",
     "pull_request_ci": "NOT_RUN"

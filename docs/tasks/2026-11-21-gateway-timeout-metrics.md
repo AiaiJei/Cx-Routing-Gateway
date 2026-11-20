@@ -7,7 +7,7 @@
 - Design: `docs/superpowers/specs/2026-11-21-gateway-timeout-metrics-design.md`.
 - Plan: `docs/superpowers/plans/2026-11-21-gateway-timeout-metrics.md`.
 - Previous completed contract preserved at `docs/tasks/2026-11-21-release-1.1.2-contract.json`.
-- Status: design approved by the user's `执行` instruction; plan prepared and runtime implementation is underway.
+- Status: design approved by the user's `执行` instruction; Task 1 is committed and Task 2 is underway.
 
 ## User authorization
 
@@ -39,7 +39,8 @@ Not authorized: merge, release/publish, delete branches or worktrees, or alter u
 - Task 1 focused timeout/request-log suite: PASS 40/40.
 - Task 1 full Runtime suite: PASS 123/123.
 - Task 1 full Desktop suite: PASS 142/142.
-- Task 1 implementation is green; final diff check and task commit are pending.
+- Task 1 `git diff --check`: PASS.
+- Task 1 commit: `6037cae9f7935ca0ba79c910fdd8902629cf9df8` (`fix: separate gateway header and request deadlines`).
 - Real provider, packaged installer, release, final whole-branch review: `NOT_RUN`.
 
 ## Rollback

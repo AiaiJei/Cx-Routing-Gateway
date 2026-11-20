@@ -91,13 +91,13 @@ Run: `node --test tests/runtime/gateway-server.test.mjs tests/runtime/request-lo
 
 Expected: all focused tests pass, including old timeout, cancellation, conversion, usage logging, and concurrency-slot regressions.
 
-- [ ] **Step 9: Run full suites and diff checks for Task 1**
+- [x] **Step 9: Run full suites and diff checks for Task 1**
 
 Run: `npm test` from repository root; `npm test` from `apps/desktop`; `git diff --check` from repository root.
 
 Expected: Runtime and Desktop suites pass and the diff check is clean.
 
-- [ ] **Step 10: Commit Task 1 with its ledger result**
+- [x] **Step 10: Commit Task 1 with its ledger result**
 
 Commit the Task 1 server, tests, approved design/plan, and contract/task records after verifying only authorized paths changed. Append the Task 1 result and commit range to the SDD ledger in the same operation.
 
