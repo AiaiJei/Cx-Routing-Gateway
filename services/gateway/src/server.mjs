@@ -47,15 +47,12 @@ async function bodyOf(req, maxBytes, timeoutMs = 30_000) {
   let size = 0; let timer;
   const chunks = [];
   try {
-    let requestClosed = false;
-    req.once('close', () => { requestClosed = true; });
     const stream = (async () => {
       for await (const chunk of req) {
         size += chunk.length;
         if (size > maxBytes) throw tooLarge();
         chunks.push(chunk);
       }
-      if (requestClosed && !req.complete) throw Object.assign(new Error('Request body was truncated'), { code: 'request_body_incomplete', statusCode: 400 });
     })();
     await Promise.race([stream, new Promise((_, reject) => { timer = setTimeout(() => reject(Object.assign(new Error('Request body timeout'), { code: 'request_timeout', statusCode: 408 })), timeoutMs); })]);
   } finally { clearTimeout(timer); }
