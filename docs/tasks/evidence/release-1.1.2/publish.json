@@ -1,0 +1,39 @@
+{
+  "tag": "v1.1.2",
+  "releaseUrl": "https://github.com/AiaiJei/Cx-Routing-Gateway/releases/tag/v1.1.2",
+  "draft": false,
+  "prerelease": false,
+  "targetCommit": "a64716e1d16fa8d2430843ae0c38d593bd45be12",
+  "assets": [
+    {
+      "name": "Cx-Routing.Gateway.Portable.1.1.2.exe",
+      "size": 115017091,
+      "digest": "sha256:cbfaff999880c2b39830740548bd8b0d8384a21ce779f66ce80a85ec2743a43c",
+      "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/releases/download/v1.1.2/Cx-Routing.Gateway.Portable.1.1.2.exe"
+    },
+    {
+      "name": "Cx-Routing.Gateway.Setup.1.1.2.exe",
+      "size": 126500260,
+      "digest": "sha256:5e1c54e0ee3b4a2489b58af58c408b32603f2032e52928aae3ff40f39fee5db7",
+      "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/releases/download/v1.1.2/Cx-Routing.Gateway.Setup.1.1.2.exe"
+    },
+    {
+      "name": "Cx-Routing.Gateway.Setup.1.1.2.exe.blockmap",
+      "size": 133031,
+      "digest": "sha256:a88852d293e50ebfe62661a4433487283654e900256e0d69f0cc8775a568f5df",
+      "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/releases/download/v1.1.2/Cx-Routing.Gateway.Setup.1.1.2.exe.blockmap"
+    },
+    {
+      "name": "manifest.json",
+      "size": 2275,
+      "digest": "sha256:4a8134f3a34fa470d4cb052520ee9c1cf6f9243a04a05d1a0714274f2c7041b2",
+      "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/releases/download/v1.1.2/manifest.json"
+    }
+  ],
+  "desktopCopy": {
+    "path": "C:\\Users\\20142\\Desktop\\Cx-Routing Gateway Portable 1.1.2.exe",
+    "bytes": 115017091,
+    "sha256": "cbfaff999880c2b39830740548bd8b0d8384a21ce779f66ce80a85ec2743a43c",
+    "matchesVerifiedPortable": true
+  }
+}

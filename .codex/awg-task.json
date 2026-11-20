@@ -5,7 +5,7 @@
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
   "status": "active",
-  "stage": "release-preparation",
+  "stage": "release-verified",
   "base": "master",
   "base_sha": "c633a359dc76c9b5b48bb929870765e6ca85de5d",
   "branch": "codex/upstream-payload-413",
@@ -76,19 +76,23 @@
   "rollback": "Restore master from merge commit and release manifest; delete only release artifacts or revert task commits through an authorized change. Preserve v1.1.1 and unrelated worktrees.",
   "owner_acceptance": "pending until release assets, Desktop copy, merged master and worktree cleanup are verified",
   "verification": {
-    "pr14_ci": "PASS before master conflict; rerun after version/rebase",
-    "runtime": "pending",
-    "desktop": "pending",
-    "build": "pending",
-    "release": "pending",
-    "portable_smoke": "pending",
-    "desktop_copy": "pending",
+    "pr14_ci": "PASS on merged PR #14 head after lockfile correction: Runtime and Desktop SUCCESS; package jobs skipped by workflow",
+    "runtime": "PASS: 119/119",
+    "desktop": "PASS: 142/142",
+    "build": "PASS: TypeScript and Vite",
+    "release": "PASS: NSIS, blockmap, win-unpacked, Portable and manifest verified",
+    "portable_smoke": "PASS: isolated user data/non-default ports; control and gateway health ok, including Desktop copy",
+    "desktop_copy": "PASS: SHA-256 cbfaff999880c2b39830740548bd8b0d8384a21ce779f66ce80a85ec2743a43c",
     "provider": "NOT_RUN",
-    "native_manual": "NOT_RUN"
+    "native_manual": "NOT_RUN",
+    "release_url": "https://github.com/AiaiJei/Cx-Routing-Gateway/releases/tag/v1.1.2",
+    "code_signing": "NOT_RUN: no signing certificate configured",
+    "updater_asset_name": "DEGRADED: GitHub canonicalized spaces to dots; shipped updater expects space-form installer; direct release download available"
   },
   "pull_request": {
     "number": 14,
-    "state": "OPEN",
+    "state": "MERGED",
+    "merge_commit": "a64716e1d16fa8d2430843ae0c38d593bd45be12",
     "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/14"
   },
   "capability": {
