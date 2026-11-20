@@ -4,8 +4,8 @@
   "title": "修复大请求经网关转发时被误判为 413",
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
-  "status": "active",
-  "stage": "ready-for-pr",
+  "status": "pr-open",
+  "stage": "ci-pending",
   "base": "master",
   "base_sha": "ba4ad680485fc8001169b88557a42acda3d7246a",
   "branch": "codex/request-body-413",
@@ -68,5 +68,10 @@
     "native_desktop": "NOT_RUN",
     "merge": "NOT_AUTHORIZED"
   },
-  "pull_request": null
+  "pull_request": {
+    "state": "creating",
+    "base": "master",
+    "commit": "00de264",
+    "url": null
+  }
 }
