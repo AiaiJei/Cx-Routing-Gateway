@@ -20,13 +20,13 @@ function requireRepository(repository) {
 
 function versionParts(value) {
   const normalized = String(value).replace(/^v/, '');
-  if (!/^\d+\.\d+\.\d+$/.test(normalized)) throw new Error(`Invalid version: ${value}`);
-  return normalized.split('.').map(Number);
+  if (!/^\d+(?:\.\d+){2,3}$/.test(normalized)) throw new Error(`Invalid version: ${value}`);
+  return normalized.split('.').map(Number).concat([0]).slice(0, 4);
 }
 
 export function compareVersions(left, right) {
   const a = versionParts(left); const b = versionParts(right);
-  for (let index = 0; index < 3; index += 1) if (a[index] !== b[index]) return a[index] > b[index] ? 1 : -1;
+  for (let index = 0; index < 4; index += 1) if (a[index] !== b[index]) return a[index] > b[index] ? 1 : -1;
   return 0;
 }
 
@@ -65,7 +65,7 @@ export async function verifyGitHubToken({ token, repository = DEFAULT_REPOSITORY
 
 function releaseVersion(release) {
   if (!release || typeof release !== 'object' || release.draft !== false || release.prerelease !== false) throw new Error('GitHub latest release is not a stable published release');
-  if (typeof release.tag_name !== 'string' || !/^v\d+\.\d+\.\d+$/.test(release.tag_name)) throw new Error('GitHub release has an invalid version tag');
+  if (typeof release.tag_name !== 'string' || !/^v\d+(?:\.\d+){2,3}$/.test(release.tag_name)) throw new Error('GitHub release has an invalid version tag');
   const expectedUrl = `https://github.com/${DEFAULT_REPOSITORY}/releases/tag/${release.tag_name}`;
   if (release.html_url !== expectedUrl) throw new Error('GitHub release URL is invalid');
   return release.tag_name.slice(1);
