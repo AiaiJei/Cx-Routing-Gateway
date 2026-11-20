@@ -61,9 +61,9 @@
     "focused": "PASS: Gateway 34/34",
     "desktop": "PASS: 135/135",
     "full_runtime": "PASS: 118/118",
-    "production_build": "PASS: TypeScript and Vite",
+    "production_build": "NOT_RUN: no Desktop source changed",
     "whitespace": "PASS: git diff --check",
-    "independent_review": "SELF_REVIEW PASS: subagent review tool unavailable in child task; final boundary fixes verified",
+    "independent_review": "PENDING: subagent reviewer unavailable in child task; author self-review not counted",
     "real_provider": "NOT_RUN",
     "native_desktop": "NOT_RUN",
     "merge": "NOT_AUTHORIZED"
@@ -71,7 +71,7 @@
   "pull_request": {
     "state": "creating",
     "base": "master",
-    "commit": "00de264",
+    "commit": "78f67de96e13ff9e3a37f2d8b62095679a06c2db",
     "url": null
   }
 }
