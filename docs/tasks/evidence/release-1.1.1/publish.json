@@ -1,0 +1,43 @@
+{
+  "tag": "v1.1.1",
+  "releaseUrl": "https://github.com/AiaiJei/Cx-Routing-Gateway/releases/tag/v1.1.1",
+  "publishedAt": "2026-11-20T14:56:08Z",
+  "targetCommit": "ba4ad680485fc8001169b88557a42acda3d7246a",
+  "assets": [
+    {
+      "name": "Cx-Routing.Gateway.Setup.1.1.1.exe",
+      "size": 126499214,
+      "sha256": "563b8e2002d9a6827bba4512f3af828ef2bdd907d50a9802d1a1bc3c1e9ae498"
+    },
+    {
+      "name": "Cx-Routing.Gateway.Setup.1.1.1.exe.blockmap",
+      "size": 133327,
+      "sha256": "3f9f07279cd964de47b03bba8ca8e46e92e3145786c1f4ae2be65544369d7819"
+    },
+    {
+      "name": "Cx-Routing.Gateway.Portable.1.1.1.exe",
+      "size": 115019722,
+      "sha256": "00d3036bd9c55f248ec3ea236a89c8cfc13d94b3e7a2e2a6cb5edd60be1bb675"
+    },
+    {
+      "name": "manifest.json",
+      "size": 2246,
+      "sha256": "b115d294a3069c4e4f14145f18151e642db10ca72468611ecd750aed471df1b0"
+    }
+  ],
+  "desktopCopy": {
+    "path": "C:\\Users\\20142\\Desktop\\Cx-Routing Gateway Portable 1.1.1.exe",
+    "sha256": "00d3036bd9c55f248ec3ea236a89c8cfc13d94b3e7a2e2a6cb5edd60be1bb675",
+    "matchesPortableReleaseAsset": true
+  },
+  "portableSmoke": {
+    "result": "PASS",
+    "services": ["local-control", "gateway"],
+    "userData": "isolated temporary profile",
+    "ports": "dynamically reserved non-default loopback ports"
+  },
+  "updaterCompatibility": {
+    "status": "DEGRADED",
+    "detail": "GitHub canonicalized spaces in the uploaded installer filename to periods. The shipped update checker compares against the space-form name, so an installed 1.1.0 app will not select the 1.1.1 installer in-app. Direct Release download remains available; a release asset/tag rewrite is outside the current authorization."
+  }
+}
