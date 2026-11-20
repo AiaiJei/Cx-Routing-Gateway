@@ -23,7 +23,7 @@ User selected complete four-part product version support and authorized reuse of
 - [x] Release-manifest/updater focused suites: PASS, 23/23; focused Desktop Settings 13/13; focused source mapping 20/20.
 - [x] git diff --check: PASS.
 - [x] Independent whole-branch review: no Critical findings; two Important findings fixed test-first; one Minor numeric-precision recommendation deferred.
-- [ ] Dedicated PR/CI: pending PR creation.
+- [x] Dedicated PR: #12 open and unmerged at https://github.com/AiaiJei/Cx-Routing-Gateway/pull/12; head 2e44aec. CI Runtime/Desktop SUCCESS; package SKIPPED by workflow condition.
 
 ## Rollback
 
@@ -43,3 +43,5 @@ Revert this branch commits only. Keep the branch/worktree, .tmp-version-probe/, 
 - Build: TypeScript and Vite PASS.
 - Focused release/update/failover: 27/27.
 - git diff --check: PASS.
+
+- Final PR state: OPEN, base master, head 2e44aec1ccf924abc3fa8449cefc0bf90ac5548e. No merge or release publication performed.

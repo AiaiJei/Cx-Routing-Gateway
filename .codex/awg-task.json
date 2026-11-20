@@ -4,8 +4,8 @@
   "title": "请求日志来源与产品四段版本",
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
-  "status": "active",
-  "stage": "ready_for_pr",
+  "status": "complete",
+  "stage": "pr_open",
   "base": "master",
   "base_sha": "6446c470b6e71122d6f1dd3c5427f591ef8f2436",
   "branch": "codex/request-log-upstream-1.1.1.1",
@@ -79,10 +79,10 @@
   ],
   "rollback": "Revert this branch commits only; preserve branch, worktree, probe files, existing release/tag and unrelated untracked files.",
   "pull_request": {
-    "state": "pending_creation",
-    "number": null,
+    "state": "open",
+    "number": 12,
     "base": "master",
-    "url": null
+    "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/12"
   },
   "verification": {
     "status": "PASS",
@@ -90,7 +90,7 @@
     "full": "PASS: Runtime 113/113; Desktop 138/138 after review fixes",
     "build": "PASS: npm run build --prefix apps/desktop",
     "review": "PASS: independent read-only review found no Critical issues; two Important findings fixed test-first (builderVersion drift guard, failover selected-upstream snapshot regression); Minor unbounded numeric precision deferred.",
-    "ci": "NOT_RUN until PR is created",
+    "ci": "PASS on PR #12 head 2e44aec: Runtime and Desktop checks SUCCESS; package job SKIPPED by workflow condition",
     "whitespace": "PASS: git diff --check"
   },
   "capability": {
