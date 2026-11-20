@@ -95,7 +95,7 @@
     "desktop_tests": "PASS: 134/134",
     "production_build": "PASS: TypeScript and Vite",
     "whitespace": "PASS: git diff --check",
-    "ci": "PASS on PR #11 head 1d276a88: Runtime and Desktop jobs passed; package job skipped for pull_request by workflow condition",
+    "ci": "PASS on PR #11 head 5e456fac: Runtime and Desktop jobs passed; package job skipped for pull_request by workflow condition",
     "independent_review": "Fresh whole-branch review identified one Important missing test for second-instance/activate wiring; fixed test-first with 3 RED/GREEN cases. No Critical/security or Minor findings; no second review in inline execution workflow.",
     "native_manual": "NOT_RUN: Electron binary unavailable under user-level npm install-script policy; no policy change made"
   },

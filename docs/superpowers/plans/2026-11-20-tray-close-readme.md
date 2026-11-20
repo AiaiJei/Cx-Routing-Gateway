@@ -101,4 +101,4 @@
 - [x] Commit `.gitignore`, task contract, plan and evidence as `docs: record tray and README verification` (`68b16f9`).
 - [x] Perform a fresh whole-branch code review against the spec and Review Focus; fix the Important activation-wiring coverage finding test-first. No Critical/security issues or deferred Minors were reported.
 - [x] Commit the review fix as `fix: cover main window activation handlers` (`07f3331`).
-- [x] Commit and push the task branch; create PR #11 against `master`; confirm Runtime/Desktop CI passed on head `1d276a88` and package skipped for pull requests. Do not merge.
+- [x] Commit and push the task branch; create PR #11 against `master`; confirm Runtime/Desktop CI passed on head `5e456fac` and package skipped for pull requests. Do not merge.
