@@ -58,3 +58,5 @@ Revert this branch commits only. Keep the branch/worktree, .tmp-version-probe/, 
 ## 2026-11-21 revision: reasoning level
 
 User approved adding a `推理` column immediately after `来源`. The transmitted reasoning level is read from `reasoning_effort`, `reasoning.effort`, or `thinking.effort`; values are bounded to a trimmed 1–32 character string, otherwise usage omits the field and Desktop renders `-`. PR #12 remains the delivery vehicle and stays unmerged.
+
+- Final reasoning revision PR head 5cf3f64: Runtime 115/115; Desktop 140/140; build PASS; CI Runtime/Desktop SUCCESS; package SKIPPED. PR #12 remains OPEN and unmerged.

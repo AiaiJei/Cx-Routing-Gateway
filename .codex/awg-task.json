@@ -66,8 +66,8 @@
     "docs/superpowers/plans/2026-11-21-request-log-upstream-version.md",
     "docs/tasks/2026-11-21-request-log-upstream-version.md",
     "docs/tasks/archives/2026-11-20-tray-close-readme-awg-task.json",
-    "tests/runtime/route-batch.test.mjs"
-    ,"tests/runtime/request-logs.test.mjs"
+    "tests/runtime/route-batch.test.mjs",
+    "tests/runtime/request-logs.test.mjs"
   ],
   "acceptance": [
     "usage records snapshot selected upstream service name with existing upstreamId",
@@ -85,15 +85,15 @@
     "number": 12,
     "base": "master",
     "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/12",
-    "head_sha": "832be35"
+    "head_sha": "5cf3f64"
   },
   "verification": {
     "status": "PASS",
-    "focused": "PASS: release/update/failover 27/27; source mapping 20/20; Settings 13/13; updater/IPC 21/21; release manifest 2/2",
-    "full": "PASS: Runtime 113/113; Desktop 138/138 after review fixes",
+    "focused": "PASS: Gateway core 27/27; request logs 5/5; Desktop mapping/UI 22/22",
+    "full": "PASS: Runtime 115/115; Desktop 140/140 after reasoning-level revision",
     "build": "PASS: npm run build --prefix apps/desktop",
     "review": "PASS: independent read-only review found no Critical issues; two Important findings fixed test-first (builderVersion drift guard, failover selected-upstream snapshot regression); Minor unbounded numeric precision deferred.",
-    "ci": "PASS on PR #12 head c24df15a1e3c79c64b6211f5d1fee18f17f04687: Runtime and Desktop checks SUCCESS; package jobs SKIPPED by workflow condition.",
+    "ci": "PASS on PR #12 head 5cf3f6497dca75d19544ede6189908d1c4b8a3dc: Runtime and Desktop checks SUCCESS; package jobs SKIPPED by workflow condition.",
     "whitespace": "PASS: git diff --check"
   },
   "capability": {
