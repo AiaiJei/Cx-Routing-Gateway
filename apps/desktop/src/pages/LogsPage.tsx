@@ -40,12 +40,12 @@ export function LogsPage() {
         {hasFilter && <Button variant="tertiary" size="small" aria-label="清除筛选" onClick={() => { setQuery(""); setStatus("全部"); setDateRange("实时"); }}>清除筛选</Button>}
       </div>
       {logs.length ? <div className="table-scroll" role="region" aria-label="请求日志列表" tabIndex={0}><table className="logs-table">
-        <thead><tr><th scope="col">请求时间</th><th scope="col">模型</th><th scope="col">入口凭证</th><th scope="col">入站</th><th scope="col">类型</th><th scope="col" className="numeric">Token</th><th scope="col">结果</th><th scope="col" className="numeric">耗时</th><th scope="col"><span className="sr-only">操作</span></th></tr></thead>
+        <thead><tr><th scope="col">请求时间</th><th scope="col">模型</th><th scope="col">来源</th><th scope="col">入站</th><th scope="col">类型</th><th scope="col" className="numeric">Token</th><th scope="col">结果</th><th scope="col" className="numeric">耗时</th><th scope="col"><span className="sr-only">操作</span></th></tr></thead>
         <tbody>{logs.map((log) => (
           <tr key={log.id}>
             <td><RequestTime log={log} /></td>
             <td className="log-model">{log.model || "—"}</td>
-            <td>{log.credential}</td>
+            <td>{log.upstream}</td>
             <td><RequestProtocol log={log} /></td>
             <td className="log-type">{requestType(log)}</td>
             <td className="numeric"><RequestTokenSummary log={log} /></td>

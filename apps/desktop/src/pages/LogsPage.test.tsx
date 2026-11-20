@@ -61,6 +61,21 @@ describe("LogsPage", () => {
     expect(dialog).toHaveTextContent("请求和响应正文未记录");
     expect(screen.getByRole("button", { name: "关闭弹窗" })).toHaveTextContent("×");
   });
+
+  it("shows the upstream service as 来源 and keeps the masked credential in details only", async () => {
+    const user = userEvent.setup();
+    render(<LogsPage />);
+    await screen.findByRole("searchbox", { name: "搜索请求日志" });
+    const table = within(screen.getByRole("region", { name: "请求日志列表" })).getByRole("table");
+    expect(within(table).getByRole("columnheader", { name: "来源" })).toBeVisible();
+    expect(within(table).queryByRole("columnheader", { name: "入口凭证" })).not.toBeInTheDocument();
+    expect(within(table).getAllByText("Northstar AI")).toHaveLength(2);
+    expect(within(table).queryByText(/Desktop client/)).not.toBeInTheDocument();
+    await user.click(within(table).getByRole("button", { name: "查看 req-7d3a9f21" }));
+    const dialog = screen.getByRole("dialog", { name: "请求 req-7d3a9f21 详情" });
+    expect(dialog).toHaveTextContent("入口凭证");
+    expect(dialog).toHaveTextContent("Desktop client ·••••");
+  });
 });
 
 it("reveals request IDs, protocol direction and exact tokens through accessible disclosures", async () => {

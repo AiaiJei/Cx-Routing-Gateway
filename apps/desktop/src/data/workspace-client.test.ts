@@ -53,3 +53,22 @@ it("maps measured metrics while preserving missing, zero and invalid historical 
   expect(invalid.firstTokenMs).toBeUndefined();
   expect(invalid.tokens).toBeUndefined();
 });
+
+it("prefers the persisted upstream name, falls back by ID, and redacts unknown sources", () => {
+  const workspace = mapRuntimeState({
+    settings: { gatewayHost: "127.0.0.1", gatewayPort: 4318 },
+    upstreams: [{ id: "up-current", name: "Current service", enabled: true, models: [] }],
+    routes: [], clientKeys: [],
+    usage: [
+      { requestId: "snapshot", upstreamId: "up-current", upstreamName: "Renamed before display", status: "completed" },
+      { requestId: "legacy", upstreamId: "up-current", status: "completed" },
+      { requestId: "missing", upstreamId: "up-missing", status: "failed" },
+    ],
+  });
+
+  expect(workspace.logs.map(({ id, upstream }) => [id, upstream])).toEqual([
+    ["snapshot", "Renamed before display"],
+    ["legacy", "Current service"],
+    ["missing", "—"],
+  ]);
+});
