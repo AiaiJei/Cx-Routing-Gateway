@@ -1,0 +1,28 @@
+{
+  "version": "1.1.1",
+  "capture": {
+    "date": "2026-11-20",
+    "renderer": "Local Vite renderer at 127.0.0.1:4173, isolated headless Chrome, 1440x980",
+    "data": "Repository read-only fixture data; screenshots show browser preview state, not live runtime or upstream traffic"
+  },
+  "screenshots": [
+    {
+      "path": "docs/screenshots/overview.png",
+      "width": 1440,
+      "height": 980,
+      "sha256": "208C4E996D76D823E4306882FB3614D0EC6FA227026EA68F01FE8BEB7592EC94"
+    },
+    {
+      "path": "docs/screenshots/routes.png",
+      "width": 1440,
+      "height": 980,
+      "sha256": "B1BE11D5C6869CDB40BFFF1B7BFF3E7A1510A7BAEF92F387A87E20E54EB305DB"
+    },
+    {
+      "path": "docs/screenshots/settings.png",
+      "width": 1440,
+      "height": 980,
+      "sha256": "84BE98A0B86BC30736870C2A4BC0CE9EE917C71D7330C69EF77C0DED8EA5F7A3"
+    }
+  ]
+}
