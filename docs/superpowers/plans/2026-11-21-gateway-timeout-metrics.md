@@ -117,73 +117,67 @@ Commit the Task 1 server, tests, approved design/plan, and contract/task records
 - `durationMs` and `firstTokenMs` use the injected monotonic clock.
 - `RequestDuration` uses the existing `Tooltip` and labels first meaningful generated content separately from full Gateway request duration.
 
-- [ ] **Step 1: Add failing monotonic timing tests**
+- [x] **Step 1: Add failing monotonic timing tests**
 
 Add `request logs measure elapsed time monotonically across wall-clock changes`: inject wall and monotonic clocks, move the wall clock backward/forward during a streamed request, and assert stable monotonic first-content/total durations plus the original wall-clock `createdAt`.
 
-Add a unit regression in `request-metrics.test.mjs` proving first-content time derives only from the injected monotonic clock.
+Add `default stream metrics ignore wall-clock jumps` in `request-metrics.test.mjs`: move `Date.now()` backward after recording the monotonic start and assert the default first-content duration remains positive and bounded.
 
-- [ ] **Step 2: Run timing tests and verify RED**
+- [x] **Step 2: Run timing tests and verify RED**
 
-Run: `node --test --test-name-pattern="request logs measure elapsed time monotonically across wall-clock changes" tests/runtime/request-logs.test.mjs tests/runtime/request-metrics.test.mjs`
+Run: `node --test --test-name-pattern="request logs measure elapsed time monotonically across wall-clock changes|default stream metrics ignore wall-clock jumps" tests/runtime/request-logs.test.mjs tests/runtime/request-metrics.test.mjs`
 
 Expected: current wall-clock elapsed calculations fail when the test clock changes.
 
-- [ ] **Step 3: Add failing accessible timing-disclosure test**
+- [x] **Step 3: Add failing accessible timing-disclosure test**
 
 Add `RequestDuration explains first-content and full-request timing`: focus or activate the timing control, assert the tooltip distinguishes first meaningful generated content from the full Gateway request interval, and dismiss it with Escape.
 
-- [ ] **Step 4: Run the UI test and verify RED**
+- [x] **Step 4: Run the UI test and verify RED**
 
 Run: `npm test -- src/components/RequestLogCells.test.tsx` from `apps/desktop`.
 
 Expected: the test fails because `RequestDuration` currently has no timing disclosure.
 
-- [ ] **Step 5: Implement monotonic metrics and timing disclosure**
+- [x] **Step 5: Implement monotonic metrics and timing disclosure**
 
 Pass the same monotonic clock and request-start value to `createRequestMetrics`; compute every logged request duration from that clock. Keep wall-clock `createdAt`. Wrap `RequestDuration` in the existing Tooltip with concise definitions for both metrics.
 
-- [ ] **Step 6: Run focused metric and UI tests**
+- [x] **Step 6: Run focused metric and UI tests**
 
 Run: `node --test tests/runtime/request-metrics.test.mjs tests/runtime/request-logs.test.mjs` and `npm test -- src/components/RequestLogCells.test.tsx` from `apps/desktop`.
 
 Expected: all focused metric and UI tests pass.
 
-- [ ] **Step 7: Run full suites and diff checks for Task 2**
+- [x] **Step 7: Run full suites and diff checks for Task 2**
 
 Run: `npm test` from repository root; `npm test` from `apps/desktop`; `git diff --check` from repository root.
 
 Expected: Runtime and Desktop suites pass and the diff check is clean.
 
-- [ ] **Step 8: Commit Task 2 with its ledger result**
+- [x] **Step 8: Commit Task 2 with its ledger result**
 
 Commit Task 2 production and regression-test changes after verifying only authorized paths changed; append its test result and commit range to the SDD ledger.
 
-### Task 3: Verify, record evidence, and open the dedicated PR
+### Task 3: Verify and record evidence
 
 **Files:**
 - Modify: `.codex/awg-task.json`
 - Modify: `docs/tasks/2026-11-21-gateway-timeout-metrics.md`
 - Create: `.task-evidence/gateway-timeout-metrics/verification.md`
 
-- [ ] **Step 1: Run full verification**
+- [x] **Step 1: Run full verification**
 
 Run, in order: `npm run build` from `apps/desktop`; `npm test` from repository root; `npm test` from `apps/desktop`; `git diff --check` from the repository root.
 
 Expected: TypeScript/Vite build and both full suites exit 0; diff check emits no errors.
 
-- [ ] **Step 2: Review scope and update task evidence**
+- [x] **Step 2: Review scope and update task evidence**
 
 Inspect the full branch diff against `origin/master`; verify only authorized paths changed, parse `.codex/awg-task.json`, and record command outputs/counts, limitations, and rollback in `verification.md` and the task record.
 
-- [ ] **Step 3: Commit, push, and create one PR against `master`**
+- [x] **Step 3: Commit the verification evidence and task records**
 
-Use a focused commit message such as `fix: separate gateway response and request deadlines`. Push `codex/gateway-timeout-metrics` and open a PR titled `fix: allow long gateway generations and clarify timing`.
+Commit the updated contract, task record, and verification evidence with a message such as `docs: record gateway timeout verification`.
 
-Expected: one open, unmerged PR; no master push, merge, release, or worktree deletion.
-
-- [ ] **Step 4: Inspect GitHub checks and record final state**
-
-Run: `gh pr checks <number> --repo AiaiJei/Cx-Routing-Gateway` and inspect the PR head/base/state.
-
-Expected: Runtime and Desktop checks pass; otherwise record the actual failure and continue only with task-scoped fixes.
+Expected: verification evidence is committed locally; the branch remains unpushed until the required whole-branch review is complete.

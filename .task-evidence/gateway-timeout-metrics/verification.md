@@ -1,0 +1,52 @@
+# Gateway Timeout and Request Timing Verification
+
+- Task: `CXRG-UPSTREAM-TIMEOUT-METRICS-2026-11-21`
+- Repository: `AiaiJei/Cx-Routing-Gateway`
+- Base: `master` at `be4de0924091c351864013e4ca53520f9d8ef226`
+- Branch/worktree: `codex/gateway-timeout-metrics` / `.worktree/gateway-timeout-metrics`
+- Verification date: 2026-11-21
+
+## Final Verification
+
+- `npm ci` in `apps/desktop`: PASS, 439 packages installed; lockfile unchanged. npm reported 6 moderate audit findings and install-script warnings; no audit fixes were applied.
+- `npm run build` in `apps/desktop`: PASS, TypeScript and Vite.
+- `npm test` at repository root: PASS, Runtime 125/125.
+- `npm test` in `apps/desktop`: PASS, Desktop 143/143.
+- Focused Task 2 Runtime tests: PASS, request metrics/logs 16/16.
+- Focused Task 2 Desktop test: PASS, timing tooltip 1/1.
+- Task 1 focused Gateway/request-log tests: PASS, 40/40.
+- `git diff --check`: PASS after Task 1, Task 2, and final documentation changes.
+
+## Changed Paths
+
+- `.codex/awg-task.json`
+- `apps/desktop/src/components/RequestLogCells.tsx`
+- `apps/desktop/src/components/RequestLogCells.test.tsx`
+- `docs/superpowers/plans/2026-11-21-gateway-timeout-metrics.md`
+- `docs/superpowers/specs/2026-11-21-gateway-timeout-metrics-design.md`
+- `docs/tasks/2026-11-21-gateway-timeout-metrics.md`
+- `docs/tasks/2026-11-21-release-1.1.2-contract.json` (exact previous-contract archive)
+- `services/gateway/src/request-metrics.mjs`
+- `services/gateway/src/server.mjs`
+- `tests/runtime/gateway-server.test.mjs`
+- `tests/runtime/request-logs.test.mjs`
+- `tests/runtime/request-metrics.test.mjs`
+
+## TDD Evidence
+
+- Header/body timeout RED: slow JSON returned 504 rather than 200 after the old timer remained active; an injected route-test timeout did not abort the route call.
+- Full request deadline RED: configured 100 ms but the old response timer recorded 421 ms.
+- Timing RED: wall-clock rollback produced `firstTokenMs = 0` instead of 50 ms; default metrics also returned zero after a clock rollback.
+- UI RED: the request-duration cell had no keyboard-focusable timing definition.
+- GREEN: one 5-minute response-header bound and one 10-minute absolute request deadline now apply to JSON, native SSE, and converted SSE; elapsed metrics use a monotonic clock, and the existing Tooltip explains the timing boundaries.
+
+## Scope and Limitations
+
+- The branch diff is reviewed against `origin/master` and limited to the task contract, design/plan/evidence, Gateway timeout and metrics code, their Runtime tests, and the Desktop request-duration component/test.
+- The previous completed release contract is preserved verbatim at `docs/tasks/2026-11-21-release-1.1.2-contract.json`.
+- Real provider calls, installer/package validation, GitHub CI, whole-branch independent review, merge, and release publication are pending or `NOT_RUN` at this checkpoint.
+- Downstream SDK/client timeouts remain outside Gateway control.
+
+## Rollback
+
+Revert only this task's PR commits. No persisted data migration is required. Keep this task branch and worktree; do not merge or delete them in this task.

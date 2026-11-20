@@ -7,7 +7,7 @@
 - Design: `docs/superpowers/specs/2026-11-21-gateway-timeout-metrics-design.md`.
 - Plan: `docs/superpowers/plans/2026-11-21-gateway-timeout-metrics.md`.
 - Previous completed contract preserved at `docs/tasks/2026-11-21-release-1.1.2-contract.json`.
-- Status: design approved by the user's `执行` instruction; Task 1 is committed and Task 2 is underway.
+- Status: design approved by the user's `执行` instruction; Tasks 1 and 2 are committed, final verification passes, and the independent review is pending.
 
 ## User authorization
 
@@ -29,7 +29,7 @@ Not authorized: merge, release/publish, delete branches or worktrees, or alter u
 
 ## Capability and baseline
 
-- Applied: `using-superpowers`, `systematic-debugging`, `using-git-worktrees`, `writing-plans`, `awg-workspace-governance`; TDD and verification skills will be applied before implementation and completion.
+- Applied: `using-superpowers`, `systematic-debugging`, `using-git-worktrees`, `writing-plans`, `executing-plans`, `awg-workspace-governance`, `test-driven-development`, and `verification-before-completion`.
 - Repo MCP: `NOT_RUN`; no registered workspace identity is available, and direct bounded source inspection is sufficient.
 - Focused Runtime baseline: PASS 44/44.
 - Desktop dependency installation: PASS; 439 packages added, 6 moderate npm audit findings and install-script warnings reported.
@@ -41,7 +41,12 @@ Not authorized: merge, release/publish, delete branches or worktrees, or alter u
 - Task 1 full Desktop suite: PASS 142/142.
 - Task 1 `git diff --check`: PASS.
 - Task 1 commit: `6037cae9f7935ca0ba79c910fdd8902629cf9df8` (`fix: separate gateway header and request deadlines`).
-- Real provider, packaged installer, release, final whole-branch review: `NOT_RUN`.
+- Task 2 focused Runtime metrics/logs: PASS 16/16; Desktop timing tooltip: PASS 1/1.
+- Task 2 production build: PASS; full Runtime: PASS 125/125; full Desktop: PASS 143/143; `git diff --check`: PASS.
+- Task 2 commit: `5f138d923b9f58cb3e351c7748f6360112fedaf5` (`fix: measure request timing monotonically`).
+- Final verification: PASS; TypeScript/Vite build, Runtime 125/125, Desktop 143/143, and `git diff --check`.
+- Whole-branch review: `PENDING`; real provider, installer, release, merge, and GitHub PR CI remain `NOT_RUN`.
+- Final whole-branch independent review: `PENDING`; real provider, packaged installer, release: `NOT_RUN`.
 
 ## Rollback
 
