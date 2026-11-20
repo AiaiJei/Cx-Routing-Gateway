@@ -8,8 +8,15 @@ import dns from 'node:dns/promises';
 import net from 'node:net';
 import { Readable } from 'node:stream';
 
-const MAX_BODY = 1024 * 1024;
+const DEFAULT_MAX_REQUEST_BODY_BYTES = 64 * 1024 * 1024;
 const pathProtocols = { '/v1/responses': 'Res', '/v1/messages': 'Mes', '/v1/chat/completions': 'Chat' };
+function requestBodyLimit(value) {
+  if (value === undefined) return DEFAULT_MAX_REQUEST_BODY_BYTES;
+  if (typeof value === 'string' && !value.trim()) throw new Error('maxRequestBodyBytes must be a positive safe integer');
+  const parsed = typeof value === 'number' ? value : Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) throw new Error('maxRequestBodyBytes must be a positive safe integer');
+  return parsed;
+}
 function upstreamUrl(baseUrl, endpoint) {
   const base = baseUrl.replace(/\/$/, '');
   return base.endsWith('/v1') && endpoint.startsWith('/v1/') ? `${base}${endpoint.slice(3)}` : `${base}${endpoint}`;
@@ -24,16 +31,33 @@ function send(res, status, body, requestId) {
   res.end(JSON.stringify(body));
 }
 
-async function bodyOf(req, timeoutMs = 30_000) {
-  let size = 0; let data = '';
-  let timer;
+async function bodyOf(req, maxBytes, timeoutMs = 30_000) {
+  const tooLarge = () => {
+    const error = Object.assign(new Error(`Request body exceeds ${maxBytes} byte limit`), { code: 'request_body_too_large', statusCode: 413, limitBytes: maxBytes });
+    error.drain = new Promise(resolve => {
+      if (req.complete || req.readableEnded) return resolve();
+      req.once('end', resolve);
+      req.once('close', resolve);
+      req.resume();
+    });
+    return error;
+  };
+  const declaredLength = req.headers['content-length'];
+  if (declaredLength !== undefined && /^\d+$/.test(declaredLength) && Number(declaredLength) > maxBytes) throw tooLarge();
+  let size = 0; let timer;
+  const chunks = [];
   try {
-    const stream = (async () => { for await (const chunk of req) { size += chunk.length; if (size > MAX_BODY) throw Object.assign(new Error('Request body too large'), { statusCode: 413 }); data += chunk; } })();
+    const stream = (async () => {
+      for await (const chunk of req) {
+        size += chunk.length;
+        if (size > maxBytes) throw tooLarge();
+        chunks.push(chunk);
+      }
+    })();
     await Promise.race([stream, new Promise((_, reject) => { timer = setTimeout(() => reject(Object.assign(new Error('Request body timeout'), { code: 'request_timeout', statusCode: 408 })), timeoutMs); })]);
   } finally { clearTimeout(timer); }
-  try { return JSON.parse(data); } catch { throw Object.assign(new Error('Invalid JSON'), { statusCode: 400 }); }
+  try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw Object.assign(new Error('Invalid JSON'), { statusCode: 400 }); }
 }
-
 function keyFrom(req) {
   const auth = req.headers.authorization;
   if (auth?.startsWith('Bearer ')) return auth.slice(7);
@@ -321,8 +345,9 @@ async function appendUsage(store, record) {
   } catch {}
 }
 
-export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, maxConcurrentRequests = 32, upstreamTimeoutMs = 30_000, dnsLookup = dns.lookup, now = Date.now } = {}) {
+export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, maxConcurrentRequests = 32, upstreamTimeoutMs = 30_000, maxRequestBodyBytes = process.env.CXRG_MAX_REQUEST_BODY_BYTES, dnsLookup = dns.lookup, now = Date.now } = {}) {
   if (!store || !vault) throw new Error('Gateway server requires store and vault');
+  const requestBodyLimitBytes = requestBodyLimit(maxRequestBodyBytes);
   const rateBuckets = new Map();
   const healthByRoute = new Map();
   const routeTestCredentials = new Map();
@@ -382,7 +407,7 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
       const recent = (rateBuckets.get(keyHash) || []).filter((entry) => timestamp - entry < 60_000);
       if (recent.length >= rateLimitPerMinute) return send(res, 429, { error: 'rate_limited', requestId }, requestId);
       recent.push(timestamp); rateBuckets.set(keyHash, recent);
-      const input = await bodyOf(req);
+      const input = await bodyOf(req, requestBodyLimitBytes);
       route = config.routes.find((item) => item.enabled && item.alias === input.model && item.inboundProtocol === inbound);
       if (!route) return send(res, 404, { error: 'route_not_found', requestId }, requestId);
       if (credential.routeId && credential.routeId !== route.id) return send(res, 403, { error: 'forbidden', requestId }, requestId);
@@ -449,7 +474,8 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
       if (route && upstream) await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Date.now() - startedAt, ...metrics?.snapshot(), inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, modelId: route.modelId, status: error.statusCode === 400 ? 'rejected' : 'failed', errorCode: error.code || 'gateway_error' });
       if (requestController.signal.aborted || res.destroyed) return;
       if (res.headersSent) return res.destroy();
-      return send(res, error.statusCode || 500, { error: error.code || 'internal_error', message: error.statusCode ? error.message : undefined, requestId }, requestId);
+      if (error.drain) res.setHeader('connection', 'close');
+      return send(res, error.statusCode || 500, { error: error.code || 'internal_error', message: error.statusCode ? error.message : undefined, ...(error.limitBytes ? { limitBytes: error.limitBytes } : {}), requestId }, requestId);
     } finally {
       if (acquiredSlot) inFlight -= 1;
     }

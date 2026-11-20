@@ -1,130 +1,72 @@
 {
   "contract_version": 1,
-  "task_id": "CXRG-TRAY-README-2026-11-20",
-  "title": "窗口关闭驻留托盘与正式产品 README",
+  "task_id": "CXRG-REQUEST-BODY-413-2026-11-21",
+  "title": "修复大请求经网关转发时被误判为 413",
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
-  "status": "pr-open",
-  "stage": "ci-passed",
+  "status": "active",
+  "stage": "ready-for-pr",
   "base": "master",
-  "base_sha": "db1e32512953ba4f31fe8b109c2d6ded6bb2c498",
-  "base_pr": 10,
-  "branch": "codex/tray-close-readme",
-  "worktree": ".worktree/tray-close-readme",
+  "base_sha": "ba4ad680485fc8001169b88557a42acda3d7246a",
+  "branch": "codex/request-body-413",
+  "worktree": ".worktree/request-body-413",
   "authorization": {
-    "source": "2026-11-20 user request: 基于 PR #10，修复关闭窗口后收缩到托盘、仅通过托盘退出，并正式更新 README，加入程序截图、能力、功能和版本；创建专属 PR。",
+    "source": "2026-11-21 user request: 建立专属PR，修复大请求经过网关访问不同上游均返回 HTTP 413，而直连上游正常的问题；同时保留一个正在运行的独立任务。",
     "operations": [
-      "create isolated task worktree from merged PR #10",
-      "implement and verify close-to-tray lifecycle and README/screenshots",
-      "commit and push the task branch and create its dedicated PR"
+      "create isolated task worktree from origin/master",
+      "implement and verify bounded large-request forwarding fix",
+      "commit and push the task branch",
+      "create the dedicated pull request"
     ],
     "not_authorized": [
-      "merge the dedicated PR",
-      "publish a new release",
-      "delete existing worktrees, branches, screenshots, or untracked files"
+      "merge the pull request",
+      "publish or deploy",
+      "delete existing worktrees, branches, or untracked files",
+      "modify the separate running task"
     ]
   },
-  "revisions": [
-    {
-      "date": "2026-11-20",
-      "request": "版本号递增小 1，即 1.1.1；继续完成剩余内容",
-      "scope": "Bump the desktop package and lockfile version to 1.1.1, update the Settings version expectation and README, and capture screenshots from the 1.1.1 renderer.",
-      "acceptance": "Package metadata, lockfile and Settings display show 1.1.1; README and screenshots identify/show that application version; all prior tray and PR requirements remain in scope."
-    },
-    {
-      "date": "2026-11-20",
-      "request": "应该要有反馈",
-      "scope": "Make update checks visibly responsive while pending, explain when no GitHub update token is configured, and provide a direct action to focus the token field.",
-      "acceptance": "The check action immediately announces a pending state and prevents duplicate requests; an unconfigured result explains that the check did not run and offers a button that focuses the token input."
-    }
-  ],
   "scope": {
     "include": [
-      "Electron main-process window and tray lifecycle",
-      "focused Electron-independent lifecycle tests",
-      "desktop package/lock version 1.1.1 and Settings version regression",
-      "visible update-check pending, missing-token and token-field focus feedback",
-      "release-manifest test fixtures derived from the desktop package version",
-      "formal Chinese root README for version 1.1.1",
-      "actual 1.1.1 application screenshots embedded in the README",
-      "task plan, verification evidence, and dedicated PR"
+      "Gateway inbound request body limit and explicit oversized-request error",
+      "Regression coverage for Responses requests larger than the previous 1 MiB limit",
+      "Configurable bounded limit and operator documentation",
+      "Task design, plan, evidence, and dedicated PR"
     ],
     "exclude": [
-      "backend, routing, credential, or updater behavior",
-      "new settings or startup-at-login behavior",
-      "new release or installer changes",
-      "merge or deployment"
+      "Provider-side request limits",
+      "CC Switch or unrelated proxy behavior",
+      "Routing, credential, storage schema, or protocol conversion redesign",
+      "Product version change, merge, release, or deployment"
     ]
   },
   "authorized_paths": [
     ".codex/awg-task.json",
-    ".gitignore",
-    "apps/desktop/electron/main.cjs",
-    "apps/desktop/electron/tray-lifecycle.cjs",
-    "tests/runtime/tray-lifecycle.test.mjs",
-    "apps/desktop/package.json",
-    "apps/desktop/package-lock.json",
-    "apps/desktop/src/pages/SettingsPage.test.tsx",
-    "apps/desktop/src/pages/SettingsPage.tsx",
-    "tests/runtime/release-manifest.test.mjs",
-    "README.md",
-    "docs/screenshots/**",
-    "docs/superpowers/specs/2026-11-20-tray-close-readme-design.md",
-    "docs/superpowers/plans/2026-11-20-tray-close-readme.md",
-    "docs/tasks/2026-11-20-tray-close-readme.md",
-    "docs/tasks/evidence/tray-close-readme/**"
+    "services/gateway/src/server.mjs",
+    "services/gateway/README.md",
+    "tests/runtime/gateway-server.test.mjs",
+    "docs/superpowers/specs/2026-11-21-request-body-413-design.md",
+    "docs/superpowers/plans/2026-11-21-request-body-413.md",
+    "docs/tasks/2026-11-21-request-body-413.md"
   ],
   "acceptance": [
-    "Closing the app window hides it and does not stop the runtime",
-    "Tray click restores and focuses the existing window",
-    "Tray Open restores the window; Tray Exit stops runtime once and fully exits",
-    "Package metadata, lockfile and Settings display show version 1.1.1",
-    "Root README clearly documents version 1.1.1, capabilities, functions, platform and material release limits",
-    "README embeds screenshots captured from the actual running 1.1.1 application",
-    "Desktop and Runtime test suites, production build and whitespace check pass",
-    "Dedicated PR targets master and is based on merged PR #10; merge is not performed"
+    "A same-protocol Responses payload larger than 1 MiB reaches the configured upstream intact",
+    "The default gateway request-body limit is 64 MiB and can be configured with CXRG_MAX_REQUEST_BODY_BYTES",
+    "Requests above the configured bound return HTTP 413 with request_body_too_large and a useful byte limit",
+    "Focused and full Runtime tests pass",
+    "The dedicated PR targets master and does not merge or release"
   ],
-  "rollback": "Revert task commits from the feature branch; no persisted data or release artifacts are modified.",
+  "rollback": "Revert the task commit; no persisted data, schema, credentials, or release artifacts are changed.",
   "owner_acceptance": "pending",
-  "pull_request": {
-    "state": "open",
-    "number": 11,
-    "base": "master",
-    "head_sha_at_creation": "2bcf6fc42d98dd21224b6164d8e01b540f53e69c",
-    "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/11"
-  },
   "verification": {
-    "baseline": "Runtime 102/102, Desktop 134/134, Desktop production build passed on merged PR #10; initial missing-dist test failure was resolved by building from the lockfile",
-    "implementation": "Tray lifecycle 9/9 (including 3 review-driven RED/GREEN cases); final Runtime 111/111; Desktop 135/135; Settings version 12/12; update-check pending/unconfigured feedback regression passed RED/GREEN; TypeScript/Vite production build passed; release manifest fixtures follow package version",
-    "screenshots": "PASS: three 1440x980 captures from the local 1.1.1 browser renderer using repository read-only fixture data; targets and SHA-256 values recorded in docs/tasks/evidence/tray-close-readme/screenshots.json",
-    "native_electron": "NOT_RUN: Electron binary was absent because the existing user-level C:/Users/20142/.npmrc allows install scripts only for @opencode/cli; no user config changes made",
-    "readme_links": "PASS: all local targets exist; package.json, lockfile root and package record all show 1.1.1",
-    "runtime_tests": "PASS: 111/111 after activation-handler coverage fix",
-    "desktop_tests": "PASS: 135/135 after update-check feedback change",
+    "focused": "PASS: Gateway 34/34",
+    "desktop": "PASS: 135/135",
+    "full_runtime": "PASS: 118/118",
     "production_build": "PASS: TypeScript and Vite",
     "whitespace": "PASS: git diff --check",
-    "ci": "PASS on PR #11 head b94e9d56: Runtime and Desktop jobs passed; package job skipped for pull_request by workflow condition",
-    "independent_review": "Fresh whole-branch review identified one Important missing test for second-instance/activate wiring; fixed test-first with 3 RED/GREEN cases. No Critical/security or Minor findings; no second review in inline execution workflow.",
-    "native_manual": "NOT_RUN: Electron binary unavailable under user-level npm install-script policy; no policy change made"
+    "independent_review": "SELF_REVIEW PASS: subagent review tool unavailable in child task; final boundary fixes verified",
+    "real_provider": "NOT_RUN",
+    "native_desktop": "NOT_RUN",
+    "merge": "NOT_AUTHORIZED"
   },
-  "capability": {
-    "skills": [
-      "using-superpowers",
-      "awg-workspace-governance",
-      "brainstorming",
-      "using-git-worktrees",
-      "writing-plans",
-      "executing-plans",
-      "test-driven-development",
-      "systematic-debugging",
-      "verification-before-completion",
-      "requesting-code-review",
-      "receiving-code-review",
-      "computer-use",
-      "finishing-a-development-branch"
-    ],
-    "repo_mcp": "NOT_RUN: repository registration file is absent, so a registered workspace_id cannot be established; source inspection used.",
-    "computer_use": "INVOKED but blocked while activating the user's existing Chrome because the plugin could not verify its URL; screenshots were instead captured by isolated headless Chrome against the local fixture renderer.",
-    "electron_install_script": "NOT_RUN: user-level npm allow-scripts policy permits only @opencode/cli; package-local approval would override that user policy and was reverted."
-  }
+  "pull_request": null
 }

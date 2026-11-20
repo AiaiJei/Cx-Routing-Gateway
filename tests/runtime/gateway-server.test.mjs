@@ -627,6 +627,226 @@ test('gateway network policy rejects mixed answers before any fetch', async () =
   await assert.rejects(() => validateDestination('http://mixed.test:1', true, [], async () => [{ address: '127.0.0.1', family: 4 }, { address: '8.8.8.8', family: 4 }]), /Mixed public and private/);
 });
 
+test('gateway forwards same-protocol Responses bodies larger than the former 1 MiB limit', async (t) => {
+  let forwardedText = '';
+  const upstream = http.createServer((req, res) => {
+    let data = '';
+    req.setEncoding('utf8');
+    req.on('data', chunk => { data += chunk; });
+    req.on('end', () => {
+      forwardedText = JSON.parse(data).input[0].content[0].text;
+      res.setHeader('content-type', 'application/json');
+      res.end(JSON.stringify({ id: 'resp-large', object: 'response', output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'large-ok' }] }], status: 'completed' }));
+    });
+  });
+  const upstreamPort = await listen(upstream);
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-large-request-'));
+  const store = new ConfigStore(path.join(dir, 'config.json'));
+  const vault = new SecretVault(path.join(dir, 'secrets.json'), 'test-master-key');
+  const clientKey = `cxrg_${crypto.randomBytes(18).toString('base64url')}`;
+  const keyHash = crypto.createHash('sha256').update(clientKey).digest('hex');
+  await store.update(config => ({ ...config,
+    upstreams: [{ id: 'large-upstream', name: 'Large', baseUrl: `http://127.0.0.1:${upstreamPort}/v1`, protocol: 'Res', trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'], enabled: true }],
+    routes: [{ id: 'large-route', alias: 'large', inboundProtocol: 'Res', outboundProtocol: 'Res', upstreamId: 'large-upstream', modelId: 'large-model', enabled: true }],
+    clientKeys: [{ id: 'large-key', keyHash, scope: [], createdAt: new Date().toISOString(), enabled: true, name: 'large' }],
+  }));
+  const gateway = createGatewayServer({ store, vault });
+  const gatewayPort = await listen(gateway);
+  t.after(() => { gateway.closeAllConnections(); gateway.close(); upstream.closeAllConnections(); upstream.close(); });
+  const content = 'x'.repeat(1_100_000);
+  const response = await fetch(`http://127.0.0.1:${gatewayPort}/v1/responses`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${clientKey}` },
+    body: JSON.stringify({ model: 'large', input: [{ role: 'user', content: [{ type: 'input_text', text: content }] }] }),
+  });
+  assert.equal(response.status, 200);
+  assert.equal(forwardedText.length, content.length);
+  assert.equal((await response.json()).output[0].content[0].text, 'large-ok');
+});
+
+test('gateway preserves UTF-8 split across request chunks', async (t) => {
+  let forwardedText = '';
+  const upstream = http.createServer((req, res) => {
+    let data = '';
+    req.setEncoding('utf8');
+    req.on('data', chunk => { data += chunk; });
+    req.on('end', () => {
+      forwardedText = JSON.parse(data).input;
+      res.setHeader('content-type', 'application/json');
+      res.end(JSON.stringify({ output: [{ type: 'message', content: [{ type: 'output_text', text: 'utf8-ok' }] }] }));
+    });
+  });
+  const upstreamPort = await listen(upstream);
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-utf8-request-'));
+  const store = new ConfigStore(path.join(dir, 'config.json'));
+  const vault = new SecretVault(path.join(dir, 'secrets.json'), 'test-master-key');
+  const clientKey = `cxrg_${crypto.randomBytes(18).toString('base64url')}`;
+  const keyHash = crypto.createHash('sha256').update(clientKey).digest('hex');
+  await store.update(config => ({ ...config,
+    upstreams: [{ id: 'utf8-upstream', name: 'UTF8', baseUrl: `http://127.0.0.1:${upstreamPort}/v1`, protocol: 'Res', trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'], enabled: true }],
+    routes: [{ id: 'utf8-route', alias: 'utf8', inboundProtocol: 'Res', outboundProtocol: 'Res', upstreamId: 'utf8-upstream', modelId: 'utf8-model', enabled: true }],
+    clientKeys: [{ id: 'utf8-key', keyHash, scope: [], createdAt: new Date().toISOString(), enabled: true, name: 'utf8' }],
+  }));
+  const gateway = createGatewayServer({ store, vault });
+  const gatewayPort = await listen(gateway);
+  t.after(() => { gateway.closeAllConnections(); gateway.close(); upstream.closeAllConnections(); upstream.close(); });
+  const input = '前缀🙂中间🚀后缀';
+  const body = Buffer.from(JSON.stringify({ model: 'utf8', input }));
+  const emojiStart = body.indexOf(Buffer.from('🙂'));
+  const response = await new Promise((resolve, reject) => {
+    const request = http.request({ hostname: '127.0.0.1', port: gatewayPort, path: '/v1/responses', method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${clientKey}` } }, resolve);
+    request.on('error', reject);
+    request.write(body.subarray(0, emojiStart + 1));
+    request.end(body.subarray(emojiStart + 1));
+  });
+  response.resume();
+  await new Promise(resolve => response.once('end', resolve));
+  assert.equal(response.statusCode, 200);
+  assert.equal(forwardedText, input);
+});
+test('gateway uses CXRG_MAX_REQUEST_BODY_BYTES as the environment default', async (t) => {
+  const previous = process.env.CXRG_MAX_REQUEST_BODY_BYTES;
+  let upstreamCalls = 0;
+  const upstream = http.createServer((_req, res) => { upstreamCalls += 1; res.end('unexpected'); });
+  const upstreamPort = await listen(upstream);
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-env-limit-'));
+  const store = new ConfigStore(path.join(dir, 'config.json'));
+  const vault = new SecretVault(path.join(dir, 'secrets.json'), 'test-master-key');
+  const clientKey = `cxrg_${crypto.randomBytes(18).toString('base64url')}`;
+  const keyHash = crypto.createHash('sha256').update(clientKey).digest('hex');
+  await store.update(config => ({ ...config,
+    upstreams: [{ id: 'env-upstream', name: 'Env', baseUrl: `http://127.0.0.1:${upstreamPort}/v1`, protocol: 'Res', trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'], enabled: true }],
+    routes: [{ id: 'env-route', alias: 'env', inboundProtocol: 'Res', outboundProtocol: 'Res', upstreamId: 'env-upstream', modelId: 'env-model', enabled: true }],
+    clientKeys: [{ id: 'env-key', keyHash, scope: [], createdAt: new Date().toISOString(), enabled: true, name: 'env' }],
+  }));
+  try {
+    process.env.CXRG_MAX_REQUEST_BODY_BYTES = '1024';
+    const gateway = createGatewayServer({ store, vault });
+    const gatewayPort = await listen(gateway);
+    t.after(() => { gateway.closeAllConnections(); gateway.close(); upstream.closeAllConnections(); upstream.close(); });
+    const response = await fetch(`http://127.0.0.1:${gatewayPort}/v1/responses`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${clientKey}` },
+      body: JSON.stringify({ model: 'env', input: 'x'.repeat(2000) }),
+    });
+    const body = await response.json();
+    assert.equal(response.status, 413);
+    assert.equal(body.error, 'request_body_too_large');
+    assert.equal(body.limitBytes, 1024);
+    assert.equal(upstreamCalls, 0);
+  } finally {
+    if (previous === undefined) delete process.env.CXRG_MAX_REQUEST_BODY_BYTES;
+    else process.env.CXRG_MAX_REQUEST_BODY_BYTES = previous;
+  }
+});
+test('gateway rejects oversized requests without contacting the upstream', async (t) => {
+  let upstreamCalls = 0;
+  const upstream = http.createServer((_req, res) => { upstreamCalls += 1; res.end('unexpected'); });
+  const upstreamPort = await listen(upstream);
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-request-limit-'));
+  const store = new ConfigStore(path.join(dir, 'config.json'));
+  const vault = new SecretVault(path.join(dir, 'secrets.json'), 'test-master-key');
+  const clientKey = `cxrg_${crypto.randomBytes(18).toString('base64url')}`;
+  const keyHash = crypto.createHash('sha256').update(clientKey).digest('hex');
+  await store.update(config => ({ ...config,
+    upstreams: [{ id: 'bounded-upstream', name: 'Bounded', baseUrl: `http://127.0.0.1:${upstreamPort}/v1`, protocol: 'Res', trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'], enabled: true }],
+    routes: [{ id: 'bounded-route', alias: 'bounded', inboundProtocol: 'Res', outboundProtocol: 'Res', upstreamId: 'bounded-upstream', modelId: 'bounded-model', enabled: true }],
+    clientKeys: [{ id: 'bounded-key', keyHash, scope: [], createdAt: new Date().toISOString(), enabled: true, name: 'bounded' }],
+  }));
+  const gateway = createGatewayServer({ store, vault, maxRequestBodyBytes: 1024 });
+  const gatewayPort = await listen(gateway);
+  t.after(() => { gateway.closeAllConnections(); gateway.close(); upstream.closeAllConnections(); upstream.close(); });
+  const response = await fetch(`http://127.0.0.1:${gatewayPort}/v1/responses`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${clientKey}` },
+    body: JSON.stringify({ model: 'bounded', input: 'x'.repeat(2000) }),
+  });
+  const body = await response.json();
+  assert.equal(response.status, 413);
+  assert.equal(body.error, 'request_body_too_large');
+  assert.equal(body.limitBytes, 1024);
+  assert.ok(body.requestId);
+  assert.equal(upstreamCalls, 0);
+});
+test('gateway rejects chunked bodies above the limit with a readable 413', async (t) => {
+  let upstreamCalls = 0;
+  const upstream = http.createServer((_req, res) => { upstreamCalls += 1; res.end('unexpected'); });
+  const upstreamPort = await listen(upstream);
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-chunked-limit-'));
+  const store = new ConfigStore(path.join(dir, 'config.json'));
+  const vault = new SecretVault(path.join(dir, 'secrets.json'), 'test-master-key');
+  const clientKey = `cxrg_${crypto.randomBytes(18).toString('base64url')}`;
+  await store.update(config => ({ ...config,
+    upstreams: [{ id: 'chunked-upstream', baseUrl: `http://127.0.0.1:${upstreamPort}/v1`, protocol: 'Res', trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'], enabled: true }],
+    routes: [{ id: 'chunked-route', alias: 'chunked', inboundProtocol: 'Res', outboundProtocol: 'Res', upstreamId: 'chunked-upstream', modelId: 'chunked-model', enabled: true }],
+    clientKeys: [{ id: 'chunked-key', keyHash: crypto.createHash('sha256').update(clientKey).digest('hex'), enabled: true }],
+  }));
+  const gateway = createGatewayServer({ store, vault, maxRequestBodyBytes: 1024 });
+  const gatewayPort = await listen(gateway);
+  t.after(() => { gateway.closeAllConnections(); gateway.close(); upstream.closeAllConnections(); upstream.close(); });
+  const response = await new Promise((resolve, reject) => {
+    const req = http.request(`http://127.0.0.1:${gatewayPort}/v1/responses`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${clientKey}`, 'transfer-encoding': 'chunked' },
+    }, res => {
+      let data = '';
+      res.setEncoding('utf8');
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(data) }));
+    });
+    req.on('error', reject);
+    req.write('{"model":"chunked","input":"');
+    req.write('x'.repeat(2000));
+    req.end('"}');
+  });
+  assert.equal(response.status, 413);
+  assert.equal(response.body.error, 'request_body_too_large');
+  assert.equal(response.body.limitBytes, 1024);
+  assert.equal(upstreamCalls, 0);
+});
+test('gateway rejects declared oversized bodies before reading them', async (t) => {
+  let upstreamCalls = 0;
+  const upstream = http.createServer((_req, res) => { upstreamCalls += 1; res.end('unexpected'); });
+  const upstreamPort = await listen(upstream);
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-declared-limit-'));
+  const store = new ConfigStore(path.join(dir, 'config.json'));
+  const vault = new SecretVault(path.join(dir, 'secrets.json'), 'test-master-key');
+  const clientKey = `cxrg_${crypto.randomBytes(18).toString('base64url')}`;
+  const keyHash = crypto.createHash('sha256').update(clientKey).digest('hex');
+  await store.update(config => ({ ...config,
+    upstreams: [{ id: 'declared-upstream', name: 'Declared', baseUrl: `http://127.0.0.1:${upstreamPort}/v1`, protocol: 'Res', trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'], enabled: true }],
+    routes: [{ id: 'declared-route', alias: 'declared', inboundProtocol: 'Res', outboundProtocol: 'Res', upstreamId: 'declared-upstream', modelId: 'declared-model', enabled: true }],
+    clientKeys: [{ id: 'declared-key', keyHash, scope: [], createdAt: new Date().toISOString(), enabled: true, name: 'declared' }],
+  }));
+  const gateway = createGatewayServer({ store, vault, maxRequestBodyBytes: 1024 });
+  const gatewayPort = await listen(gateway);
+  t.after(() => { gateway.closeAllConnections(); gateway.close(); upstream.closeAllConnections(); upstream.close(); });
+  const body = JSON.stringify({ model: 'declared', input: 'x'.repeat(2000) });
+  const response = await new Promise((resolve, reject) => {
+    const request = http.request({ hostname: '127.0.0.1', port: gatewayPort, path: '/v1/responses', method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${clientKey}`, 'content-length': String(body.length) } }, resolve);
+    request.on('error', reject);
+    request.end(body);
+  });
+  let raw = '';
+  response.setEncoding('utf8');
+  response.on('data', chunk => { raw += chunk; });
+  await new Promise(resolve => response.once('end', resolve));
+  const result = JSON.parse(raw);
+  assert.equal(response.statusCode, 413);
+  assert.equal(result.error, 'request_body_too_large');
+  assert.equal(result.limitBytes, 1024);
+  assert.equal(upstreamCalls, 0);
+});
+test('gateway request body limit is configurable and validates explicit bounds', () => {
+  const dir = path.join(os.tmpdir(), `cxrg-limit-validation-${crypto.randomUUID()}`);
+  const store = new ConfigStore(path.join(dir, 'config.json'));
+  const vault = new SecretVault(path.join(dir, 'secrets.json'), 'test-master-key');
+  assert.doesNotThrow(() => createGatewayServer({ store, vault }));
+  assert.doesNotThrow(() => createGatewayServer({ store, vault, maxRequestBodyBytes: '2048' }));
+  for (const invalid of [0, -1, 1.5, 'not-a-number', '', '  ', Number.NaN, Number.POSITIVE_INFINITY]) {
+    assert.throws(() => createGatewayServer({ store, vault, maxRequestBodyBytes: invalid }), /positive safe integer/);
+  }
+});
 test('gateway enforces a concurrent request limit', async (t) => {
   const upstream = http.createServer(async (_req, res) => { await new Promise((resolve) => setTimeout(resolve, 100)); res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'ok' } }] })); });
   const upstreamPort = await listen(upstream);
