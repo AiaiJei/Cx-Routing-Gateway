@@ -46,3 +46,7 @@ Define the product version once in desktop package metadata as `cxrgProductVersi
 ## Rollback
 
 Revert only this task's commits from `codex/request-log-upstream-1.1.1.1`. No data migration is required because `upstreamName` is optional and legacy records have a fallback. Preserve the branch, worktree, release tag and pre-existing untracked probe directory.
+
+## 2026-11-21 revision: request reasoning level
+
+The request log table now adds a `推理` column immediately after `来源`. Gateway input accepts the transmitted reasoning level from `reasoning_effort`, `reasoning.effort`, or `thinking.effort`, in that order; only a trimmed string of 1–32 characters is retained as optional `reasoningEffort`. Invalid, oversized, or absent values are omitted from usage records and display as `-`. The Desktop adapter maps the optional field to `CallLog.reasoning`, and both the table and detail view display the same redacted value. No request/response body or full reasoning configuration is persisted.

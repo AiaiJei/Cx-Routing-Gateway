@@ -72,3 +72,15 @@ it("prefers the persisted upstream name, falls back by ID, and redacts unknown s
     ["missing", "—"],
   ]);
 });
+
+it("maps an optional reasoning level and leaves legacy rows undefined", () => {
+  const workspace = mapRuntimeState({
+    settings: { gatewayHost: "127.0.0.1", gatewayPort: 4318 },
+    upstreams: [], routes: [], clientKeys: [],
+    usage: [
+      { requestId: "reasoned", reasoningEffort: "high", status: "completed" },
+      { requestId: "legacy", status: "completed" },
+    ],
+  });
+  expect(workspace.logs.map(({ id, reasoning }) => [id, reasoning])).toEqual([["reasoned", "high"], ["legacy", undefined]]);
+});

@@ -47,3 +47,14 @@ Revert this branch commits only. Keep the branch/worktree, .tmp-version-probe/, 
 - Final PR state: OPEN, base master, head 2e44aec1ccf924abc3fa8449cefc0bf90ac5548e. No merge or release publication performed.
 
 - CI final head c24df15: Runtime SUCCESS; Desktop SUCCESS; package SKIPPED by workflow condition. PR #12 remains OPEN and unmerged.
+
+## Reasoning-level revision verification
+
+- RED: Runtime reasoning-field tests failed before implementation; Desktop adapter/UI tests failed because reasoning mapping and the 推理 column were absent.
+- GREEN: Runtime request logs 5/5; Gateway core 27/27; full Runtime 115/115; full Desktop 140/140; production build PASS; git diff --check PASS.
+- The initial post-implementation Runtime failures were traced to `reasoningEffort` being scoped inside `try` while referenced by `catch`; moving it to request scope restored the existing DNS/timeout/disconnect error paths.
+- PR #12 remains the delivery vehicle and must stay open/unmerged.
+
+## 2026-11-21 revision: reasoning level
+
+User approved adding a `推理` column immediately after `来源`. The transmitted reasoning level is read from `reasoning_effort`, `reasoning.effort`, or `thinking.effort`; values are bounded to a trimmed 1–32 character string, otherwise usage omits the field and Desktop renders `-`. PR #12 remains the delivery vehicle and stays unmerged.

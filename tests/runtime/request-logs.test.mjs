@@ -28,9 +28,9 @@ async function setup(t, respond, outbound = 'Chat') {
   const controlPort = await listen(control);
   t.after(async () => { await Promise.all([close(gateway), close(control), close(upstream)]); await store.writeQueue; });
   return {
-    async request(protocol, stream) {
+    async request(protocol, stream, reasoning) {
       const endpoint = { Chat: 'chat/completions', Res: 'responses', Mes: 'messages' }[protocol];
-      return fetch(`http://127.0.0.1:${port}/v1/${endpoint}`, { method: 'POST', headers: { authorization: 'Bearer test-key', 'content-type': 'application/json' }, body: JSON.stringify({ model: protocol, stream, input: 'private-prompt', messages: [{ role: 'user', content: 'private-prompt' }] }) });
+      return fetch(`http://127.0.0.1:${port}/v1/${endpoint}`, { method: 'POST', headers: { authorization: 'Bearer test-key', 'content-type': 'application/json' }, body: JSON.stringify({ model: protocol, stream, input: 'private-prompt', messages: [{ role: 'user', content: 'private-prompt' }], ...(reasoning === undefined ? {} : reasoning) }) });
     },
     async logs(count) {
       for (let n = 0; n < 100; n++) {
@@ -100,4 +100,32 @@ test('failed upstream records known request type without inventing usage or firs
   assert.equal(log.errorCode, 'upstream_error');
   assert.equal(log.upstreamName, 'Primary upstream');
   assert.doesNotMatch(JSON.stringify(log), /private-error/);
+});
+
+test('request logs retain only the transmitted reasoning level and prefer the primary field', async t => {
+  const app = await setup(t, (_req, res) => res.end(JSON.stringify({ choices: [{ message: { content: 'ok' } }] })));
+  const response = await app.request('Chat', false, { reasoning_effort: ' high ' });
+  assert.equal(response.status, 200);
+  await response.text();
+  const [log] = await app.logs(1);
+  assert.equal(log.reasoningEffort, 'high');
+
+  const nested = await app.request('Chat', false, { reasoning: { effort: 'medium' } });
+  assert.equal(nested.status, 200);
+  await nested.text();
+  const second = (await app.logs(2)).at(-1);
+  assert.equal(second.reasoningEffort, 'medium');
+});
+
+test('request logs omit missing, oversized, and non-string reasoning levels', async t => {
+  const app = await setup(t, (_req, res) => res.end(JSON.stringify({ choices: [{ message: { content: 'ok' } }] })));
+  for (const value of [{ reasoning_effort: '' }, { reasoning_effort: 'x'.repeat(33) }, { thinking: { effort: 7 } }]) {
+    const response = await app.request('Chat', false, value);
+    assert.equal(response.status, 200);
+    await response.text();
+  }
+  const logs = await app.logs(3);
+  assert.equal('reasoningEffort' in logs[0], false);
+  assert.equal('reasoningEffort' in logs[1], false);
+  assert.equal('reasoningEffort' in logs[2], false);
 });

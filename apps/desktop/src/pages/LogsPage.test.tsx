@@ -76,6 +76,22 @@ describe("LogsPage", () => {
     expect(dialog).toHaveTextContent("入口凭证");
     expect(dialog).toHaveTextContent("Desktop client ·••••");
   });
+
+  it("shows 推理 immediately after 来源 and uses a dash when absent", async () => {
+    const user = userEvent.setup();
+    render(<LogsPage />);
+    await screen.findByRole("searchbox", { name: "搜索请求日志" });
+    const table = within(screen.getByRole("region", { name: "请求日志列表" })).getByRole("table");
+    const headers = within(table).getAllByRole("columnheader").map((header) => header.textContent);
+    expect(headers.indexOf("推理")).toBe(headers.indexOf("来源") + 1);
+    const firstRow = within(table).getAllByRole("row")[1];
+    expect(within(firstRow).getByText("high")).toBeVisible();
+    const missingRow = within(table).getAllByRole("row")[2];
+    expect(missingRow.textContent).toContain("-");
+    await user.click(within(firstRow).getByRole("button", { name: "查看 req-7d3a9f21" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("推理");
+    expect(screen.getByRole("dialog")).toHaveTextContent("high");
+  });
 });
 
 it("reveals request IDs, protocol direction and exact tokens through accessible disclosures", async () => {

@@ -97,3 +97,12 @@
 ## Rollback
 
 Revert only this branch commits. Do not delete the existing branch/worktree, probe files, published release/tag, or unrelated untracked directories.
+
+### Task 6: Add transmitted reasoning level to request logs
+
+**Files:** `services/gateway/src/server.mjs`; `tests/runtime/request-logs.test.mjs`; `apps/desktop/src/domain/types.ts`; `apps/desktop/src/data/workspace-client.ts`; `apps/desktop/src/data/workspace-client.test.ts`; `apps/desktop/src/pages/LogsPage.tsx`; `apps/desktop/src/pages/LogsPage.test.tsx`.
+
+- [ ] Write failing tests for `reasoning_effort`, nested fallback fields, invalid/oversized values, adapter mapping, the `推理` column after `来源`, and `-` for missing values.
+- [ ] Run focused Runtime/Desktop tests and observe the expected failures.
+- [ ] Implement bounded input extraction, optional usage persistence, adapter mapping, and table/detail rendering.
+- [ ] Run focused tests, full Runtime/Desktop suites, production build, `git diff --check`, and update PR #12 with the new head and CI.

@@ -67,6 +67,7 @@
     "docs/tasks/2026-11-21-request-log-upstream-version.md",
     "docs/tasks/archives/2026-11-20-tray-close-readme-awg-task.json",
     "tests/runtime/route-batch.test.mjs"
+    ,"tests/runtime/request-logs.test.mjs"
   ],
   "acceptance": [
     "usage records snapshot selected upstream service name with existing upstreamId",
@@ -75,7 +76,8 @@
     "product/build/release version is 1.1.1.1 while npm package/lock remain 1.1.1",
     "updater compares four-part current version and accepts three-part legacy releases",
     "focused/full tests, production build and whitespace verification pass",
-    "dedicated PR is open and unmerged"
+    "dedicated PR is open and unmerged",
+    "request table shows 推理 immediately after 来源 and missing values render -"
   ],
   "rollback": "Revert this branch commits only; preserve branch, worktree, probe files, existing release/tag and unrelated untracked files.",
   "pull_request": {
