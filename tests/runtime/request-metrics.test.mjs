@@ -66,6 +66,7 @@ test('malformed and oversized frames are skipped without losing following metric
   const metrics = createRequestMetrics({ protocol: 'Chat', stream: true, startedAt: 10, clock: () => 15 });
   metrics.push(Buffer.from('data: {bad}\n\ndata: ' + 'x'.repeat(300_000)));
   metrics.push(Buffer.from('\n\n' + frame({ choices: [{ delta: { refusal: 'no' } }], usage: { prompt_tokens: 0, completion_tokens: 1 } }) + frame({ choices: [{ delta: {}, finish_reason: 'content_filter' }] })));
+  metrics.push(Buffer.from('data: [DONE]\n\n'));
   metrics.finish();
   assert.deepEqual(metrics.snapshot(), { stream: true, firstTokenMs: 5, tokens: { input: 0, output: 1, total: 1 }, streamCompletion: 'completed', outputObserved: true, usageObserved: true });
 });
@@ -92,12 +93,20 @@ test('Chat DONE without a finish reason is incomplete', () => {
   assert.deepEqual(metrics.snapshot(), { stream: true, streamCompletion: 'incomplete', outputObserved: false, usageObserved: false });
 });
 
-test('Chat finish reason completes a stream and records observable output', () => {
+test('Chat finish reason and DONE complete a stream and record observable output', () => {
   const metrics = createRequestMetrics({ protocol: 'Chat', stream: true, startedAt: 10, clock: () => 15 });
   metrics.push(Buffer.from(frame({ choices: [{ delta: { content: 'hello' } }] })));
   metrics.push(Buffer.from(frame({ choices: [{ delta: {}, finish_reason: 'stop' }] })));
+  metrics.push(Buffer.from('data: [DONE]\n\n'));
   metrics.finish();
   assert.deepEqual(metrics.snapshot(), { stream: true, firstTokenMs: 5, streamCompletion: 'completed', outputObserved: true, usageObserved: false });
+});
+
+test('Chat finish reason without DONE remains incomplete', () => {
+  const metrics = createRequestMetrics({ protocol: 'Chat', stream: true, startedAt: 10 });
+  metrics.push(Buffer.from(frame({ choices: [{ delta: {}, finish_reason: 'stop' }] })));
+  metrics.finish();
+  assert.equal(metrics.snapshot().streamCompletion, 'incomplete');
 });
 
 test('Messages message_stop is required for stream completion', () => {
@@ -108,12 +117,12 @@ test('Messages message_stop is required for stream completion', () => {
   assert.deepEqual(metrics.snapshot(), { stream: true, tokens: { input: 1, output: 0 }, streamCompletion: 'completed', outputObserved: false, usageObserved: true });
 });
 
-test('Responses failed and incomplete events do not count as completed', () => {
-  for (const [event, status] of [['response.failed', 'failed'], ['response.incomplete', 'incomplete']]) {
+test('Responses failed and incomplete events are explicit stream failures', () => {
+  for (const event of ['response.failed', 'response.incomplete']) {
     const metrics = createRequestMetrics({ protocol: 'Res', stream: true, startedAt: 10 });
     metrics.push(Buffer.from(frame({ type: event, response: { status: event === 'response.failed' ? 'failed' : 'incomplete' } }, event)));
     metrics.finish();
-    assert.deepEqual(metrics.snapshot(), { stream: true, streamCompletion: status, outputObserved: false, usageObserved: false });
+    assert.deepEqual(metrics.snapshot(), { stream: true, streamCompletion: 'failed', outputObserved: false, usageObserved: false });
   }
 });
 

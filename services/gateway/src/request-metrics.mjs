@@ -39,6 +39,7 @@ export function createRequestMetrics({ protocol, stream, startedAt, clock = () =
   let reportedTotal;
   let streamCompletion = 'incomplete';
   let outputObserved = false;
+  let chatFinishReason = false;
   let buffer = '';
   let discarding = false;
   const decoder = new TextDecoder();
@@ -69,7 +70,10 @@ export function createRequestMetrics({ protocol, stream, startedAt, clock = () =
     const data = lines.filter(line => line.startsWith('data:')).map(line => line.slice(5).trimStart()).join('\n');
     if (!data) return;
     const event = lines.find(line => line.startsWith('event:'))?.slice(6).trim() || '';
-    if (data === '[DONE]') return;
+    if (data === '[DONE]') {
+      if (protocol === 'Chat' && chatFinishReason && streamCompletion !== 'failed') streamCompletion = 'completed';
+      return;
+    }
     try {
       const payload = JSON.parse(data);
       if (!payload || typeof payload !== 'object') return;
@@ -82,11 +86,11 @@ export function createRequestMetrics({ protocol, stream, startedAt, clock = () =
 
       if (eventName === 'error' || payload.type === 'error' || (payload.error && !Array.isArray(payload.choices))) streamCompletion = 'failed';
       else if (protocol === 'Chat') {
-        if (payload.choices?.some(choice => typeof choice?.finish_reason === 'string' && choice.finish_reason.length > 0) && streamCompletion !== 'failed') streamCompletion = 'completed';
+        if (payload.choices?.some(choice => typeof choice?.finish_reason === 'string' && choice.finish_reason.length > 0)) chatFinishReason = true;
       } else if (protocol === 'Mes') {
         if (eventName === 'message_stop' && streamCompletion !== 'failed') streamCompletion = 'completed';
       } else if (eventName === 'response.failed') streamCompletion = 'failed';
-      else if (eventName === 'response.incomplete') streamCompletion = 'incomplete';
+      else if (eventName === 'response.incomplete') streamCompletion = 'failed';
       else if (['response.completed', 'response.done'].includes(eventName) && payload.response?.status === 'completed' && streamCompletion !== 'failed') streamCompletion = 'completed';
     } catch { /* Observability must not alter passthrough behavior. */ }
   }
