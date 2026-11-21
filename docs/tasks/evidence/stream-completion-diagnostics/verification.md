@@ -12,6 +12,7 @@ Date: 2026-11-22
 - Follow-up independent review: no actionable Critical, Important, or Minor findings. It confirmed Chat same-read terminal ordering and reasoning-only empty classification alongside the Runtime/Desktop regression coverage.
 - `git diff --check` and `git diff --check origin/master...HEAD` -> passed after the evidence update.
 - `.codex/awg-task.json` parsed successfully and its `task_id` matched this task.
+- PR #16 was created against `master` at head `f80a518592eb521ecc2979ff6c5dfea911441cc8` and observed open/unmerged. At the initial status check, GitHub Actions Runtime and Desktop jobs were in progress; the package job was skipped by workflow condition.
 
 The Runtime suite passed again after the Desktop build completed. An earlier parallel Runtime/build run briefly failed because the Runtime asset test read `apps/desktop/dist/index.html` while Vite was replacing `dist`; the serialized Runtime rerun passed in full.
 

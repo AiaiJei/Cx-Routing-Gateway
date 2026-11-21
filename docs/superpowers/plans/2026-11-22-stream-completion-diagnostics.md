@@ -78,8 +78,8 @@
 
 - [x] Run the full Runtime suite (144/144), full Desktop suite (145/145), production build, and `git diff --check`; record counts and limitations.
 - [x] Review the whole branch against `master`; the follow-up independent review found no Critical, Important, or Minor findings. The two Important findings from the first review were fixed with regression tests.
-- [ ] Push `codex/protocol-completion-state` and create one PR against `master`; record URL, head SHA, and CI status.
-- [ ] Leave the PR open/unmerged and preserve all worktrees and unrelated untracked directories.
+- [x] Push `codex/protocol-completion-state` and create one PR against `master`; record URL, creation head SHA, and CI status.
+- [x] Leave PR #16 open/unmerged and preserve all worktrees and unrelated untracked directories.
 
 ## Rollback
 

@@ -5,7 +5,7 @@
 - Contract: `.codex/awg-task.json`
 - Base: `master` at `0f57028f80b0707a2d32a83af5bba4f31bf9bb73`
 - Branch/worktree: `codex/protocol-completion-state` / `.worktree/protocol-completion-state`
-- Status: implementation, local verification, and independent review complete; PR creation pending.
+- Status: PR #16 is open and unmerged against `master`; implementation, local verification, and independent review are complete.
 
 ## Scope
 
@@ -36,4 +36,5 @@ No real New API or Sub2API request was made. The implementation can identify onl
 - Real New API/Sub2API calls: `NOT_RUN` by contract.
 - Initial independent review found two Important issues (Chat terminal-frame ordering and reasoning-only output classification); both were fixed with red/green regression tests. Follow-up independent review found no actionable Critical, Important, or Minor findings.
 - Fresh final verification on 2026-11-22: Runtime `npm test` 144/144, Desktop `npm test` 145/145, and Desktop `npm run build` passed. Final diff and contract checks are recorded in the verification evidence.
+- Pull request: [#16](https://github.com/AiaiJei/Cx-Routing-Gateway/pull/16), base `master`, branch `codex/protocol-completion-state`, head at creation `f80a518592eb521ecc2979ff6c5dfea911441cc8`; GitHub Actions Runtime/Desktop checks were in progress at the initial status check, and the package job was skipped by workflow condition.
 - Electron installer, release, merge, and Owner acceptance: `NOT_RUN` by scope.

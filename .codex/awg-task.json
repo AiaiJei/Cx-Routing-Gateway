@@ -91,10 +91,12 @@
     "real_upstream": "NOT_RUN by scope"
   },
   "pull_request": {
-    "number": null,
-    "state": "PENDING_CREATION",
+    "number": 16,
+    "state": "OPEN",
     "base": "master",
     "branch": "codex/protocol-completion-state",
-    "url": null
+    "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/16",
+    "head_sha_at_creation": "f80a518592eb521ecc2979ff6c5dfea911441cc8",
+    "ci_at_creation": "IN_PROGRESS: GitHub Actions runtime and desktop jobs; package job skipped by workflow condition"
   }
 }
