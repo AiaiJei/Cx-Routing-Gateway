@@ -60,3 +60,15 @@ The route-test request uses the same non-stream Gateway path, so its local `Abor
 ## Rollback
 
 Revert only this task's PR commits. No stored-data migration is required because persisted timing fields retain their names and units. Keep the task branch and worktree; do not alter unrelated local branches or worktrees.
+
+## 2026-11-21 Revision: Merge PR #15 and Release 1.1.3
+
+The user explicitly extended the task to merge PR #15, increment the current product/package version 1.1.2 by one patch release to 1.1.3, publish the matching GitHub Release, and update the local Desktop Portable program.
+
+- Keep the existing feature and its final review in PR #15. Add the 1.1.3 package/build metadata, release verifier expectations, release notes/evidence, and regression coverage to the same PR before merging it.
+- GitHub canonicalizes uploaded asset names containing spaces to dotted names. Extend the updater to accept both the existing spaced `Cx-Routing Gateway Setup <version>.exe` name and GitHub's canonical `Cx-Routing.Gateway.Setup.<version>.exe` form, with the URL filename and version-specific download path still validated. Preserve digest verification.
+- Keep package/product/build versions aligned at 1.1.3. The application is currently at 1.1.2; retain the existing SemVer product/package convention.
+- Build the x64 unpacked app, NSIS installer, Portable executable, and release manifest in a new `1.1.3-final-reviewed` directory. Verify the exact runtime files and hashes, then smoke-test both unpacked and Portable builds using isolated data/ports.
+- Update the tag/manual packaging workflow to build Portable before manifest verification and run its isolated health smoke, so the release CI exercises every artifact the verifier requires.
+- After PR checks pass and the final whole-branch review passes, merge PR #15, fast-forward the primary `master` checkout, create GitHub Release `v1.1.3` with Setup, blockmap, Portable, and manifest, then copy the verified Portable to `C:\Users\20142\Desktop\Cx-Routing Gateway Portable 1.1.3.exe` and verify its digest and isolated health checks.
+- Preserve the existing 1.1.2 Desktop Portable and all unrelated worktrees/branches. Do not code-sign or delete the task worktree unless separately authorized.

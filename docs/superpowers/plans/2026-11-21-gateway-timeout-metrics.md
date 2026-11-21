@@ -16,8 +16,9 @@
 - Absolute Gateway request deadline: 600,000 ms from request acceptance.
 - Incoming request-body timeout remains 30,000 ms.
 - Desktop route-test client timeout: 610,000 ms, allowing response parsing after the Gateway deadline.
+- Product/package/build release version: 1.1.3, incremented from the confirmed latest 1.1.2.
 - Request log field names and units remain unchanged; `createdAt` stays wall-clock ISO time.
-- No new runtime dependencies, storage migration, provider calls, version bump, merge, release, or unrelated worktree cleanup.
+- No new runtime dependencies, storage migration, provider calls, code signing, rewrite of the 1.1.2 release, or unrelated worktree cleanup.
 
 ## Review Focus
 
@@ -181,3 +182,89 @@ Inspect the full branch diff against `origin/master`; verify only authorized pat
 Commit the updated contract, task record, and verification evidence with a message such as `docs: record gateway timeout verification`.
 
 Expected: verification evidence is committed locally; the branch remains unpushed until the required whole-branch review is complete.
+
+### Task 4: Merge PR #15 and deliver release 1.1.3
+
+**Files:**
+- Modify: `.github/workflows/ci.yml`
+- Modify: `apps/desktop/package.json`
+- Modify: `apps/desktop/package-lock.json`
+- Modify: `apps/desktop/electron-builder.yml`
+- Modify: `apps/desktop/src/pages/SettingsPage.test.tsx`
+- Modify: `scripts/check-update.mjs`
+- Modify: `scripts/verify-release.mjs`
+- Test: `tests/runtime/check-update.test.mjs`
+- Test: `tests/runtime/release-manifest.test.mjs`
+- Create: `docs/tasks/2026-11-21-release-1.1.3.md`
+- Create: `docs/tasks/evidence/release-1.1.3/release-notes.md`
+- Create: `docs/tasks/evidence/release-1.1.3/manifest.json`
+- Create: `docs/tasks/evidence/release-1.1.3/publish.json`
+- Build: `apps/desktop/release/1.1.3-final-reviewed/**`
+
+**Interfaces:**
+- Product/package/build version: `1.1.3`.
+- Updater accepts exactly two Setup names for that version: `Cx-Routing Gateway Setup 1.1.3.exe` and `Cx-Routing.Gateway.Setup.1.1.3.exe`. The decoded URL filename must equal the chosen asset name; HTTPS host, repository/tag path, and SHA-256 validation remain mandatory.
+- Release directory contains x64 `win-unpacked`, Setup installer, `.blockmap`, Portable, and verifier-generated `manifest.json`.
+- Desktop destination is `C:\Users\20142\Desktop\Cx-Routing Gateway Portable 1.1.3.exe`; the prior 1.1.2 file remains intact.
+
+- [x] **Step 1: Add a failing updater test for GitHub's dotted installer asset name**
+
+Add `checkUpdate accepts GitHub canonicalized dotted installer asset names` using tag `v1.1.3`, exact dotted asset name, matching HTTPS release URL, and valid SHA-256 digest. Assert the returned installer preserves the exact asset name and digest.
+
+- [x] **Step 2: Run the updater test and verify RED**
+
+Run: `node --test --test-name-pattern="canonicalized dotted installer asset names" tests/runtime/check-update.test.mjs`.
+
+Expected: FAIL because the current updater only searches for the spaced asset name.
+
+- [x] **Step 3: Implement narrow GitHub asset-name compatibility**
+
+Accept only the spaced or dotted Setup filename for the parsed release version. Require the URL's decoded filename to match the selected asset name and preserve existing HTTPS, host, repository/tag path, query/hash, and digest checks.
+
+- [x] **Step 4: Update failing 1.1.3 version expectations**
+
+Update the release-manifest current-version expectation and Settings installed-version UI expectations to `1.1.3`; run the focused tests before bumping metadata and verify they fail only on current version mismatch.
+
+- [x] **Step 5: Bump release metadata and verifier to 1.1.3**
+
+Change only root package metadata in package.json/lockfile, electron-builder `buildVersion`, and `scripts/verify-release.mjs` current version guard to 1.1.3. Do not change dependency versions.
+
+- [x] **Step 6: Write release notes and task evidence**
+
+Create the 1.1.3 task record and Chinese release notes covering the timeout/metric changes and updater's GitHub dotted-asset compatibility. Record version lineage, rollback, verification, manifest and Desktop delivery hashes in release evidence.
+
+- [x] **Step 7: Run focused and full tests/build**
+
+Run focused updater/release-manifest/Settings tests, then `npm run build` in `apps/desktop`, full `npm test` from repo root, full Desktop `npm test`, and `git diff --check`.
+
+Expected: all pass with package/product/build metadata aligned at 1.1.3.
+
+- [x] **Step 8: Build and verify Windows x64 artifacts**
+
+In `apps/desktop`, build the x64 unpacked target and NSIS installer into `release/1.1.3-final-reviewed`, then run `scripts/package-portable.ps1 -OutputDirectory apps/desktop/release/1.1.3-final-reviewed` from repository root. Run `scripts/verify-release.mjs apps/desktop/release/1.1.3-final-reviewed --write`, `scripts/smoke-packaged.mjs` against its `win-unpacked` executable, and `scripts/smoke-portable.mjs` against its Portable executable.
+
+Expected: verifier reports every required artifact and SHA-256; both smoke tests report healthy control/gateway services under isolated user data/non-default ports.
+
+- [x] **Step 9: Ensure tag-release CI packages and smokes the Portable asset**
+
+Update the tag/workflow_dispatch package job to build the Portable in `apps/desktop/release` before `verify-release.mjs`, then run `smoke-portable.mjs` against the versioned Portable using isolated data/ports. Keep the job scoped to release tags and manual packaging; do not affect PR CI.
+
+Expected: the release workflow produces every artifact the verifier requires and fails the release job if the Portable smoke fails. Verified locally: the workflow YAML parses and the job includes Portable packaging/smoke before upload.
+
+- [ ] **Step 10: Run the package workflow on the release branch**
+
+Push the release revision to PR #15 and trigger `.github/workflows/ci.yml` with `workflow_dispatch` against `codex/gateway-timeout-metrics`. Wait for Runtime/Desktop and package jobs.
+
+Expected: Runtime and Desktop pass; package builds Portable, verifies all required assets, and passes unpacked/Portable smoke.
+
+- [ ] **Step 11: Re-review PR #15 and merge after CI**
+
+Run an independent whole-branch review against `origin/master` on the final release branch. Merge PR #15 only after independent review and Runtime/Desktop checks pass.
+
+- [ ] **Step 12: Fast-forward the primary worktree**
+
+Verify the merge commit tree matches the reviewed artifact source tree, then fast-forward the primary checkout with `--ff-only`. Preserve the 1.1.2 Desktop file and all task worktrees.
+
+- [ ] **Step 13: Publish v1.1.3 and deliver the Desktop Portable**
+
+Publish `v1.1.3` at the verified merge commit with Setup, blockmap, Portable, manifest, and release notes. Verify GitHub asset names/digests and updater filename compatibility. Copy the verified Portable to the versioned Desktop destination without overwrite, verify its SHA-256, and smoke-test that exact copy with isolated data/ports. Do not terminate the already-running 1.1.2 process; it remains until the user closes it.
