@@ -1,43 +1,36 @@
-# CXRG-STREAM-COMPLETION-DIAGNOSTICS-2026-11-22
+# Stream Completion Diagnostics
 
-Project/repository: Cx-Routing Gateway / AiaiJei/Cx-Routing-Gateway
+- Task ID: `CXRG-STREAM-COMPLETION-DIAGNOSTICS-2026-11-22`
+- Project/repository: Cx-Routing Gateway / `AiaiJei/Cx-Routing-Gateway`
+- Contract: `.codex/awg-task.json`
+- Base: `master` at `0f57028f80b0707a2d32a83af5bba4f31bf9bb73`
+- Branch/worktree: `codex/protocol-completion-state` / `.worktree/protocol-completion-state`
+- Status: implementation committed; independent review and PR creation pending.
 
-Base: `master` at `0f57028f80b0707a2d32a83af5bba4f31bf9bb73`
+## Scope
 
-Branch/worktree: `codex/protocol-completion-state` / `.worktree/protocol-completion-state`
+Require protocol-specific terminal evidence for Chat, Messages, and Responses streams. Record suspected empty completions, missing usage, missing terminal events, explicit stream failure, upstream socket resets, and client cancellation with bounded metadata. Preserve partial metrics and legacy log behavior. No real provider calls, retries after streaming begins, schema migration, release, or merge are included.
 
-Design: `docs/superpowers/specs/2026-11-22-stream-completion-diagnostics-design.md`
+## Implementation
 
-Plan: `docs/superpowers/plans/2026-11-22-stream-completion-diagnostics.md`
+- `1f44bd2` (`fix: validate streaming protocol completion`) adds bounded protocol completion and output observation to the existing metrics observer.
+- `17f9275` (`fix: record stream completion and disconnect causes`) enforces completion in passthrough and converted streams, normalizes disconnects, withholds invalid Chat `[DONE]`, and records sanitized outcomes.
+- `838595e` (`feat: surface empty stream diagnostics in logs`) maps optional evidence to concise status badges and full detail text while keeping old rows unchanged.
 
-## Authorization and boundary
+The UI distinguishes an empty completed stream from a response that produced content but omitted usage. Status badges use short labels to fit the existing fixed-width log table; tooltips and request details include protocol, output, usage, HTTP, and normalized error evidence.
 
-The user authorized execution and a dedicated PR. This task may edit only paths listed in `.codex/awg-task.json`, commit and push its branch, and open one PR against `master`. Merge, release, real provider calls, and deleting branches/worktrees are not authorized.
+## Verification
 
-## Baseline evidence
+See [verification evidence](evidence/stream-completion-diagnostics/verification.md).
 
-- Main `master` and `origin/master` are both `0f57028f80b0707a2d32a83af5bba4f31bf9bb73` and the main worktree had no tracked modifications.
-- Existing untracked `.agent-workspace-governance/`, `.agents/`, `.tmp-awg-source/`, and `plugins/` are preserved.
-- Existing worktrees and branches were enumerated. The new path `.worktree/protocol-completion-state` and branch `codex/protocol-completion-state` did not exist before creation.
-- The previous active task contract was copied verbatim to `docs/tasks/archives/2026-11-21-gateway-timeout-metrics-awg-task.json` before establishing this task's contract.
-- Source path: `request-metrics.mjs` observes SSE content/usage; `server.mjs`'s stream pipe functions currently treat body EOF as success; the catch path may persist raw transport `error.code`; Desktop maps only `status === completed` to success and otherwise collapses statuses to failure.
-- External issue reports are compatibility evidence only; they do not identify the user's deployed New API/Sub2API versions or establish the root cause of a specific request.
+## Limits
 
-## Progress
+No real New API or Sub2API request was made. The implementation can identify only evidence exposed by the upstream stream; a provider that fabricates a valid completed event without content remains a suspected empty response, not a confirmed provider-internal cause. Owner acceptance, merge, release, and packaged Desktop runtime verification remain pending.
 
-- [x] Confirm repository root, clean tracked baseline, task scope and worktree/branch uniqueness.
-- [x] Create dedicated worktree and branch from current `master`.
-- [x] Archive the prior active contract and add this task's design, plan, task record, and active contract.
-- [x] Implement Runtime completion observation test-first: 5 new assertions RED; `node --test tests/runtime/request-metrics.test.mjs` GREEN, 14/14.
-- [ ] Implement Gateway terminal enforcement and disconnect classification test-first.
-- [ ] Implement Desktop diagnostics and legacy-safe mapping test-first.
-- [ ] Run full verification and independent whole-branch review.
-- [ ] Push branch and open dedicated PR; leave unmerged.
+## Capability Record
 
-## Verification ledger
-
-Pending implementation. Real New API/Sub2API calls, deployment-version confirmation, and Owner acceptance are `NOT_RUN`.
-
-## Rollback
-
-Revert only this task's commits. Preserve the dedicated worktree/branch, archived contract, original primary worktree contents, other worktrees, and untracked directories.
+- Skills invoked: `using-superpowers`, `awg-workspace-governance`, `systematic-debugging`, `test-driven-development`, `executing-plans`, `using-git-worktrees`, `verification-before-completion`, `requesting-code-review`, and `finishing-a-development-branch`.
+- AWG MCP catalog inspected. No Repo Map call was made because source tracing and executable tests provided the required bounded navigation; no external MCP side effect was needed.
+- `task-brief` was available and used. The installed plan-execution bundle did not include its referenced `task-start` or `task-done` scripts; focused and full test commands were run directly and a progress ledger was retained in the plan workspace.
+- Real New API/Sub2API calls: `NOT_RUN` by contract.
+- Electron installer, release, merge, and Owner acceptance: `NOT_RUN` by scope.

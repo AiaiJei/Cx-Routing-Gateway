@@ -21,7 +21,7 @@
 
 ## Review Focus
 
-1. Chat `[DONE]` without `finish_reason` after a proxy timeout must not be accepted as completion; test in `request-metrics.test.mjs` and the Gateway request-log integration.
+1. Chat `[DONE]` without `finish_reason`, or `finish_reason` without `[DONE]`, must not be accepted as completion; test in `request-metrics.test.mjs` and the Gateway request-log integration.
 2. Responses `response.failed`/`response.incomplete` and empty `response.completed` must not be shown as useful success; test in `request-metrics.test.mjs`, `request-logs.test.mjs`, and Desktop mapping/UI.
 3. SSE events split across arbitrary byte boundaries, including multibyte UTF-8, must retain existing first-content and usage extraction; test with the existing byte-at-a-time metrics case plus terminal-frame splits.
 4. A reset after first content must preserve TTFT and distinguish upstream reset from downstream cancellation; test both paths in Runtime fixtures.
@@ -35,9 +35,9 @@
 
 - [x] Add failing unit tests for Chat finish reason vs `[DONE]` alone; Messages `message_stop`; Responses completed/failed/incomplete; visible text/tool output and empty completion; usage-only reasoning.
 - [x] Run the focused test file and confirm expected failures (5 new assertions failed against the old observer).
-- [x] Implement bounded event classification within the existing observer. Require Chat finish reason, accept Responses `response.done` only with completed status, and inspect terminal Responses output without inventing TTFT.
+- [x] Implement bounded event classification within the existing observer. Require Chat finish reason plus `[DONE]`, accept Responses `response.done` only with completed status, and inspect terminal Responses output without inventing TTFT.
 - [x] Rerun the focused metrics tests; preserve chunk-boundary and usage assertions (14/14 passed).
-- [ ] Commit `fix: validate streaming protocol completion`.
+- [x] Commit `fix: validate streaming protocol completion` (`1f44bd2`).
 
 ### Task 2: Enforce completion and normalize disconnects in Gateway
 
@@ -45,11 +45,11 @@
 
 **Interfaces:** Both stream pipe functions reject incomplete/failed terminal state with bounded codes. Usage records keep upstream HTTP status and preserve metrics already observed. The catch path writes only `upstream_stream_incomplete`, `upstream_stream_failed`, `upstream_connection_reset`, `client_disconnected`, or existing bounded Gateway codes.
 
-- [ ] Add failing integration tests for Chat `[DONE]` without finish reason, heartbeat-only EOF, each protocol's valid empty completion, explicit Responses failure, reset after first output, and downstream cancellation.
-- [ ] Run the focused integration tests and confirm expected failures.
-- [ ] Enforce the observer result before stream `res.end`; on invalid Chat `[DONE]` in converted output do not synthesize a downstream success terminal. Track client-close state, avoid counting it against upstream health, and classify nested socket reset codes.
-- [ ] Rerun focused Runtime tests; verify no retry occurs and the request concurrency slot is released.
-- [ ] Commit `fix: record stream completion and disconnect causes`.
+- [x] Add failing integration tests for Chat `[DONE]` without finish reason, heartbeat-only EOF, each protocol's valid empty completion, explicit Responses failure, reset after first output, and downstream cancellation.
+- [x] Run the focused integration tests and confirm expected failures.
+- [x] Enforce the observer result before stream `res.end`; on invalid Chat `[DONE]` in converted output do not synthesize a downstream success terminal. Track client-close state, avoid counting it against upstream health, and classify nested socket reset codes.
+- [x] Rerun focused Runtime tests; verify no retry occurs and the request concurrency slot is released.
+- [x] Commit `fix: record stream completion and disconnect causes` (`17f9275`).
 
 ### Task 3: Expose empty-response and usage diagnostics
 
@@ -57,17 +57,17 @@
 
 **Interfaces:** Runtime metadata maps to optional `CallLog.streamCompletion` and `CallLog.outputObserved`. UI distinguishes suspected empty results and missing usage, localizes normalized disconnect errors, and preserves legacy rows.
 
-- [ ] Add failing adapter and UI tests for suspected-empty, known zero output, content-with-missing-usage, upstream reset, client cancel, and legacy log display.
-- [ ] Run focused Desktop tests and confirm the missing statuses/diagnostics fail as expected.
-- [ ] Implement mappings and localized status details using existing status badge, tooltip, and detail modal patterns.
-- [ ] Run focused Desktop tests and production build.
-- [ ] Commit `feat: surface empty stream diagnostics in logs`.
+- [x] Add failing adapter and UI tests for suspected-empty, known zero output, content-with-missing-usage, upstream reset, client cancel, and legacy log display.
+- [x] Run focused Desktop tests and confirm the missing statuses/diagnostics fail as expected.
+- [x] Implement mappings and localized status details using existing status badge, tooltip, and detail modal patterns.
+- [x] Run focused Desktop tests (26/26) and production build.
+- [x] Commit `feat: surface empty stream diagnostics in logs` (`838595e`).
 
 ### Task 4: Verify, review, and open the dedicated PR
 
 **Files:** `.codex/awg-task.json`; `docs/tasks/2026-11-22-stream-completion-diagnostics.md`; `docs/tasks/evidence/stream-completion-diagnostics/verification.md`.
 
-- [ ] Run the full Runtime suite, full Desktop suite, production build, and `git diff --check`; record counts and limitations.
+- [x] Run the full Runtime suite (138/138), full Desktop suite (145/145), production build, and `git diff --check`; record counts and limitations.
 - [ ] Review the whole branch against `master`, fix Critical/Important findings test-first, and document deferred Minor findings or rulings.
 - [ ] Push `codex/protocol-completion-state` and create one PR against `master`; record URL, head SHA, and CI status.
 - [ ] Leave the PR open/unmerged and preserve all worktrees and unrelated untracked directories.

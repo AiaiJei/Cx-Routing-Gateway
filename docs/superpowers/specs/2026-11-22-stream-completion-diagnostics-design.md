@@ -16,7 +16,7 @@ Create a dedicated Gateway PR that distinguishes a protocol-complete stream from
 
 ### Terminal validation
 
-- Chat accepts a non-null `choices[].finish_reason` as semantic completion. `[DONE]` by itself is insufficient; this catches a proxy-generated terminator after a hidden generation timeout. A clean EOF after a valid finish reason may complete even if the optional sentinel is absent.
+- Chat requires both a non-null `choices[].finish_reason` and the final `[DONE]` sentinel. `[DONE]` by itself is insufficient; a proxy-generated terminator after a hidden generation timeout must not look complete to either Gateway or its client. The passthrough path holds only a bounded tail so it can remove a final invalid `[DONE]` before closing the connection.
 - Messages accepts `message_stop`; an explicit error event is a stream failure.
 - Responses accepts `response.completed` or the existing compatibility event `response.done` only when the embedded response status is `completed`. `response.failed`, `response.incomplete`, or an error event is a failure.
 - EOF before the protocol-specific success event is `upstream_stream_incomplete`. A valid protocol failure event is `upstream_stream_failed`.
