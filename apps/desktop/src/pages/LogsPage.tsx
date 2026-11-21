@@ -9,6 +9,7 @@ import { RequestDuration, RequestProtocol, RequestTime, RequestTokenSummary, Tok
 import { formatDuration, formatRequestTime, requestType } from "../domain/request-log";
 import { requestLogDateRanges, selectRequestLogs, type RequestLogDateRange } from "../domain/request-log-filter";
 import { useWorkspace } from "../data/use-workspace";
+import { defaultWorkspaceClient } from "../data/workspace-client";
 import type { CallLog } from "../domain/types";
 import "../styles/request-logs.css";
 
@@ -17,11 +18,36 @@ export function LogsPage() {
   const [status, setStatus] = useState("全部");
   const [dateRange, setDateRange] = useState<RequestLogDateRange>("实时");
   const [selectedLog, setSelectedLog] = useState<CallLog | null>(null);
+  const [clearConfirmationOpen, setClearConfirmationOpen] = useState(false);
+  const [clearingLogs, setClearingLogs] = useState(false);
+  const [clearFeedback, setClearFeedback] = useState("");
+  const [clearError, setClearError] = useState("");
   const { data, error, loading, refresh, refreshing, refreshError } = useWorkspace(undefined, { pollIntervalMs: 1500 });
   const logs = selectRequestLogs(data.logs, { query, status, dateRange });
   const hasFilter = query.length > 0 || status !== "全部" || dateRange !== "实时";
 
   const refreshAction = <Button aria-label="刷新请求日志" aria-busy={refreshing} disabled={refreshing} onClick={refresh}>{refreshing ? "刷新中…" : "刷新"}</Button>;
+  const headerActions = <div className="page-header-actions">
+    {data.meta.live && defaultWorkspaceClient.clearRequestLogs && <Button variant="danger" onClick={() => { setClearFeedback(""); setClearError(""); setClearConfirmationOpen(true); }}>清空日志</Button>}
+    {refreshAction}
+  </div>;
+  async function clearLogs() {
+    if (!data.meta.live || !defaultWorkspaceClient.clearRequestLogs) return;
+    setClearingLogs(true);
+    setClearFeedback("");
+    setClearError("");
+    try {
+      const result = await defaultWorkspaceClient.clearRequestLogs();
+      setClearFeedback(`已清空全部请求日志，共移除 ${result.removedCount} 条。`);
+      setClearConfirmationOpen(false);
+      refresh();
+    } catch (caught) {
+      setClearError(`清空请求日志失败：${caught instanceof Error ? caught.message : "未知错误"}`);
+      setClearConfirmationOpen(false);
+    } finally {
+      setClearingLogs(false);
+    }
+  }
   const statusDetails = (log: CallLog) => [
     log.httpStatus !== undefined ? `HTTP ${log.httpStatus}` : undefined,
     log.upstreamStatus !== undefined ? `上游 HTTP ${log.upstreamStatus}` : undefined,
@@ -31,14 +57,16 @@ export function LogsPage() {
 
   if (loading) return <WorkspaceState title="请求日志" loading={loading} error={error} />;
   if (error) return <div className="page-content">
-    <PageHeader title="请求日志" description="查看请求摘要、Token 用量与响应耗时。" action={refreshAction} />
+    <PageHeader title="请求日志" description="查看请求摘要、Token 用量与响应耗时。" action={headerActions} />
     <div className="workspace-error" role="alert"><p>请求日志读取失败：{error}</p><p className="helper-text">将自动重试，也可点击刷新。</p></div>
   </div>;
 
   return (
     <div className="page-content">
-      <PageHeader title="请求日志" description="查看请求摘要、Token 用量与响应耗时。" action={refreshAction} />
+      <PageHeader title="请求日志" description="查看请求摘要、Token 用量与响应耗时。" action={headerActions} />
       {refreshError && <p className="action-feedback" role="alert">刷新失败：{refreshError}。当前保留上次读取的日志，将自动重试。</p>}
+      {clearFeedback && <p className="action-feedback" role="status">{clearFeedback}</p>}
+      {clearError && <p className="action-feedback route-test-error" role="alert">{clearError}</p>}
       <FixtureNotice live={data.meta.live}>{data.meta.live ? "本机运行时日志 · 正文已脱敏" : "示例日志 · 非运行时记录"}</FixtureNotice>
       <div className="toolbar"><SearchField label="搜索请求日志" value={query} onChange={setQuery} />
         <SegmentedControl ariaLabel="按状态筛选" value={status} options={["全部", "成功", "失败"]} onChange={setStatus} />
@@ -78,6 +106,13 @@ export function LogsPage() {
         </dl>
         <section className="log-detail-tokens" aria-label="Token 用量"><h3 className="tooltip-heading">Token 用量</h3><TokenDetails tokens={selectedLog.tokens} /></section>
         <p className="action-feedback">请求和响应正文未记录；日志字段已脱敏。</p>
+      </Modal>}
+      {clearConfirmationOpen && <Modal title="清空请求日志" onClose={() => setClearConfirmationOpen(false)} canClose={!clearingLogs}>
+        <p>将永久清除本机运行时保留的全部请求日志，当前筛选不会限制清空范围。此操作无法撤销。</p>
+        <div className="form-actions">
+          <Button disabled={clearingLogs} onClick={() => setClearConfirmationOpen(false)}>取消</Button>
+          <Button variant="danger" disabled={clearingLogs} onClick={() => void clearLogs()}>{clearingLogs ? "清空中…" : "确认清空"}</Button>
+        </div>
       </Modal>}
       <p className="helper-text page-footnote">{data.meta.live ? "请求和响应正文未记录；运行时日志字段已脱敏。" : "示例字段已脱敏。"} 首字为首次生成内容的等待时间；非流请求或未采集的指标显示 —。</p>
     </div>
