@@ -158,6 +158,48 @@ describe("request log refresh", () => {
     return { ...structuredClone(workspaceFixtures), meta: { live: true, source: "runtime" } };
   }
 
+  it("shows suspected empty streams and localized connection resets in status and details", async () => {
+    const snapshot = liveSnapshot();
+    snapshot.logs = [
+      { ...snapshot.logs[0], id: "empty-stream", status: "失败·空响应" as any, httpStatus: 200, stream: true, streamCompletion: "completed" as any, outputObserved: false, usageObserved: false, tokens: undefined, error: "上游疑似空响应" },
+      { ...snapshot.logs[0], id: "reasoning-only", status: "失败·空响应" as any, httpStatus: 200, stream: true, streamCompletion: "completed" as any, outputObserved: false, reasoningObserved: true, usageObserved: true, tokens: { output: 7, reasoning: 7 }, error: "上游疑似空响应" },
+      { ...snapshot.logs[0], id: "usage-gap", status: "成功·缺用量" as any, stream: true, streamCompletion: "completed" as any, outputObserved: true, usageObserved: false, tokens: undefined, error: undefined },
+      { ...snapshot.logs[0], id: "reset-stream", status: "失败" as any, stream: true, streamCompletion: "incomplete" as any, outputObserved: true, firstTokenMs: 3473, gatewayStatus: 502, error: "上游连接被重置（ECONNRESET）" },
+      { ...snapshot.logs[0], id: "cancelled-stream", status: "失败·已取消" as any, stream: true, gatewayStatus: 499, error: "客户端在响应完成前断开" },
+    ] as any;
+    vi.spyOn(defaultWorkspaceClient, "getWorkspace").mockResolvedValue(snapshot);
+    render(<LogsPage />);
+    await tick();
+
+    const table = within(screen.getByRole("region", { name: "请求日志列表" })).getByRole("table");
+    expect(within(table).getAllByText("失败·空响应")).toHaveLength(2);
+    expect(within(table).getAllByText("失败·空响应").every((badge) => badge.classList.contains("status-negative"))).toBe(true);
+    expect(within(table).getByText("成功·缺用量")).toHaveClass("status-badge", "status-positive");
+    expect(within(table).getByText("失败·已取消")).toHaveClass("status-badge", "status-negative");
+    fireEvent.click(within(table).getByRole("button", { name: "查看 empty-stream" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("HTTP 200");
+    expect(screen.getByRole("dialog")).toHaveTextContent("协议流已正常结束");
+    expect(screen.getByRole("dialog")).toHaveTextContent("未观察到正文、工具或媒体输出");
+    expect(screen.getByRole("dialog")).toHaveTextContent("上游未返回 Token 用量");
+    fireEvent.click(screen.getByRole("button", { name: "关闭弹窗" }));
+    fireEvent.click(within(table).getByRole("button", { name: "查看 reasoning-only" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("观察到推理内容");
+    expect(screen.getByRole("dialog")).toHaveTextContent("未观察到正文、工具或媒体输出");
+    fireEvent.click(screen.getByRole("button", { name: "关闭弹窗" }));
+    fireEvent.click(within(table).getByRole("button", { name: "查看 usage-gap" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("协议流已正常结束");
+    expect(screen.getByRole("dialog")).toHaveTextContent("观察到正文、工具或媒体输出");
+    expect(screen.getByRole("dialog")).toHaveTextContent("上游未返回 Token 用量");
+    fireEvent.click(screen.getByRole("button", { name: "关闭弹窗" }));
+    fireEvent.click(within(table).getByRole("button", { name: "查看 reset-stream" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("上游连接被重置（ECONNRESET）");
+    expect(screen.getByRole("dialog")).toHaveTextContent("未收到协议终止事件");
+    expect(screen.getByRole("dialog")).toHaveTextContent("观察到正文、工具或媒体输出");
+    fireEvent.click(screen.getByRole("button", { name: "关闭弹窗" }));
+    fireEvent.click(within(table).getByRole("button", { name: "查看 cancelled-stream" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("客户端在响应完成前断开");
+  });
+
   it("manually refreshes while preserving filters, existing rows and the open detail", async () => {
     const initial = liveSnapshot();
     let resolve!: (data: WorkspaceFixtures) => void;

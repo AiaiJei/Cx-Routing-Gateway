@@ -101,3 +101,28 @@ it("maps HTTP, upstream, and gateway status details without raw provider text", 
   ]);
   expect(JSON.stringify(workspace.logs)).not.toContain("secret provider detail");
 });
+
+it("maps stream completion, empty output, usage gaps, resets, and cancellation without changing legacy rows", () => {
+  const workspace = mapRuntimeState({
+    settings: { gatewayHost: "127.0.0.1", gatewayPort: 4318 }, upstreams: [], routes: [], clientKeys: [],
+    usage: [
+      { requestId: "empty", status: "failed", stream: true, streamCompletion: "completed", outputObserved: false, usageObserved: false, errorCode: "upstream_empty_response", httpStatus: 200 },
+      { requestId: "reasoning-only", status: "completed", stream: true, streamCompletion: "completed", outputObserved: false, reasoningObserved: true, usageObserved: true, tokens: { output: 7, reasoning: 7 } },
+      { requestId: "zero-output", status: "completed", stream: true, streamCompletion: "completed", outputObserved: false, usageObserved: true, tokens: { output: 0 } },
+      { requestId: "missing-usage", status: "completed", stream: true, streamCompletion: "completed", outputObserved: true, usageObserved: false },
+      { requestId: "reset", status: "failed", stream: true, streamCompletion: "incomplete", outputObserved: true, errorCode: "upstream_connection_reset", gatewayStatus: 502 },
+      { requestId: "cancelled", status: "failed", errorCode: "client_disconnected" },
+      { requestId: "legacy", status: "completed" },
+    ],
+  });
+
+  expect(workspace.logs.map(({ id, status, error, streamCompletion, outputObserved, reasoningObserved, usageObserved }) => [id, status, error, streamCompletion, outputObserved, reasoningObserved, usageObserved])).toEqual([
+    ["empty", "失败·空响应", "上游疑似空响应", "completed", false, undefined, false],
+    ["reasoning-only", "失败·空响应", undefined, "completed", false, true, true],
+    ["zero-output", "失败·空响应", undefined, "completed", false, undefined, true],
+    ["missing-usage", "成功·缺用量", undefined, "completed", true, undefined, false],
+    ["reset", "失败", "上游连接被重置（ECONNRESET）", "incomplete", true, undefined, undefined],
+    ["cancelled", "失败·已取消", "客户端在响应完成前断开", undefined, undefined, undefined, undefined],
+    ["legacy", "成功", undefined, undefined, undefined, undefined, undefined],
+  ]);
+});

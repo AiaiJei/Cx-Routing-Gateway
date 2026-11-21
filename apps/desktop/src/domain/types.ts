@@ -41,9 +41,13 @@ export type CallLog = {
   upstreamStatus?: number;
   gatewayStatus?: number;
   direction: string;
-  status: "成功（模拟）" | "失败（模拟）" | "成功" | "失败";
+  status: "成功（模拟）" | "失败（模拟）" | "成功·缺用量" | "失败·空响应" | "失败·已取消" | "成功" | "失败";
   durationMs: number | null;
   stream?: boolean;
+  streamCompletion?: "completed" | "failed" | "incomplete";
+  outputObserved?: boolean;
+  reasoningObserved?: boolean;
+  usageObserved?: boolean;
   firstTokenMs?: number;
   tokens?: RequestTokens;
   error?: string;

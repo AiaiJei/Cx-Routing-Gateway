@@ -493,8 +493,14 @@ test('gateway covers the remaining cross-protocol directions and native forwardi
 test('gateway forwards native Chat streaming events without converting the wire format', async (t) => {
   const upstream = http.createServer((_req, res) => {
     res.writeHead(200, { 'content-type': 'text/event-stream' });
-    res.write('data: {"type":"response.output_text.delta","delta":"hello"}\n\n');
-    setTimeout(() => { res.end('data: [DONE]\n\n'); }, 10);
+    res.write('data: {"choices":[{"delta":{"content":"hello"}}]}\n\n');
+    setTimeout(() => {
+      res.write('data: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\n');
+      setTimeout(() => {
+        res.write('data: [DO');
+        setTimeout(() => res.end('NE]\n\n'), 10);
+      }, 10);
+    }, 10);
   });
   const upstreamPort = await listen(upstream);
   t.after(() => upstream.close());
@@ -509,7 +515,7 @@ test('gateway forwards native Chat streaming events without converting the wire 
   const response = await fetch(`http://127.0.0.1:${gateway.address().port}/v1/chat/completions`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${clientKey}` }, body: JSON.stringify({ model: 'stream', stream: true, messages: [{ role: 'user', content: 'hello' }] }) });
   assert.equal(response.status, 200);
   assert.match(response.headers.get('content-type'), /text\/event-stream/);
-  assert.equal(await response.text(), 'data: {"type":"response.output_text.delta","delta":"hello"}\n\ndata: [DONE]\n\n');
+  assert.equal(await response.text(), 'data: {"choices":[{"delta":{"content":"hello"}}]}\n\ndata: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n');
 });
 
 test('gateway converts simple text streaming from Messages to Chat', async (t) => {
@@ -593,7 +599,7 @@ test('gateway converts parallel streamed tool calls from Chat to Messages', asyn
     res.writeHead(200, { 'content-type': 'text/event-stream' });
     res.write('data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call-a","type":"function","function":{"name":"lookup","arguments":""}},{"index":1,"id":"call-b","type":"function","function":{"name":"lookup","arguments":""}}]}}]}\n\n');
     res.write('data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{\\"key\\":\\"a\\"}"}},{"index":1,"function":{"arguments":"{\\"key\\":\\"b\\"}"}}]}}]}\n\n');
-    res.end('data: [DONE]\n\n');
+    res.end('data: {"choices":[{"delta":{},"finish_reason":"tool_calls"}]}\n\ndata: [DONE]\n\n');
   });
   const upstreamPort = await listen(upstream);
   t.after(() => upstream.close());
@@ -619,7 +625,7 @@ test('gateway converts parallel streamed tool calls from Chat to Responses', asy
     res.writeHead(200, { 'content-type': 'text/event-stream' });
     res.write('data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call-a","type":"function","function":{"name":"lookup","arguments":""}},{"index":1,"id":"call-b","type":"function","function":{"name":"lookup","arguments":""}}]}}]}\n\n');
     res.write('data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{\\"key\\":\\"a\\"}"}},{"index":1,"function":{"arguments":"{\\"key\\":\\"b\\"}"}}]}}]}\n\n');
-    res.end('data: [DONE]\n\n');
+    res.end('data: {"choices":[{"delta":{},"finish_reason":"tool_calls"}]}\n\ndata: [DONE]\n\n');
   });
   const upstreamPort = await listen(upstream);
   t.after(() => upstream.close());
@@ -971,4 +977,5 @@ test('gateway cancels the active upstream request when its client disconnects', 
   assert.equal(upstreamCalls, 2);
   const state = await store.read();
   assert.deepEqual(state.usage.map(entry => entry.status), ['failed', 'completed']);
+  assert.equal(state.usage[0].errorCode, 'client_disconnected');
 });

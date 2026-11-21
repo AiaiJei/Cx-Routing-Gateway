@@ -12,7 +12,7 @@ const listen = (server) => new Promise(resolve => server.listen(0, '127.0.0.1', 
 const close = (server) => { server.closeAllConnections(); return new Promise(resolve => server.close(resolve)); };
 const event = (payload) => `data: ${JSON.stringify(payload)}\n\n`;
 
-async function setup(t, respond, outbound = 'Chat', gatewayOptions = {}) {
+async function setup(t, respond, outbound = 'Chat', gatewayOptions = {}, fallbackRespond) {
   await fs.mkdir(path.resolve('.task-evidence'), { recursive: true });
   const dir = await fs.mkdtemp(path.resolve('.task-evidence', 'request-logs-'));
   const store = new ConfigStore(path.join(dir, 'config.json'));
@@ -21,16 +21,22 @@ async function setup(t, respond, outbound = 'Chat', gatewayOptions = {}) {
   store.update = (...args) => update(...args).catch(error => { writeErrors.push({ code: error.code, message: error.message }); throw error; });
   const upstream = http.createServer(respond);
   const upPort = await listen(upstream);
+  const fallback = fallbackRespond ? http.createServer(fallbackRespond) : undefined;
+  const fallbackPort = fallback ? await listen(fallback) : undefined;
   await store.update(config => ({ ...config, upstreams: [{ id: 'up', name: 'Primary upstream', enabled: true, baseUrl: `http://127.0.0.1:${upPort}`, trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'] }], routes: ['Chat', 'Res', 'Mes'].map(inbound => ({ id: inbound, alias: inbound, inboundProtocol: inbound, outboundProtocol: outbound, upstreamId: 'up', modelId: 'model', enabled: true })), clientKeys: [{ id: 'key', enabled: true, scope: [], keyHash: crypto.createHash('sha256').update('test-key').digest('hex') }] }));
+  if (fallbackPort) await store.update(config => ({ ...config,
+    upstreams: [...config.upstreams, { id: 'fallback', name: 'Fallback upstream', enabled: true, baseUrl: `http://127.0.0.1:${fallbackPort}`, trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'] }],
+    routes: config.routes.map(route => ({ ...route, targets: [{ upstreamId: 'up', modelId: 'model' }, { upstreamId: 'fallback', modelId: 'model' }], failover: { failureThreshold: 1, statusClasses: [4, 5], cooldownSeconds: 60 } })),
+  }));
   const gateway = createGatewayServer({ store, vault: {}, ...gatewayOptions });
   const port = await listen(gateway);
   const control = createControlServer({ store, vault: {}, allowUnauthenticated: true });
   const controlPort = await listen(control);
-  t.after(async () => { await Promise.all([close(gateway), close(control), close(upstream)]); await store.writeQueue; });
+  t.after(async () => { await Promise.all([close(gateway), close(control), close(upstream), ...(fallback ? [close(fallback)] : [])]); await store.writeQueue; });
   return {
-    async request(protocol, stream, reasoning) {
+    async request(protocol, stream, reasoning, signal) {
       const endpoint = { Chat: 'chat/completions', Res: 'responses', Mes: 'messages' }[protocol];
-      return fetch(`http://127.0.0.1:${port}/v1/${endpoint}`, { method: 'POST', headers: { authorization: 'Bearer test-key', 'content-type': 'application/json' }, body: JSON.stringify({ model: protocol, stream, input: 'private-prompt', messages: [{ role: 'user', content: 'private-prompt' }], ...(reasoning === undefined ? {} : reasoning) }) });
+      return fetch(`http://127.0.0.1:${port}/v1/${endpoint}`, { method: 'POST', headers: { authorization: 'Bearer test-key', 'content-type': 'application/json' }, body: JSON.stringify({ model: protocol, stream, input: 'private-prompt', messages: [{ role: 'user', content: 'private-prompt' }], ...(reasoning === undefined ? {} : reasoning) }), signal });
     },
     async logs(count) {
       for (let n = 0; n < 100; n++) {
@@ -67,7 +73,7 @@ test('passthrough and converted streams preserve responses and persist first-gen
   let receivedPayload;
   const wire = event({ choices: [{ delta: { role: 'assistant', content: '' } }] }) + ': ping\n\n';
   const content = event({ choices: [{ delta: { content: 'OK' } }] });
-  const end = event({ choices: [], usage: { prompt_tokens: 7, completion_tokens: 2, total_tokens: 9 } }) + 'data: [DONE]\n\n';
+  const end = event({ choices: [], usage: { prompt_tokens: 7, completion_tokens: 2, total_tokens: 9 } }) + event({ choices: [{ delta: {}, finish_reason: 'stop' }] }) + 'data: [DONE]\n\n';
   const app = await setup(t, async (req, res) => {
     let data = ''; for await (const chunk of req) data += chunk; receivedPayload = JSON.parse(data);
     if (!receivedPayload.stream) { res.end(JSON.stringify({ choices: [{ message: { content: 'OK' } }] })); return; }
@@ -83,7 +89,7 @@ test('passthrough and converted streams preserve responses and persist first-gen
     assert.equal(receivedPayload.stream_options.include_usage, true);
     if (protocol === 'Chat') assert.equal(body, wire + content + end);
     else assert.match(body, /OK/);
-    const log = (await app.logs(index + 1)).at(-1);
+    const [log] = await app.logs(1);
     assert.equal(log.stream, true);
     assert.deepEqual(log.tokens, { input: 7, output: 2, total: 9 });
     assert.ok(log.firstTokenMs >= firstSent - 100);
@@ -96,7 +102,7 @@ test('request logs measure elapsed time monotonically across wall-clock changes'
   let wallTime = startedWall;
   let monotonicTime = 100;
   const content = event({ choices: [{ delta: { content: 'OK' } }] });
-  const end = event({ choices: [], usage: { prompt_tokens: 1, completion_tokens: 1 } }) + 'data: [DONE]\n\n';
+  const end = event({ choices: [], usage: { prompt_tokens: 1, completion_tokens: 1 } }) + event({ choices: [{ delta: {}, finish_reason: 'stop' }] }) + 'data: [DONE]\n\n';
   const app = await setup(t, (_req, res) => {
     res.writeHead(200, { 'content-type': 'text/event-stream' });
     res.write(event({ choices: [{ delta: { role: 'assistant', content: '' } }] }));
@@ -164,6 +170,258 @@ test('request logs omit missing, oversized, and non-string reasoning levels', as
   assert.equal('reasoningEffort' in logs[0], false);
   assert.equal('reasoningEffort' in logs[1], false);
   assert.equal('reasoningEffort' in logs[2], false);
+});
+
+test('a valid empty terminal stream is recorded as an empty response, not a useful success', async t => {
+  const fixtures = {
+    Chat: { body: 'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n', usageObserved: false },
+    Res: { body: 'event: response.completed\ndata: {"type":"response.completed","response":{"status":"completed","output":[],"usage":{"input_tokens":1,"output_tokens":0}}}\n\n', usageObserved: true },
+    Mes: { body: 'event: message_stop\ndata: {"type":"message_stop"}\n\n', usageObserved: false },
+  };
+  for (const [index, protocol] of ['Chat', 'Res', 'Mes'].entries()) {
+    let receivedPrompt;
+    const app = await setup(t, async (req, res) => {
+      const chunks = [];
+      for await (const chunk of req) chunks.push(chunk);
+      receivedPrompt = JSON.parse(Buffer.concat(chunks).toString()).messages[0].content;
+      res.writeHead(200, { 'content-type': 'text/event-stream' });
+      res.end(fixtures[protocol].body);
+    }, protocol);
+    const response = await app.request(protocol, true);
+    if (protocol === 'Chat') {
+      assert.equal(response.status, 200);
+      await assert.rejects(response.text());
+    } else {
+      assert.equal(response.status, 502);
+      assert.equal((await response.json()).error, 'upstream_empty_response');
+    }
+    assert.equal(receivedPrompt, 'private-prompt');
+    const [log] = await app.logs(1);
+    assert.equal(log.status, 'failed');
+    assert.equal(log.errorCode, 'upstream_empty_response');
+    assert.equal(log.streamCompletion, 'completed');
+    assert.equal(log.outputObserved, false);
+    assert.equal(log.usageObserved, fixtures[protocol].usageObserved);
+    if (protocol === 'Res') assert.equal(log.tokens.output, 0);
+  }
+});
+
+test('Responses with reasoning items and nonzero reasoning tokens are recorded as suspected empty output', async t => {
+  const app = await setup(t, (_req, res) => {
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.end(
+      event({ type: 'response.output_item.added', item: { type: 'reasoning', id: 'r1', encrypted_content: 'private-reasoning' } }) +
+      event({ type: 'response.completed', response: {
+        status: 'completed',
+        output: [{ type: 'reasoning', id: 'r1', encrypted_content: 'private-reasoning' }],
+        usage: { input_tokens: 4, output_tokens: 7, output_tokens_details: { reasoning_tokens: 7 } },
+      } }, 'response.completed'),
+    );
+  }, 'Res');
+  const response = await app.request('Res', true);
+  assert.equal(response.status, 200);
+  await assert.rejects(response.text());
+  const [log] = await app.logs(1);
+  assert.equal(log.status, 'failed');
+  assert.equal(log.errorCode, 'upstream_empty_response');
+  assert.equal(log.streamCompletion, 'completed');
+  assert.equal(log.outputObserved, false);
+  assert.equal(log.reasoningObserved, true);
+  assert.deepEqual(log.tokens, { input: 4, output: 7, reasoning: 7, total: 11 });
+  assert.doesNotMatch(JSON.stringify(log), /private-reasoning/);
+});
+
+test('Chat passthrough withholds an early DONE before later completion frames in the same chunk', async t => {
+  const body = 'data: [DONE]\n\n' +
+    event({ choices: [{ delta: { content: 'answer' } }] }) +
+    event({ choices: [{ delta: {}, finish_reason: 'stop' }] }) +
+    'data: [DONE]\n\n';
+  const app = await setup(t, (_req, res) => {
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.end(body);
+  }, 'Chat');
+  const response = await app.request('Chat', true);
+  assert.equal(response.status, 200);
+  const result = await response.text();
+  assert.equal((result.match(/data: \[DONE\]/g) || []).length, 1);
+  assert.match(result, /answer/);
+  const [log] = await app.logs(1);
+  assert.equal(log.status, 'completed');
+  assert.equal(log.streamCompletion, 'completed');
+});
+
+test('a missing terminal event fails the log and preserves observed TTFT', async t => {
+  const fixtures = {
+    Chat: 'data: {"choices":[{"delta":{"content":"partial"}}]}\n\nevent: completion\ndata: [DONE]\n\n',
+    Res: 'event: response.output_text.delta\ndata: {"type":"response.output_text.delta","delta":"partial"}\n\n',
+    Mes: ': ping\n\n',
+  };
+  for (const [index, protocol] of ['Chat', 'Res', 'Mes'].entries()) {
+    const app = await setup(t, (_req, res) => {
+      res.writeHead(200, { 'content-type': 'text/event-stream' });
+      res.end(fixtures[protocol]);
+    }, protocol);
+    const response = await app.request(protocol, true);
+    assert.equal(response.status, 200);
+    let body = '';
+    const reader = response.body.getReader();
+    await assert.rejects(async () => {
+      const decoder = new TextDecoder();
+      while (true) {
+        const result = await reader.read();
+        if (result.done) break;
+        body += decoder.decode(result.value, { stream: true });
+      }
+    });
+    if (protocol === 'Chat') assert.doesNotMatch(body, /\[DONE\]/);
+    const [log] = await app.logs(1);
+    assert.equal(log.status, 'failed');
+    assert.equal(log.errorCode, 'upstream_stream_incomplete');
+    assert.equal(log.streamCompletion, 'incomplete');
+    assert.equal(log.outputObserved, protocol !== 'Mes');
+    if (protocol !== 'Mes') assert.equal(typeof log.firstTokenMs, 'number');
+  }
+});
+
+test('Responses failure events remain failures and raw provider details stay out of logs', async t => {
+  const fixtures = [
+    'event: response.failed\ndata: {"type":"response.failed","response":{"status":"failed","error":{"message":"private provider detail"}}}\n\n',
+    'event: response.incomplete\ndata: {"type":"response.incomplete","response":{"status":"incomplete","error":{"message":"private provider detail"}}}\n\n',
+  ];
+  for (const fixture of fixtures) {
+    const app = await setup(t, (_req, res) => {
+      res.writeHead(200, { 'content-type': 'text/event-stream' });
+      res.end(fixture);
+    }, 'Res');
+    const response = await app.request('Res', true);
+    assert.equal(response.status, 200);
+    await assert.rejects(response.text());
+    const [log] = await app.logs(1);
+    assert.equal(log.status, 'failed');
+    assert.equal(log.errorCode, 'upstream_stream_failed');
+    assert.equal(log.streamCompletion, 'failed');
+    assert.doesNotMatch(JSON.stringify(log), /private provider detail/);
+  }
+});
+
+test('converted Responses terminal events require an explicit completed status before sending downstream completion', async t => {
+  const fixtures = [
+    { body: 'event: response.output_text.delta\ndata: {"type":"response.output_text.delta","delta":"partial"}\n\nevent: response.done\ndata: {"type":"response.done","response":{"status":"incomplete","output":[]}}\n\n', status: 200 },
+    { body: 'event: response.completed\ndata: {"type":"response.completed","response":{"output":[]}}\n\n', status: 502 },
+  ];
+  for (const fixture of fixtures) {
+    const app = await setup(t, (_req, res) => {
+      res.writeHead(200, { 'content-type': 'text/event-stream' });
+      res.end(fixture.body);
+    }, 'Res');
+    const response = await app.request('Chat', true);
+    let body = '';
+    assert.equal(response.status, fixture.status);
+    if (response.status === 200) {
+      const reader = response.body.getReader();
+      await assert.rejects(async () => {
+        const decoder = new TextDecoder();
+        while (true) {
+          const result = await reader.read();
+          if (result.done) break;
+          body += decoder.decode(result.value, { stream: true });
+        }
+      });
+      assert.match(body, /partial/);
+    } else body = await response.text();
+    assert.doesNotMatch(body, /"finish_reason"\s*:\s*"(?!null")[^"]+"|data:\s*\[DONE\]/);
+    if (response.status === 502) assert.match(body, /upstream_stream_incomplete/);
+    const [log] = await app.logs(1);
+    assert.equal(log.status, 'failed');
+    assert.equal(log.errorCode, 'upstream_stream_incomplete');
+    assert.equal(log.streamCompletion, 'incomplete');
+  }
+});
+
+test('converted Responses empty completion does not emit a downstream success terminator', async t => {
+  const app = await setup(t, (_req, res) => {
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.end(event({ type: 'response.completed', response: { status: 'completed', output: [], usage: { input_tokens: 2, output_tokens: 0 } } }, 'response.completed'));
+  }, 'Res');
+  const response = await app.request('Chat', true);
+  assert.equal(response.status, 502);
+  assert.equal((await response.json()).error, 'upstream_empty_response');
+  const [log] = await app.logs(1);
+  assert.equal(log.status, 'failed');
+  assert.equal(log.errorCode, 'upstream_empty_response');
+  assert.equal(log.streamCompletion, 'completed');
+  assert.equal(log.outputObserved, false);
+});
+
+test('upstream reset after content is distinct, preserves TTFT, and is not retried', async t => {
+  let upstreamCalls = 0;
+  const app = await setup(t, (_req, res) => {
+    upstreamCalls += 1;
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    if (upstreamCalls === 1) {
+      res.write('data: {"choices":[{"delta":{"content":"partial"}}]}\n\n');
+      setTimeout(() => res.destroy(), 120);
+      return;
+    }
+    res.end('data: {"choices":[{"delta":{"content":"recovered"}}]}\n\ndata: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n');
+  }, 'Chat', { maxConcurrentRequests: 1 });
+  const first = await app.request('Chat', true);
+  assert.equal(first.status, 200);
+  await assert.rejects(first.text());
+  const [failed] = await app.logs(1);
+  assert.equal(failed.errorCode, 'upstream_connection_reset');
+  assert.equal(failed.status, 'failed');
+  assert.equal(failed.streamCompletion, 'incomplete');
+  assert.equal(typeof failed.firstTokenMs, 'number');
+  assert.equal(upstreamCalls, 1);
+
+  const second = await app.request('Chat', true);
+  assert.equal(second.status, 200);
+  await second.text();
+  assert.deepEqual((await app.logs(2)).map(log => log.status), ['failed', 'completed']);
+  assert.equal(upstreamCalls, 2);
+});
+
+test('streaming client cancellation preserves upstream health and releases the concurrency slot', async t => {
+  let upstreamCalls = 0;
+  let fallbackCalls = 0;
+  let markUpstreamClosed;
+  const upstreamClosed = new Promise(resolve => { markUpstreamClosed = resolve; });
+  const app = await setup(t, (_req, res) => {
+    upstreamCalls += 1;
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    if (upstreamCalls === 1) {
+      res.flushHeaders();
+      res.write('data: {"choices":[{"delta":{"content":"partial"}}]}\n\n');
+      res.once('close', markUpstreamClosed);
+      return;
+    }
+    res.end('data: {"choices":[{"delta":{"content":"recovered"}}]}\n\ndata: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n');
+  }, 'Chat', { maxConcurrentRequests: 1 }, (_req, res) => {
+    fallbackCalls += 1;
+    res.end('data: {"choices":[{"delta":{"content":"fallback"}}]}\n\ndata: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n');
+  });
+  const controller = new AbortController();
+  const first = await app.request('Chat', true, undefined, controller.signal);
+  const reader = first.body.getReader();
+  const decoder = new TextDecoder();
+  assert.match(decoder.decode((await reader.read()).value), /partial/);
+  controller.abort();
+  await assert.rejects(reader.read());
+  await Promise.race([upstreamClosed, new Promise((_, reject) => setTimeout(() => reject(new Error('cancelled stream remained open upstream')), 1000))]);
+  const [cancelled] = await app.logs(1);
+  assert.equal(cancelled.errorCode, 'client_disconnected');
+  assert.equal(typeof cancelled.firstTokenMs, 'number');
+  assert.equal(upstreamCalls, 1);
+  assert.equal(fallbackCalls, 0);
+
+  const second = await app.request('Chat', true);
+  assert.equal(second.status, 200);
+  assert.match(await second.text(), /recovered/);
+  assert.equal(upstreamCalls, 2);
+  assert.equal(fallbackCalls, 0);
+  const logs = await app.logs(2);
+  assert.deepEqual(logs.map(log => log.status), ['failed', 'completed']);
 });
 
 test('request logs capture gateway status for sanitized gateway failures', async t => {

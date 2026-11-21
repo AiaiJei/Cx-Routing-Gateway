@@ -27,6 +27,10 @@ export function LogsPage() {
     log.upstreamStatus !== undefined ? `上游 HTTP ${log.upstreamStatus}` : undefined,
     log.gatewayStatus !== undefined ? `网关 HTTP ${log.gatewayStatus}` : undefined,
     log.error,
+    log.streamCompletion === "completed" ? "协议流已正常结束" : log.streamCompletion === "failed" ? "上游流返回失败或未完成终止事件" : log.streamCompletion === "incomplete" ? "未收到协议终止事件" : undefined,
+    log.reasoningObserved === true ? "观察到推理内容" : undefined,
+    log.outputObserved === true ? "观察到正文、工具或媒体输出" : log.outputObserved === false ? "未观察到正文、工具或媒体输出" : undefined,
+    log.usageObserved === true ? "上游已返回 Token 用量" : log.usageObserved === false ? "上游未返回 Token 用量" : undefined,
   ].filter(Boolean).join(' · ') || '—';
 
   if (loading) return <WorkspaceState title="请求日志" loading={loading} error={error} />;
