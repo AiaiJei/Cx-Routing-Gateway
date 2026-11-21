@@ -46,7 +46,7 @@
 - The branch diff is reviewed against `origin/master` and limited to the task contract, design/plan/evidence, Gateway timeout and metrics code, their Runtime tests, and the Desktop request-duration component/test.
 - The previous completed release contract is preserved verbatim at `docs/tasks/2026-11-21-release-1.1.2-contract.json`.
 - Final whole-branch independent review on `be4de092..bac1770`: PASS, no Critical, Important, or Minor findings.
-- PR #15 is open against `master` at head `d595ab526e7afdec7fd9ae469c28c384debd3ef7`; GitHub Runtime and Desktop checks PASS, package job SKIPPED by workflow condition.
+- PR #15 is open against `master` from `codex/gateway-timeout-metrics`; GitHub Runtime and Desktop checks PASS, package job SKIPPED by workflow condition.
 - Merge and release publication remain `NOT_RUN`.
 - Downstream SDK/client timeouts remain outside Gateway control.
 
