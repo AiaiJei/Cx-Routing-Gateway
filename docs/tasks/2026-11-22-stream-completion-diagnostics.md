@@ -28,7 +28,8 @@ The user authorized execution and a dedicated PR. This task may edit only paths 
 - [x] Confirm repository root, clean tracked baseline, task scope and worktree/branch uniqueness.
 - [x] Create dedicated worktree and branch from current `master`.
 - [x] Archive the prior active contract and add this task's design, plan, task record, and active contract.
-- [ ] Implement Runtime terminal and disconnect handling test-first.
+- [x] Implement Runtime completion observation test-first: 5 new assertions RED; `node --test tests/runtime/request-metrics.test.mjs` GREEN, 14/14.
+- [ ] Implement Gateway terminal enforcement and disconnect classification test-first.
 - [ ] Implement Desktop diagnostics and legacy-safe mapping test-first.
 - [ ] Run full verification and independent whole-branch review.
 - [ ] Push branch and open dedicated PR; leave unmerged.

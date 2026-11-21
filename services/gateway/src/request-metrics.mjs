@@ -21,10 +21,24 @@ function hasGeneration(protocol, event, payload) {
     (event === 'response.output_item.added' && payload.item?.type === 'function_call' && nonempty(payload.item.name));
 }
 
+function hasFinalOutput(protocol, event, payload) {
+  if (protocol === 'Chat') return payload.choices?.some(choice => {
+    const message = choice?.message;
+    return message && (textContent(message.content) || nonempty(message.refusal) || message.tool_calls?.some(call => nonempty(call?.function?.name) || nonempty(call?.function?.arguments)));
+  });
+  if (protocol === 'Mes') return (payload.message?.content || []).some(block => nonempty(block?.text) || nonempty(block?.thinking) || (block?.type === 'tool_use' && nonempty(block?.name)));
+  if (!['response.completed', 'response.done'].includes(event)) return false;
+  return payload.response?.output?.some(item => item.type === 'function_call'
+    ? nonempty(item.name) || nonempty(item.arguments)
+    : item.type === 'message' && item.content?.some(part => (['output_text', 'refusal'].includes(part?.type) && nonempty(part.text || part.refusal))));
+}
+
 export function createRequestMetrics({ protocol, stream, startedAt, clock = () => performance.now() }) {
   const tokens = {};
   let firstTokenMs;
   let reportedTotal;
+  let streamCompletion = 'incomplete';
+  let outputObserved = false;
   let buffer = '';
   let discarding = false;
   const decoder = new TextDecoder();
@@ -53,13 +67,27 @@ export function createRequestMetrics({ protocol, stream, startedAt, clock = () =
   function observeFrame(frame) {
     const lines = frame.split(/\r?\n/);
     const data = lines.filter(line => line.startsWith('data:')).map(line => line.slice(5).trimStart()).join('\n');
-    if (!data || data === '[DONE]') return;
+    if (!data) return;
+    const event = lines.find(line => line.startsWith('event:'))?.slice(6).trim() || '';
+    if (data === '[DONE]') return;
     try {
       const payload = JSON.parse(data);
       if (!payload || typeof payload !== 'object') return;
-      const event = lines.find(line => line.startsWith('event:'))?.slice(6).trim() || payload.type;
+      const eventName = event || payload.type;
       observeUsage(payload.usage ?? payload.message?.usage ?? payload.response?.usage);
-      if (firstTokenMs === undefined && hasGeneration(protocol, event, payload)) firstTokenMs = Math.max(0, clock() - startedAt);
+      const generated = hasGeneration(protocol, eventName, payload);
+      if (generated) outputObserved = true;
+      if (hasFinalOutput(protocol, eventName, payload)) outputObserved = true;
+      if (firstTokenMs === undefined && generated) firstTokenMs = Math.max(0, clock() - startedAt);
+
+      if (eventName === 'error' || payload.type === 'error' || (payload.error && !Array.isArray(payload.choices))) streamCompletion = 'failed';
+      else if (protocol === 'Chat') {
+        if (payload.choices?.some(choice => typeof choice?.finish_reason === 'string' && choice.finish_reason.length > 0) && streamCompletion !== 'failed') streamCompletion = 'completed';
+      } else if (protocol === 'Mes') {
+        if (eventName === 'message_stop' && streamCompletion !== 'failed') streamCompletion = 'completed';
+      } else if (eventName === 'response.failed') streamCompletion = 'failed';
+      else if (eventName === 'response.incomplete') streamCompletion = 'incomplete';
+      else if (['response.completed', 'response.done'].includes(eventName) && payload.response?.status === 'completed' && streamCompletion !== 'failed') streamCompletion = 'completed';
     } catch { /* Observability must not alter passthrough behavior. */ }
   }
   function consume(text) {
@@ -91,7 +119,12 @@ export function createRequestMetrics({ protocol, stream, startedAt, clock = () =
         : undefined;
       const total = reportedTotal ?? derivedTotal;
       if (count(total)) result.total = total;
-      return { stream, ...(firstTokenMs === undefined ? {} : { firstTokenMs }), ...(Object.keys(result).length ? { tokens: result } : {}) };
+      return {
+        stream,
+        ...(firstTokenMs === undefined ? {} : { firstTokenMs }),
+        ...(Object.keys(result).length ? { tokens: result } : {}),
+        ...(stream ? { streamCompletion, outputObserved, usageObserved: Object.keys(tokens).length > 0 } : {}),
+      };
     },
   };
 }

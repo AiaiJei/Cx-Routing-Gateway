@@ -33,10 +33,10 @@
 
 **Interfaces:** `createRequestMetrics(...).snapshot()` adds optional `streamCompletion`, `outputObserved`, and usage evidence without retaining response data. `streamCompletion` is `completed`, `failed`, or `incomplete` for streaming requests.
 
-- [ ] Add failing unit tests for Chat finish reason vs `[DONE]` alone; Messages `message_stop`; Responses completed/failed/incomplete; visible text/tool output and empty completion; usage-only reasoning.
-- [ ] Run the focused test file and confirm expected failures.
-- [ ] Implement bounded event classification within the existing observer. Require Chat finish reason, accept Responses `response.done` only with completed status, and inspect terminal Responses output without inventing TTFT.
-- [ ] Rerun the focused metrics tests; preserve chunk-boundary and usage assertions.
+- [x] Add failing unit tests for Chat finish reason vs `[DONE]` alone; Messages `message_stop`; Responses completed/failed/incomplete; visible text/tool output and empty completion; usage-only reasoning.
+- [x] Run the focused test file and confirm expected failures (5 new assertions failed against the old observer).
+- [x] Implement bounded event classification within the existing observer. Require Chat finish reason, accept Responses `response.done` only with completed status, and inspect terminal Responses output without inventing TTFT.
+- [x] Rerun the focused metrics tests; preserve chunk-boundary and usage assertions (14/14 passed).
 - [ ] Commit `fix: validate streaming protocol completion`.
 
 ### Task 2: Enforce completion and normalize disconnects in Gateway

@@ -35,9 +35,9 @@ test('stream first token ignores role, heartbeat and usage; chunked UTF-8 and la
   const text = Buffer.from(frame({ choices: [{ delta: { content: '你好' } }] }));
   for (const byte of text) metrics.push(Uint8Array.of(byte));
   now = 180;
-  metrics.push(Buffer.from(frame({ choices: [], usage: { prompt_tokens: 10, completion_tokens: 2 } }) + frame({ choices: [], usage: { prompt_tokens: 10, completion_tokens: 3, total_tokens: 13 } }) + 'data: [DONE]\n\n'));
+  metrics.push(Buffer.from(frame({ choices: [], usage: { prompt_tokens: 10, completion_tokens: 2 } }) + frame({ choices: [], usage: { prompt_tokens: 10, completion_tokens: 3, total_tokens: 13 } }) + frame({ choices: [{ delta: {}, finish_reason: 'stop' }] }) + 'data: [DONE]\n\n'));
   metrics.finish();
-  assert.deepEqual(metrics.snapshot(), { stream: true, firstTokenMs: 50, tokens: { input: 10, output: 3, total: 13 } });
+  assert.deepEqual(metrics.snapshot(), { stream: true, firstTokenMs: 50, tokens: { input: 10, output: 3, total: 13 }, streamCompletion: 'completed', outputObserved: true, usageObserved: true });
 });
 
 test('Mes start/delta usage merges cumulative fields without summing snapshots', () => {
@@ -47,8 +47,8 @@ test('Mes start/delta usage merges cumulative fields without summing snapshots',
   assert.equal(metrics.snapshot().firstTokenMs, undefined);
   now = 125;
   metrics.push(Buffer.from(frame({ type: 'content_block_delta', delta: { type: 'input_json_delta', partial_json: '{' } })));
-  metrics.push(Buffer.from(frame({ type: 'message_delta', usage: { output_tokens: 6 } }) + frame({ type: 'message_delta', usage: { output_tokens: 7 } })));
-  assert.deepEqual(metrics.snapshot(), { stream: true, firstTokenMs: 25, tokens: { input: 10, output: 7, cacheRead: 0, cacheWrite: 5, total: 22 } });
+  metrics.push(Buffer.from(frame({ type: 'message_delta', usage: { output_tokens: 6 } }) + frame({ type: 'message_delta', usage: { output_tokens: 7 } }) + frame({ type: 'message_stop' }, 'message_stop')));
+  assert.deepEqual(metrics.snapshot(), { stream: true, firstTokenMs: 25, tokens: { input: 10, output: 7, cacheRead: 0, cacheWrite: 5, total: 22 }, streamCompletion: 'completed', outputObserved: true, usageObserved: true });
 });
 
 test('Responses records generation but ignores lifecycle and recognizes nested completion usage', () => {
@@ -57,17 +57,17 @@ test('Responses records generation but ignores lifecycle and recognizes nested c
   metrics.push(Buffer.from(frame({ type: 'response.created', response: { status: 'in_progress' } })));
   now = 132;
   metrics.push(Buffer.from(frame({ type: 'response.reasoning_summary_text.delta', delta: 'thinking' })));
-  metrics.push(Buffer.from(frame({ type: 'response.completed', response: { usage: { input_tokens: 12, output_tokens: 4, output_tokens_details: { reasoning_tokens: 2 } } } })));
+  metrics.push(Buffer.from(frame({ type: 'response.completed', response: { status: 'completed', usage: { input_tokens: 12, output_tokens: 4, output_tokens_details: { reasoning_tokens: 2 } } } })));
   metrics.finish();
-  assert.deepEqual(metrics.snapshot(), { stream: true, firstTokenMs: 32, tokens: { input: 12, output: 4, total: 16, reasoning: 2 } });
+  assert.deepEqual(metrics.snapshot(), { stream: true, firstTokenMs: 32, tokens: { input: 12, output: 4, total: 16, reasoning: 2 }, streamCompletion: 'completed', outputObserved: true, usageObserved: true });
 });
 
 test('malformed and oversized frames are skipped without losing following metrics', () => {
   const metrics = createRequestMetrics({ protocol: 'Chat', stream: true, startedAt: 10, clock: () => 15 });
   metrics.push(Buffer.from('data: {bad}\n\ndata: ' + 'x'.repeat(300_000)));
-  metrics.push(Buffer.from('\n\n' + frame({ choices: [{ delta: { refusal: 'no' } }], usage: { prompt_tokens: 0, completion_tokens: 1 } })));
+  metrics.push(Buffer.from('\n\n' + frame({ choices: [{ delta: { refusal: 'no' } }], usage: { prompt_tokens: 0, completion_tokens: 1 } }) + frame({ choices: [{ delta: {}, finish_reason: 'content_filter' }] })));
   metrics.finish();
-  assert.deepEqual(metrics.snapshot(), { stream: true, firstTokenMs: 5, tokens: { input: 0, output: 1, total: 1 } });
+  assert.deepEqual(metrics.snapshot(), { stream: true, firstTokenMs: 5, tokens: { input: 0, output: 1, total: 1 }, streamCompletion: 'completed', outputObserved: true, usageObserved: true });
 });
 
 test('later cumulative updates invalidate stale reported totals', () => {
@@ -83,6 +83,45 @@ test('Mes totals stay unknown when cache components are missing or invalid', () 
     metrics.observeJson({ usage: { input_tokens: 10, output_tokens: 6, cache_read_input_tokens: cache, cache_creation_input_tokens: 0 } });
     assert.deepEqual(metrics.snapshot().tokens, { input: 10, output: 6, cacheWrite: 0 });
   }
+});
+
+test('Chat DONE without a finish reason is incomplete', () => {
+  const metrics = createRequestMetrics({ protocol: 'Chat', stream: true, startedAt: 10 });
+  metrics.push(Buffer.from('data: [DONE]\n\n'));
+  metrics.finish();
+  assert.deepEqual(metrics.snapshot(), { stream: true, streamCompletion: 'incomplete', outputObserved: false, usageObserved: false });
+});
+
+test('Chat finish reason completes a stream and records observable output', () => {
+  const metrics = createRequestMetrics({ protocol: 'Chat', stream: true, startedAt: 10, clock: () => 15 });
+  metrics.push(Buffer.from(frame({ choices: [{ delta: { content: 'hello' } }] })));
+  metrics.push(Buffer.from(frame({ choices: [{ delta: {}, finish_reason: 'stop' }] })));
+  metrics.finish();
+  assert.deepEqual(metrics.snapshot(), { stream: true, firstTokenMs: 5, streamCompletion: 'completed', outputObserved: true, usageObserved: false });
+});
+
+test('Messages message_stop is required for stream completion', () => {
+  const metrics = createRequestMetrics({ protocol: 'Mes', stream: true, startedAt: 10 });
+  metrics.push(Buffer.from(frame({ type: 'message_start', message: { usage: { input_tokens: 1, output_tokens: 0 } } })));
+  metrics.push(Buffer.from(frame({ type: 'message_stop' }, 'message_stop')));
+  metrics.finish();
+  assert.deepEqual(metrics.snapshot(), { stream: true, tokens: { input: 1, output: 0 }, streamCompletion: 'completed', outputObserved: false, usageObserved: true });
+});
+
+test('Responses failed and incomplete events do not count as completed', () => {
+  for (const [event, status] of [['response.failed', 'failed'], ['response.incomplete', 'incomplete']]) {
+    const metrics = createRequestMetrics({ protocol: 'Res', stream: true, startedAt: 10 });
+    metrics.push(Buffer.from(frame({ type: event, response: { status: event === 'response.failed' ? 'failed' : 'incomplete' } }, event)));
+    metrics.finish();
+    assert.deepEqual(metrics.snapshot(), { stream: true, streamCompletion: status, outputObserved: false, usageObserved: false });
+  }
+});
+
+test('Responses completion can be valid while output and usage are absent', () => {
+  const metrics = createRequestMetrics({ protocol: 'Res', stream: true, startedAt: 10 });
+  metrics.push(Buffer.from(frame({ type: 'response.completed', response: { status: 'completed', output: [] } }, 'response.completed')));
+  metrics.finish();
+  assert.deepEqual(metrics.snapshot(), { stream: true, streamCompletion: 'completed', outputObserved: false, usageObserved: false });
 });
 
 test('default stream metrics ignore wall-clock jumps', async () => {
