@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { UpstreamsPage } from "./UpstreamsPage";
 import { defaultWorkspaceClient } from "../data/workspace-client";
@@ -9,6 +9,7 @@ describe("UpstreamsPage", () => {
     const user = userEvent.setup();
     render(<UpstreamsPage />);
     await screen.findByRole("button", { name: "添加上游" });
+    expect(screen.queryByRole("button", { name: "删除" })).not.toBeInTheDocument();
     const search = screen.getByRole("searchbox", { name: "搜索上游服务" });
     await user.type(search, "Northstar");
     expect(screen.getByText("Northstar AI")).toBeVisible();
@@ -58,6 +59,7 @@ describe("UpstreamsPage", () => {
     } as any;
     Object.assign(defaultWorkspaceClient, {
       getWorkspace: async () => liveWorkspace,
+      deleteUpstream: async (id: string) => ({ id, deleted: true as const }),
       simulateUpstreamTest: () => new Promise((resolve) => { resolveTest = resolve; }),
     });
     try {
@@ -78,6 +80,73 @@ describe("UpstreamsPage", () => {
       expect(screen.getByRole("button", { name: "保存上游" })).toBeVisible();
       expect(screen.queryByText(/示例|模拟/)).not.toBeInTheDocument();
     } finally {
+      for (const key of Object.keys(defaultWorkspaceClient)) if (!(key in original)) delete (defaultWorkspaceClient as any)[key];
+      Object.assign(defaultWorkspaceClient, original);
+    }
+  });
+
+  it("confirms deletion and lists dependent routes when the runtime blocks it", async () => {
+    const original = { ...defaultWorkspaceClient };
+    const liveWorkspace = {
+      meta: { source: "runtime", live: true },
+      gateway: { state: "运行中", url: "http://127.0.0.1:4318", metrics: undefined },
+      upstreams: [{ id: "up-live", name: "Live API", baseUrl: "https://api.example/v1", credentialLabel: "已配置（已脱敏）", status: "待测试", models: [] }],
+      routes: [], logs: [], credentials: [], settings: [],
+    } as any;
+    const deleteUpstream = vi.fn(async () => ({ deleted: false as const, error: "upstream_in_use", routes: [{ id: "route-1", alias: "chat-main", inboundProtocol: "Chat" }] }));
+    Object.assign(defaultWorkspaceClient, { getWorkspace: async () => liveWorkspace, deleteUpstream });
+    try {
+      const user = userEvent.setup();
+      render(<UpstreamsPage />);
+      const row = await screen.findByRole("row", { name: /Live API/ });
+      await user.click(within(row).getByRole("button", { name: "删除" }));
+      const dialog = screen.getByRole("dialog", { name: "删除上游服务" });
+      await user.click(within(dialog).getByRole("button", { name: "取消" }));
+      expect(deleteUpstream).not.toHaveBeenCalled();
+      expect(row).toBeVisible();
+
+      await user.click(within(row).getByRole("button", { name: "删除" }));
+      await user.click(screen.getByRole("button", { name: "确认删除上游" }));
+      expect(deleteUpstream).toHaveBeenCalledWith("up-live");
+      expect(await screen.findByRole("alert")).toHaveTextContent("chat-main");
+      expect(screen.getByRole("row", { name: /Live API/ })).toBeVisible();
+    } finally {
+      for (const key of Object.keys(defaultWorkspaceClient)) if (!(key in original)) delete (defaultWorkspaceClient as any)[key];
+      Object.assign(defaultWorkspaceClient, original);
+    }
+  });
+
+  it("preserves an upstream on deletion failure and removes it after success", async () => {
+    const original = { ...defaultWorkspaceClient };
+    const liveWorkspace = {
+      meta: { source: "runtime", live: true },
+      gateway: { state: "运行中", url: "http://127.0.0.1:4318", metrics: undefined },
+      upstreams: [{ id: "up-live", name: "Live API", baseUrl: "https://api.example/v1", credentialLabel: "已配置（已脱敏）", status: "待测试", models: [] }],
+      routes: [], logs: [], credentials: [], settings: [],
+    } as any;
+    const deleteUpstream = vi.fn().mockRejectedValueOnce(new Error("控制服务不可用"));
+    Object.assign(defaultWorkspaceClient, { getWorkspace: async () => liveWorkspace, deleteUpstream });
+    try {
+      const user = userEvent.setup();
+      render(<UpstreamsPage />);
+      let row = await screen.findByRole("row", { name: /Live API/ });
+      await user.click(within(row).getByRole("button", { name: "删除" }));
+      const dialog = screen.getByRole("dialog", { name: "删除上游服务" });
+      await user.click(within(dialog).getByRole("button", { name: "取消" }));
+      expect(deleteUpstream).not.toHaveBeenCalled();
+
+      await user.click(within(row).getByRole("button", { name: "删除" }));
+      await user.click(screen.getByRole("button", { name: "确认删除上游" }));
+      expect(await screen.findByRole("alert")).toHaveTextContent("删除上游失败：控制服务不可用");
+      expect(row).toBeVisible();
+
+      deleteUpstream.mockResolvedValueOnce({ id: "up-live", deleted: true });
+      await user.click(within(row).getByRole("button", { name: "删除" }));
+      await user.click(screen.getByRole("button", { name: "确认删除上游" }));
+      expect(await screen.findByRole("status")).toHaveTextContent("上游已删除");
+      expect(screen.queryByRole("row", { name: /Live API/ })).not.toBeInTheDocument();
+    } finally {
+      for (const key of Object.keys(defaultWorkspaceClient)) if (!(key in original)) delete (defaultWorkspaceClient as any)[key];
       Object.assign(defaultWorkspaceClient, original);
     }
   });

@@ -290,3 +290,86 @@ describe("request log refresh", () => {
     expect(screen.queryByRole("button", { name: "查看 before-midnight" })).not.toBeInTheDocument();
   });
 });
+
+describe("request log clearing", () => {
+  function liveSnapshot(): WorkspaceFixtures {
+    return { ...structuredClone(workspaceFixtures), meta: { live: true, source: "runtime" } };
+  }
+
+  function restoreClient(original: Partial<typeof defaultWorkspaceClient>) {
+    for (const key of Object.keys(defaultWorkspaceClient)) {
+      if (!(key in original)) delete (defaultWorkspaceClient as any)[key];
+    }
+    Object.assign(defaultWorkspaceClient, original);
+  }
+
+  it("keeps clearing unavailable in fixture mode", async () => {
+    render(<LogsPage />);
+    await screen.findByRole("searchbox", { name: "搜索请求日志" });
+    expect(screen.queryByRole("button", { name: "清空日志" })).not.toBeInTheDocument();
+  });
+
+  it("confirms clearing all logs regardless of filters, then refreshes the list", async () => {
+    const original = { ...defaultWorkspaceClient };
+    let latest = liveSnapshot();
+    const clearRequestLogs = vi.fn(async () => {
+      latest = { ...latest, logs: [] };
+      return { deleted: true as const, removedCount: 3 };
+    });
+    Object.assign(defaultWorkspaceClient, { getWorkspace: async () => latest, clearRequestLogs });
+    try {
+      const user = userEvent.setup();
+      render(<LogsPage />);
+      const search = await screen.findByRole("searchbox", { name: "搜索请求日志" });
+      await user.type(search, "req-29ab");
+      await user.click(screen.getByRole("button", { name: "清空日志" }));
+      const dialog = screen.getByRole("dialog", { name: "清空请求日志" });
+      expect(dialog).toHaveTextContent("全部请求日志");
+      expect(dialog).toHaveTextContent("当前筛选不会限制清空范围");
+      await user.click(within(dialog).getByRole("button", { name: "取消" }));
+      expect(clearRequestLogs).not.toHaveBeenCalled();
+      expect(screen.getByRole("button", { name: "查看 req-29ab10ce" })).toBeVisible();
+
+      await user.click(screen.getByRole("button", { name: "清空日志" }));
+      await user.click(screen.getByRole("button", { name: "确认清空" }));
+      expect(clearRequestLogs).toHaveBeenCalledOnce();
+      expect(await screen.findByRole("status")).toHaveTextContent("已清空全部请求日志，共移除 3 条");
+      expect(await screen.findByText("没有匹配的请求记录")).toBeVisible();
+      expect(screen.getByRole("searchbox", { name: "搜索请求日志" })).toHaveValue("req-29ab");
+    } finally {
+      restoreClient(original);
+    }
+  });
+
+  it("keeps request rows and reports a useful error when clearing fails", async () => {
+    const original = { ...defaultWorkspaceClient };
+    Object.assign(defaultWorkspaceClient, {
+      getWorkspace: async () => liveSnapshot(),
+      clearRequestLogs: vi.fn(async () => { throw new Error("磁盘只读"); }),
+    });
+    try {
+      const user = userEvent.setup();
+      render(<LogsPage />);
+      await screen.findByRole("searchbox", { name: "搜索请求日志" });
+      await user.click(screen.getByRole("button", { name: "清空日志" }));
+      await user.click(screen.getByRole("button", { name: "确认清空" }));
+      expect(await screen.findByRole("alert")).toHaveTextContent("清空请求日志失败：磁盘只读");
+      expect(screen.getByRole("button", { name: "查看 req-7d3a9f21" })).toBeVisible();
+    } finally {
+      restoreClient(original);
+    }
+  });
+});
+
+it("scopes a single focus indicator to the request-log search", async () => {
+  render(<LogsPage />);
+  const search = await screen.findByRole("searchbox", { name: "搜索请求日志" });
+  search.focus();
+  expect(search.closest(".request-logs-toolbar")).not.toBeNull();
+  const rules = Array.from(document.styleSheets).flatMap((sheet) => Array.from(sheet.cssRules)) as CSSStyleRule[];
+  const fieldFocus = rules.find((rule) => rule.selectorText === ".request-logs-toolbar .search-field:focus-within");
+  const inputFocus = rules.find((rule) => rule.selectorText === ".request-logs-toolbar .search-field .geist-input:focus-visible");
+  expect(fieldFocus?.style.outline).toBe("none");
+  expect(fieldFocus?.style.getPropertyValue("border-color")).toBe("var(--accent)");
+  expect(inputFocus?.style.outline).toBe("none");
+});

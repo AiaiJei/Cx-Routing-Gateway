@@ -138,6 +138,14 @@ export function createControlServer({ store, vault, controlToken = process.env.C
         const logs = config.usage.filter((item) => !status || item.status === status).slice(-limit).reverse();
         return send(res, 200, { logs });
       }
+      if (req.method === 'DELETE' && url.pathname === '/v1/control/logs') {
+        let removedCount = 0;
+        await store.update((config) => {
+          removedCount = config.usage.length;
+          return { ...config, usage: [] };
+        });
+        return send(res, 200, { deleted: true, removedCount });
+      }
       if (req.method === 'GET' && url.pathname === '/v1/control/metrics') {
         const usage = (await store.read()).usage || [];
         const completed = usage.filter((item) => item.status === 'completed').length;
@@ -209,12 +217,13 @@ export function createControlServer({ store, vault, controlToken = process.env.C
       if (req.method === 'POST' && parts[2] === 'routes' && parts.length === 3) {
         const input = await bodyOf(req);
         requireProtocol(input.inboundProtocol); requireProtocol(input.outboundProtocol);
-        const config = await store.read();
-        if (!config.upstreams.some((item) => item.id === input.upstreamId)) throw Object.assign(new Error('Unknown upstream'), { statusCode: 400 });
-        if (config.routes.some((item) => item.enabled && item.alias === input.alias && item.inboundProtocol === input.inboundProtocol)) return send(res, 409, { error: 'route_conflict' });
         const route = { id: `route_${crypto.randomUUID()}`, alias: String(input.alias || ''), inboundProtocol: input.inboundProtocol, outboundProtocol: input.outboundProtocol, upstreamId: input.upstreamId, modelId: String(input.modelId || ''), enabled: input.enabled !== false, allowLossy: input.allowLossy === true };
         if (!route.alias || !route.modelId) throw Object.assign(new Error('Route alias and model are required'), { statusCode: 400 });
-        await store.update((value) => ({ ...value, routes: [...value.routes, route] }));
+        await store.update((value) => {
+          if (!value.upstreams.some((item) => item.id === route.upstreamId)) throw Object.assign(new Error('Unknown upstream'), { statusCode: 400 });
+          if (route.enabled && value.routes.some((item) => item.enabled && item.alias === route.alias && item.inboundProtocol === route.inboundProtocol)) throw Object.assign(new Error('route_conflict'), { statusCode: 409 });
+          return { ...value, routes: [...value.routes, route] };
+        });
         return send(res, 201, route);
       }
       if ((req.method === 'PATCH' || req.method === 'DELETE') && parts[2] === 'upstreams' && parts[3]) {
@@ -223,9 +232,17 @@ export function createControlServer({ store, vault, controlToken = process.env.C
         const current = config.upstreams.find((item) => item.id === id);
         if (!current) return send(res, 404, { error: 'not_found' });
         if (req.method === 'DELETE') {
-          if (config.routes.some((route) => route.enabled && (route.upstreamId === id || route.targets?.some(target => target.upstreamId === id)))) return send(res, 409, { error: 'upstream_in_use' });
-          await store.update((value) => ({ ...value, upstreams: value.upstreams.filter((item) => item.id !== id) }));
-          if (current.credentialRef) await vault.remove(current.credentialRef);
+          let deletedUpstream;
+          await store.update((value) => {
+            deletedUpstream = value.upstreams.find((item) => item.id === id);
+            if (!deletedUpstream) throw Object.assign(new Error('not_found'), { statusCode: 404 });
+            const routes = value.routes
+              .filter((route) => route.upstreamId === id || (Array.isArray(route.targets) && route.targets.some((target) => target?.upstreamId === id)))
+              .map(({ id: routeId, alias, inboundProtocol }) => ({ id: routeId, alias, inboundProtocol }));
+            if (routes.length) throw Object.assign(new Error('upstream_in_use'), { statusCode: 409, routes });
+            return { ...value, upstreams: value.upstreams.filter((item) => item.id !== id) };
+          });
+          if (deletedUpstream.credentialRef) await vault.remove(deletedUpstream.credentialRef);
           return send(res, 200, { id, deleted: true });
         }
         const input = await bodyOf(req);
@@ -242,17 +259,20 @@ export function createControlServer({ store, vault, controlToken = process.env.C
       if (req.method === 'PATCH' && parts[2] === 'routes' && parts[3]) {
         const id = parts[3];
         const input = await bodyOf(req);
-        const config = await store.read();
-        const current = config.routes.find((item) => item.id === id);
-        if (!current) return send(res, 404, { error: 'not_found' });
         if (input.inboundProtocol) requireProtocol(input.inboundProtocol);
         if (input.outboundProtocol) requireProtocol(input.outboundProtocol);
-        if (input.upstreamId && !config.upstreams.some((item) => item.id === input.upstreamId)) throw Object.assign(new Error('Unknown upstream'), { statusCode: 400 });
-        const next = { ...current, ...Object.fromEntries(['alias', 'inboundProtocol', 'outboundProtocol', 'upstreamId', 'modelId', 'enabled', 'allowLossy'].filter((key) => input[key] !== undefined).map((key) => [key, input[key]])) };
-        if (!next.alias || !next.modelId) throw Object.assign(new Error('Route alias and model are required'), { statusCode: 400 });
-        if (next.enabled && config.routes.some((item) => item.id !== id && item.enabled && item.alias === next.alias && item.inboundProtocol === next.inboundProtocol)) return send(res, 409, { error: 'route_conflict' });
-        await store.update((value) => ({ ...value, routes: value.routes.map((item) => item.id === id ? next : item) }));
-        return send(res, 200, next);
+        let updatedRoute;
+        await store.update((value) => {
+          const current = value.routes.find((item) => item.id === id);
+          if (!current) throw Object.assign(new Error('not_found'), { statusCode: 404 });
+          const next = { ...current, ...Object.fromEntries(['alias', 'inboundProtocol', 'outboundProtocol', 'upstreamId', 'modelId', 'enabled', 'allowLossy'].filter((key) => input[key] !== undefined).map((key) => [key, input[key]])) };
+          if (!next.alias || !next.modelId) throw Object.assign(new Error('Route alias and model are required'), { statusCode: 400 });
+          if (!value.upstreams.some((item) => item.id === next.upstreamId) || (next.targets !== undefined && (!Array.isArray(next.targets) || next.targets.some((target) => !target || !value.upstreams.some((item) => item.id === target.upstreamId))))) throw Object.assign(new Error('Unknown upstream'), { statusCode: 400 });
+          if (next.enabled && value.routes.some((item) => item.id !== id && item.enabled && item.alias === next.alias && item.inboundProtocol === next.inboundProtocol)) throw Object.assign(new Error('route_conflict'), { statusCode: 409 });
+          updatedRoute = next;
+          return { ...value, routes: value.routes.map((item) => item.id === id ? next : item) };
+        });
+        return send(res, 200, updatedRoute);
       }
       if (req.method === 'DELETE' && parts[2] === 'routes' && parts[3]) {
         const id = parts[3];
@@ -299,6 +319,14 @@ export function createControlServer({ store, vault, controlToken = process.env.C
         await store.update((value) => ({ ...value, clientKeys: value.clientKeys.map((item) => item.id === id ? { ...item, keyHash: crypto.createHash('sha256').update(key).digest('hex'), enabled: true, rotatedAt } : item) }));
         return send(res, 200, { id, name: current.name, scope: current.scope || [], key, rotatedAt, enabled: true });
       }
+      if (req.method === 'DELETE' && parts[2] === 'client-keys' && parts[3] && parts[4] === 'permanent') {
+        const id = parts[3];
+        await store.update((value) => {
+          if (!value.clientKeys.some((item) => item.id === id)) throw Object.assign(new Error('not_found'), { statusCode: 404 });
+          return { ...value, clientKeys: value.clientKeys.filter((item) => item.id !== id) };
+        });
+        return send(res, 200, { id, deleted: true });
+      }
       if (req.method === 'DELETE' && parts[2] === 'client-keys' && parts[3]) {
         const id = parts[3];
         const config = await store.read();
@@ -308,7 +336,7 @@ export function createControlServer({ store, vault, controlToken = process.env.C
       }
       return send(res, 404, { error: 'not_found' });
     } catch (error) {
-      return send(res, error.statusCode || 500, { error: error.statusCode ? error.message : 'internal_error' });
+      return send(res, error.statusCode || 500, { error: error.statusCode ? error.message : 'internal_error', ...(error.routes ? { routes: error.routes } : {}) });
     }
   });
 }
