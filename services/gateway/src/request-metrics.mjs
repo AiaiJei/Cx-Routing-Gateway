@@ -1,3 +1,5 @@
+import { performance } from 'node:perf_hooks';
+
 // Observe only bounded, numeric metadata. Never retain response bodies in a log.
 const MAX_FRAME = 256 * 1024;
 const count = value => Number.isSafeInteger(value) && value >= 0;
@@ -19,7 +21,7 @@ function hasGeneration(protocol, event, payload) {
     (event === 'response.output_item.added' && payload.item?.type === 'function_call' && nonempty(payload.item.name));
 }
 
-export function createRequestMetrics({ protocol, stream, startedAt, clock = Date.now }) {
+export function createRequestMetrics({ protocol, stream, startedAt, clock = () => performance.now() }) {
   const tokens = {};
   let firstTokenMs;
   let reportedTotal;

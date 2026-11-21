@@ -72,18 +72,18 @@ function releaseVersion(release) {
 }
 
 function installerAsset(release, version) {
-  const expectedName = `Cx-Routing Gateway Setup ${version}.exe`;
-  const asset = Array.isArray(release.assets) ? release.assets.find((item) => item?.name === expectedName) : null;
-  if (!asset || typeof asset.browser_download_url !== 'string') throw new Error(`GitHub release is missing ${expectedName}`);
+  const expectedNames = [`Cx-Routing Gateway Setup ${version}.exe`, `Cx-Routing.Gateway.Setup.${version}.exe`];
+  const asset = Array.isArray(release.assets) ? release.assets.find((item) => expectedNames.includes(item?.name)) : null;
+  if (!asset || typeof asset.browser_download_url !== 'string') throw new Error(`GitHub release is missing ${expectedNames[0]}`);
   if (!/^sha256:[a-f\d]{64}$/i.test(asset.digest || '')) throw new Error('GitHub release installer has no valid SHA-256 digest');
   const url = new URL(asset.browser_download_url);
   const expectedPath = `/AiaiJei/Cx-Routing-Gateway/releases/download/v${version}/`;
   let urlFilename;
   try { urlFilename = decodeURIComponent(url.pathname.slice(url.pathname.lastIndexOf('/') + 1)); } catch { throw new Error('GitHub release installer URL is invalid'); }
-  if (url.protocol !== 'https:' || url.hostname !== 'github.com' || !url.pathname.startsWith(expectedPath) || urlFilename !== expectedName || url.search || url.hash) {
+  if (url.protocol !== 'https:' || url.hostname !== 'github.com' || !url.pathname.startsWith(expectedPath) || urlFilename !== asset.name || url.search || url.hash) {
     throw new Error('GitHub release installer URL is invalid');
   }
-  return { name: expectedName, url: url.href, sha256: asset.digest.slice('sha256:'.length).toLowerCase() };
+  return { name: asset.name, url: url.href, sha256: asset.digest.slice('sha256:'.length).toLowerCase() };
 }
 
 async function fetchLatestRelease({ repository, token, fetchImpl }) {

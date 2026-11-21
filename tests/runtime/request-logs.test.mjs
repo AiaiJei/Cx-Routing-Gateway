@@ -12,7 +12,7 @@ const listen = (server) => new Promise(resolve => server.listen(0, '127.0.0.1', 
 const close = (server) => { server.closeAllConnections(); return new Promise(resolve => server.close(resolve)); };
 const event = (payload) => `data: ${JSON.stringify(payload)}\n\n`;
 
-async function setup(t, respond, outbound = 'Chat') {
+async function setup(t, respond, outbound = 'Chat', gatewayOptions = {}) {
   await fs.mkdir(path.resolve('.task-evidence'), { recursive: true });
   const dir = await fs.mkdtemp(path.resolve('.task-evidence', 'request-logs-'));
   const store = new ConfigStore(path.join(dir, 'config.json'));
@@ -22,7 +22,7 @@ async function setup(t, respond, outbound = 'Chat') {
   const upstream = http.createServer(respond);
   const upPort = await listen(upstream);
   await store.update(config => ({ ...config, upstreams: [{ id: 'up', name: 'Primary upstream', enabled: true, baseUrl: `http://127.0.0.1:${upPort}`, trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'] }], routes: ['Chat', 'Res', 'Mes'].map(inbound => ({ id: inbound, alias: inbound, inboundProtocol: inbound, outboundProtocol: outbound, upstreamId: 'up', modelId: 'model', enabled: true })), clientKeys: [{ id: 'key', enabled: true, scope: [], keyHash: crypto.createHash('sha256').update('test-key').digest('hex') }] }));
-  const gateway = createGatewayServer({ store, vault: {} });
+  const gateway = createGatewayServer({ store, vault: {}, ...gatewayOptions });
   const port = await listen(gateway);
   const control = createControlServer({ store, vault: {}, allowUnauthenticated: true });
   const controlPort = await listen(control);
@@ -63,6 +63,7 @@ test('JSON request logs carry real usage, request start and type through control
 
 test('passthrough and converted streams preserve responses and persist first-generation timing and usage', async t => {
   let firstSent = 0;
+  let monotonicTime = 100;
   let receivedPayload;
   const wire = event({ choices: [{ delta: { role: 'assistant', content: '' } }] }) + ': ping\n\n';
   const content = event({ choices: [{ delta: { content: 'OK' } }] });
@@ -72,9 +73,10 @@ test('passthrough and converted streams preserve responses and persist first-gen
     if (!receivedPayload.stream) { res.end(JSON.stringify({ choices: [{ message: { content: 'OK' } }] })); return; }
     res.writeHead(200, { 'content-type': 'text/event-stream' });
     res.write(wire);
-    setTimeout(() => { firstSent = Date.now(); res.write(content); setTimeout(() => res.end(end), 25); }, 35);
-  });
+    setTimeout(() => { monotonicTime = 150; firstSent = monotonicTime; res.write(content); setTimeout(() => { monotonicTime = 180; res.end(end); }, 25); }, 35);
+  }, 'Chat', { monotonicNow: () => monotonicTime });
   for (const [index, protocol] of ['Chat', 'Res', 'Mes'].entries()) {
+    monotonicTime = 100;
     const response = await app.request(protocol, true);
     const body = await response.text();
     assert.equal(receivedPayload.stream, true);
@@ -84,9 +86,41 @@ test('passthrough and converted streams preserve responses and persist first-gen
     const log = (await app.logs(index + 1)).at(-1);
     assert.equal(log.stream, true);
     assert.deepEqual(log.tokens, { input: 7, output: 2, total: 9 });
-    assert.ok(log.firstTokenMs >= firstSent - Date.parse(log.createdAt));
+    assert.ok(log.firstTokenMs >= firstSent - 100);
     assert.ok(log.durationMs >= log.firstTokenMs + 15);
   }
+});
+
+test('request logs measure elapsed time monotonically across wall-clock changes', async t => {
+  const startedWall = Date.parse('2026-11-21T08:00:00.000Z');
+  let wallTime = startedWall;
+  let monotonicTime = 100;
+  const content = event({ choices: [{ delta: { content: 'OK' } }] });
+  const end = event({ choices: [], usage: { prompt_tokens: 1, completion_tokens: 1 } }) + 'data: [DONE]\n\n';
+  const app = await setup(t, (_req, res) => {
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.write(event({ choices: [{ delta: { role: 'assistant', content: '' } }] }));
+    setTimeout(() => {
+      wallTime -= 60_000;
+      monotonicTime = 150;
+      res.write(content);
+      setTimeout(() => {
+        wallTime += 120_000;
+        monotonicTime = 200;
+        res.end(end);
+      }, 25);
+    }, 25);
+  }, 'Chat', { now: () => wallTime, monotonicNow: () => monotonicTime });
+  const originalDateNow = Date.now;
+  Date.now = () => wallTime;
+  t.after(() => { Date.now = originalDateNow; });
+
+  const response = await app.request('Chat', true);
+  await response.text();
+  const [log] = await app.logs(1);
+  assert.equal(Date.parse(log.createdAt), startedWall);
+  assert.equal(log.firstTokenMs, 50);
+  assert.equal(log.durationMs, 100);
 });
 
 test('failed upstream records known request type without inventing usage or first token', async t => {

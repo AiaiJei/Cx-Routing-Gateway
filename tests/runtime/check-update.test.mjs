@@ -117,6 +117,27 @@ test('four-part product versions compare numerically and accept four-part releas
   assert.equal(result.installer.name, 'Cx-Routing Gateway Setup 1.1.2.1.exe');
 });
 
+test('checkUpdate and installUpdate accept GitHub canonicalized dotted installer asset names', async (t) => {
+  const installerName = 'Cx-Routing.Gateway.Setup.1.1.3.exe';
+  const dotted = release({
+    tag_name: 'v1.1.3',
+    html_url: 'https://github.com/AiaiJei/Cx-Routing-Gateway/releases/tag/v1.1.3',
+    assets: [{ name: installerName, digest: `sha256:${digest}`, browser_download_url: `https://github.com/AiaiJei/Cx-Routing-Gateway/releases/download/v1.1.3/${installerName}` }],
+  });
+  const checkFixture = fetchFixture(dotted);
+  const result = await checkUpdate({ currentVersion: '1.1.2', token, fetchImpl: checkFixture.fetchImpl });
+  assert.equal(result.available, true);
+  assert.equal(result.version, '1.1.3');
+  assert.equal(result.installer.name, installerName);
+  assert.equal(result.installer.sha256, digest);
+
+  const installFixture = fetchFixture(dotted);
+  const downloadDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-dotted-installer-'));
+  t.after(() => fs.rm(downloadDir, { recursive: true, force: true }));
+  await installUpdate({ currentVersion: '1.1.2', token, fetchImpl: installFixture.fetchImpl, downloadDir });
+  assert.equal(installFixture.calls[1].url, dotted.assets[0].browser_download_url);
+});
+
 test('checkUpdate reports no update for equal or newer installed versions', async () => {
   const { fetchImpl } = fetchFixture(release());
   assert.equal((await checkUpdate({ currentVersion: '1.1.0', token, fetchImpl })).available, false);

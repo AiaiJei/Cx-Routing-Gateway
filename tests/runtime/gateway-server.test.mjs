@@ -12,6 +12,38 @@ import { createGatewayServer, validateDestination } from '../../services/gateway
 
 function listen(server) { return new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server.address().port))); }
 
+async function createTimeoutFixture(t, upstream, gatewayOptions = {}) {
+  const upstreamPort = await listen(upstream);
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-deadline-'));
+  const store = new ConfigStore(path.join(dir, 'config.json'));
+  const vault = new SecretVault(path.join(dir, 'secrets.json'), 'test-master-key');
+  const clientKey = `cxrg_${crypto.randomBytes(18).toString('base64url')}`;
+  const keyHash = crypto.createHash('sha256').update(clientKey).digest('hex');
+  await store.update(config => ({ ...config,
+    upstreams: [{ id: 'deadline-upstream', name: 'Deadline', baseUrl: `http://127.0.0.1:${upstreamPort}`, protocol: 'Chat', trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'], enabled: true }],
+    routes: [
+      { id: 'deadline-chat-route', alias: 'deadline-chat', inboundProtocol: 'Chat', outboundProtocol: 'Chat', upstreamId: 'deadline-upstream', modelId: 'mock-chat', enabled: true },
+      { id: 'deadline-res-route', alias: 'deadline-res', inboundProtocol: 'Res', outboundProtocol: 'Chat', upstreamId: 'deadline-upstream', modelId: 'mock-chat', enabled: true },
+    ],
+    clientKeys: [{ id: 'deadline-key', keyHash, scope: [], createdAt: new Date().toISOString(), enabled: true, name: 'deadline' }],
+  }));
+  const gateway = createGatewayServer({ store, vault, maxConcurrentRequests: 1, ...gatewayOptions });
+  const gatewayPort = await listen(gateway);
+  t.after(() => { gateway.closeAllConnections(); gateway.close(); upstream.closeAllConnections(); upstream.close(); });
+  return {
+    store,
+    gateway,
+    request(protocol, stream, content = 'hello') {
+      const alias = protocol === 'Res' ? 'deadline-res' : 'deadline-chat';
+      const endpoint = protocol === 'Res' ? 'responses' : 'chat/completions';
+      const body = protocol === 'Res'
+        ? { model: alias, stream, input: content }
+        : { model: alias, stream, messages: [{ role: 'user', content }] };
+      return fetch(`http://127.0.0.1:${gatewayPort}/v1/${endpoint}`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${clientKey}` }, body: JSON.stringify(body), signal: AbortSignal.timeout(2000) });
+    },
+  };
+}
+
 test('gateway authenticates and forwards Chat requests through a configured route', async (t) => {
   const upstream = http.createServer(async (req, res) => {
     assert.match(req.headers['x-request-id'], /^[0-9a-f-]{36}$/);
@@ -759,6 +791,95 @@ test('gateway enforces a concurrent request limit', async (t) => {
   assert.equal((await (await first).json()).choices[0].message.content, 'ok');
 });
 
+test('gateway enforces the upstream response-header timeout independently', async (t) => {
+  const upstream = http.createServer((_req, res) => {
+    setTimeout(() => res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'late headers' } }] })), 80);
+  });
+  const app = await createTimeoutFixture(t, upstream, { upstreamHeaderTimeoutMs: 25, maxRequestDurationMs: 500 });
+  const response = await app.request('Chat', false);
+  assert.equal(response.status, 504);
+  assert.equal((await response.json()).error, 'upstream_timeout');
+  const [entry] = (await app.store.read()).usage;
+  assert.equal(entry.errorCode, 'upstream_timeout');
+});
+
+test('gateway allows response bodies to outlive the header timeout', async (t) => {
+  const payload = JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'slow body completed' } }] });
+  const upstream = http.createServer((_req, res) => {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.flushHeaders();
+    res.write(payload.slice(0, 12));
+    setTimeout(() => res.end(payload.slice(12)), 80);
+  });
+  const app = await createTimeoutFixture(t, upstream, { upstreamHeaderTimeoutMs: 25, maxRequestDurationMs: 500 });
+  const response = await app.request('Chat', false);
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), JSON.parse(payload));
+});
+
+test('gateway testRoute honors the configured client timeout', async (t) => {
+  const upstream = http.createServer((_req, res) => {
+    setTimeout(() => res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'too late' } }] })), 100);
+  });
+  const app = await createTimeoutFixture(t, upstream, { routeTestTimeoutMs: 40 });
+  await assert.rejects(app.gateway.testRoute('deadline-chat-route', 'slow test'), /测试请求超时/);
+});
+
+test('gateway enforces the absolute deadline for JSON and streams', async (t) => {
+  let closedResponses = 0;
+  const upstream = http.createServer(async (req, res) => {
+    let data = '';
+    for await (const chunk of req) data += chunk;
+    const body = JSON.parse(data);
+    res.once('close', () => { if (!res.writableEnded) closedResponses += 1; });
+    const content = body.messages?.[0]?.content ?? body.input;
+    if (content === 'recover') {
+      res.setHeader('content-type', 'application/json');
+      res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'recovered' } }] }));
+      return;
+    }
+    if (body.stream) {
+      res.writeHead(200, { 'content-type': 'text/event-stream' });
+      res.flushHeaders();
+      res.write('data: {"choices":[{"delta":{"content":"partial"}}]}\n\n');
+      return;
+    }
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.flushHeaders();
+    res.write('{"choices":');
+  });
+  const app = await createTimeoutFixture(t, upstream, { upstreamHeaderTimeoutMs: 400, maxRequestDurationMs: 100 });
+
+  const jsonTimeout = await app.request('Chat', false);
+  assert.equal(jsonTimeout.status, 504);
+  assert.equal((await jsonTimeout.json()).error, 'upstream_timeout');
+  let entry = (await app.store.read()).usage.at(-1);
+  assert.equal(entry.errorCode, 'upstream_timeout');
+  assert.ok(entry.durationMs < 300, `expected the 100 ms request deadline, got ${entry.durationMs} ms`);
+
+  const recoveryAfterJson = await app.request('Chat', false, 'recover');
+  assert.equal(recoveryAfterJson.status, 200);
+  assert.equal((await recoveryAfterJson.json()).choices[0].message.content, 'recovered');
+
+  const nativeStream = await app.request('Chat', true);
+  assert.equal(nativeStream.status, 200);
+  await nativeStream.arrayBuffer().catch(() => {});
+  entry = (await app.store.read()).usage.at(-1);
+  assert.equal(entry.errorCode, 'upstream_timeout');
+  assert.ok(entry.durationMs < 300, `expected the 100 ms native-stream deadline, got ${entry.durationMs} ms`);
+
+  const convertedStream = await app.request('Res', true);
+  assert.equal(convertedStream.status, 200);
+  await convertedStream.arrayBuffer().catch(() => {});
+  entry = (await app.store.read()).usage.at(-1);
+  assert.equal(entry.errorCode, 'upstream_timeout');
+  assert.ok(entry.durationMs < 300, `expected the 100 ms converted-stream deadline, got ${entry.durationMs} ms`);
+
+  const recoveryAfterStreams = await app.request('Chat', false, 'recover');
+  assert.equal(recoveryAfterStreams.status, 200);
+  assert.ok(closedResponses >= 3, 'the Gateway should cancel each timed-out upstream body');
+});
+
 test('gateway aborts a stalled response body at the request deadline and releases its concurrency slot', async (t) => {
   let upstreamCalls = 0;
   const upstream = http.createServer((req, res) => {
@@ -783,7 +904,7 @@ test('gateway aborts a stalled response body at the request deadline and release
     routes: [{ id: 'body-timeout-route', alias: 'body-timeout', inboundProtocol: 'Chat', outboundProtocol: 'Chat', upstreamId: 'body-timeout-upstream', modelId: 'body-timeout', enabled: true }],
     clientKeys: [{ id: 'body-timeout-key', keyHash, scope: [], createdAt: new Date().toISOString(), enabled: true, name: 'body-timeout' }],
   }));
-  const gateway = createGatewayServer({ store, vault, maxConcurrentRequests: 1, upstreamTimeoutMs: 80 });
+  const gateway = createGatewayServer({ store, vault, maxConcurrentRequests: 1, upstreamHeaderTimeoutMs: 500, maxRequestDurationMs: 80 });
   const gatewayPort = await listen(gateway);
   t.after(() => { gateway.closeAllConnections(); gateway.close(); upstream.closeAllConnections(); upstream.close(); });
   const request = () => fetch(`http://127.0.0.1:${gatewayPort}/v1/chat/completions`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${clientKey}` }, body: JSON.stringify({ model: 'body-timeout', messages: [{ role: 'user', content: 'hello' }] }), signal: AbortSignal.timeout(1000) });
@@ -829,7 +950,7 @@ test('gateway cancels the active upstream request when its client disconnects', 
     routes: [{ id: 'disconnect-route', alias: 'disconnect', inboundProtocol: 'Chat', outboundProtocol: 'Chat', upstreamId: 'disconnect-upstream', modelId: 'disconnect', enabled: true }],
     clientKeys: [{ id: 'disconnect-key', keyHash, scope: [], createdAt: new Date().toISOString(), enabled: true, name: 'disconnect' }],
   }));
-  const gateway = createGatewayServer({ store, vault, maxConcurrentRequests: 1, upstreamTimeoutMs: 10_000 });
+  const gateway = createGatewayServer({ store, vault, maxConcurrentRequests: 1, upstreamHeaderTimeoutMs: 10_000 });
   const gatewayPort = await listen(gateway);
   t.after(() => { gateway.closeAllConnections(); gateway.close(); upstream.closeAllConnections(); upstream.close(); });
   const controller = new AbortController();

@@ -51,8 +51,15 @@ jobs:
           cache-dependency-path: apps/desktop/package-lock.json
       - run: npm ci
       - run: npm run desktop:installer
+      - run: ./scripts/package-portable.ps1 -OutputDirectory apps/desktop/release
+        shell: pwsh
+        working-directory: ${{ github.workspace }}
       - run: node ../../scripts/verify-release.mjs release --write
       - run: node ../../scripts/smoke-packaged.mjs
+      - shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).cxrgProductVersion
+          node ../../scripts/smoke-portable.mjs "release/Cx-Routing Gateway Portable $version.exe"
       - uses: actions/upload-artifact@v4
         with:
           name: cx-routing-gateway-windows-installer

@@ -39,5 +39,13 @@ export function RequestTokenSummary({ log }: { log: CallLog }) {
 }
 
 export function RequestDuration({ log }: { log: CallLog }) {
-  return <span className="request-duration"><span><span className="duration-label">首字</span><span>{formatDuration(log.stream ? log.firstTokenMs : undefined)}</span></span><span><span className="duration-label">总耗时</span><span>{formatDuration(log.durationMs)}</span></span></span>;
+  return <Tooltip label="请求耗时，查看首字和总耗时计时口径" content={<>
+    <span className="tooltip-heading">耗时口径</span>
+    <dl className="tooltip-facts">
+      <div><dt>首字</dt><dd>从网关收到请求到首个有效生成内容（文本、推理、拒绝或工具内容），不等同于首个网络字节。</dd></div>
+      <div><dt>总耗时</dt><dd>从网关收到请求到响应完成或失败，包含网关处理时间。</dd></div>
+    </dl>
+  </>}>
+    <span className="request-duration"><span><span className="duration-label">首字</span><span>{formatDuration(log.stream ? log.firstTokenMs : undefined)}</span></span><span><span className="duration-label">总耗时</span><span>{formatDuration(log.durationMs)}</span></span></span>
+  </Tooltip>;
 }
