@@ -128,7 +128,7 @@
 
 - [x] Run the complete Runtime suite (131/131), Desktop suite (154/154), Desktop production build, release verifier, and `git diff --check`; the focus-state visual inspection is recorded above.
 - [x] Obtain an independent review of the full code diff through `176ae14f99f95b99c1d2bd4bafaaa83d63db58b2`; no Critical, Important, or Minor findings.
-- [ ] Push the task branch and create one dedicated PR against `master`; record its URL.
+- [x] Push the task branch and create one dedicated PR against `master`: https://github.com/AiaiJei/Cx-Routing-Gateway/pull/17.
 - [ ] Wait for required CI checks, recheck the PR diff and base, then merge the PR.
 - [ ] Fast-forward the primary `master` worktree, verify its HEAD contains the PR merge and that the merged tree matches the reviewed build.
 - [ ] Confirm the new Desktop Portable copy still matches its recorded SHA-256, then remove only `.worktree/log-credential-upstream-actions` after it is clean; retain the local branch and all other worktrees.

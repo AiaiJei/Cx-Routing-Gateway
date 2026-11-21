@@ -5,7 +5,7 @@
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
   "status": "active",
-  "stage": "reviewed-pre-pr",
+  "stage": "pr-validation",
   "base": "master",
   "base_sha": "0f57028f80b0707a2d32a83af5bba4f31bf9bb73",
   "branch": "codex/log-credential-upstream-actions",
@@ -124,6 +124,14 @@
     ],
     "repo_mcp": "NOT_RUN: no registered workspace_id; source inspection, tests, and GitHub operations are available through the local repository and gh CLI",
     "independent_code_review": "PASS: reviewer confirmed ready to merge with no findings on 0f57028f80b0707a2d32a83af5bba4f31bf9bb73..176ae14f99f95b99c1d2bd4bafaaa83d63db58b2"
+  },
+  "pull_request": {
+    "number": 17,
+    "state": "OPEN; final validation pending",
+    "base": "master",
+    "branch": "codex/log-credential-upstream-actions",
+    "submitted_head": "744dea8b98e2837064f7732816877afe27e5fd09",
+    "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/17"
   },
   "revision_history": [
     {
