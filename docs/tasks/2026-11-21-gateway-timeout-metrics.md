@@ -46,7 +46,7 @@ Not authorized: merge, release/publish, delete branches or worktrees, or alter u
 - Task 2 commit: `5f138d923b9f58cb3e351c7748f6360112fedaf5` (`fix: measure request timing monotonically`).
 - Final verification: PASS; TypeScript/Vite build, Runtime 125/125, Desktop 143/143, and `git diff --check`.
 - Final whole-branch independent review: PASS on `be4de092..bac1770`, no Critical, Important, or Minor findings.
-- Dedicated PR: #15, base `master`, final head `d595ab526e7afdec7fd9ae469c28c384debd3ef7`, state OPEN and unmerged.
+- Dedicated PR: #15, base `master`, final head `01c2aef960dc7dcc1cd8bdf37e02f493150d9cd8`, state OPEN and unmerged.
 - GitHub CI on PR #15: Runtime PASS, Desktop PASS, package job SKIPPED by workflow condition. Real provider, installer, release, and merge remain `NOT_RUN`.
 
 ## Rollback
