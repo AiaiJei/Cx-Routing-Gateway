@@ -60,8 +60,9 @@ export function mapRuntimeState(state: any): WorkspaceFixtures {
       const stream = typeof item.stream === "boolean" ? item.stream : undefined;
       const streamCompletion = ["completed", "failed", "incomplete"].includes(item.streamCompletion) ? item.streamCompletion as WorkspaceFixtures["logs"][number]["streamCompletion"] : undefined;
       const outputObserved = typeof item.outputObserved === "boolean" ? item.outputObserved : undefined;
+      const reasoningObserved = typeof item.reasoningObserved === "boolean" ? item.reasoningObserved : undefined;
       const usageObserved = typeof item.usageObserved === "boolean" ? item.usageObserved : undefined;
-      const emptyResponse = item.errorCode === "upstream_empty_response" || (item.status === "completed" && stream === true && streamCompletion === "completed" && outputObserved === false && (!tokens || tokens.output === undefined || tokens.output === 0));
+      const emptyResponse = item.errorCode === "upstream_empty_response" || (item.status === "completed" && stream === true && streamCompletion === "completed" && outputObserved === false && (!tokens || tokens.output === undefined || tokens.output === 0 || reasoningObserved === true));
       const missingUsage = item.status === "completed" && stream === true && streamCompletion === "completed" && outputObserved === true && usageObserved === false;
       const status = emptyResponse ? "失败·空响应" : item.errorCode === "client_disconnected" ? "失败·已取消" : missingUsage ? "成功·缺用量" : item.status === "completed" ? "成功" : "失败";
       return {
@@ -71,7 +72,7 @@ export function mapRuntimeState(state: any): WorkspaceFixtures {
         error: typeof item.errorCode === "string" ? gatewayErrors[item.errorCode] || item.errorCode : undefined,
         direction: `${item.inboundProtocol ?? "—"} → ${item.outboundProtocol ?? "—"} → ${item.inboundProtocol ?? "—"}`,
         status: status as WorkspaceFixtures["logs"][number]["status"], durationMs: finiteMetric(item.durationMs) ?? null,
-        stream, streamCompletion, outputObserved, usageObserved, firstTokenMs: finiteMetric(item.firstTokenMs), tokens,
+        stream, streamCompletion, outputObserved, reasoningObserved, usageObserved, firstTokenMs: finiteMetric(item.firstTokenMs), tokens,
       };
     }),
     credentials: state.clientKeys.map((item: any) => ({ id: item.id, label: item.name, preview: "cxrg_••••••••", scope: item.scope?.length ? item.scope.join(", ") : "全部模型", createdAt: item.createdAt.slice(0, 10), lastUsed: item.enabled ? (item.lastUsedAt || "暂无记录") : "已撤销", status: item.enabled ? "运行时" as const : "已撤销" as const })),

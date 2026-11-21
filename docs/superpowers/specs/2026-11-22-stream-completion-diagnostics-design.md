@@ -9,6 +9,7 @@ Create a dedicated Gateway PR that distinguishes a protocol-complete stream from
 - `pipeStream` copies upstream bytes and calls `metrics.finish()` when the HTTP body reaches EOF. It does not require a protocol terminal event, so an early EOF can be logged as `completed`.
 - `pipeConvertedStream` recognizes some terminal events to serialize the downstream protocol, but also calls `metrics.finish()` and ends successfully without checking that the upstream stream completed normally.
 - `request-metrics.mjs` extracts first-content timing and token counts, but it does not report protocol completion or whether any content was observable.
+- A Responses completion containing only reasoning items can carry nonzero output-token usage while producing no user-facing answer. Reasoning deltas were also counted as observable output, hiding this case.
 - The catch path stores `error.code` directly. A body reset can therefore surface as the English transport code `ECONNRESET`, without saying whether the downstream client or upstream connection ended.
 - New API and Sub2API issue reports show two relevant compatibility cases: New API can emit `[DONE]` without a Chat `finish_reason` after a timed-out generation, and Sub2API can return an empty Responses completion without usage. These are version-specific reports, not proof about the user's deployment.
 
@@ -20,7 +21,9 @@ Create a dedicated Gateway PR that distinguishes a protocol-complete stream from
 - Messages accepts `message_stop`; an explicit error event is a stream failure.
 - Responses accepts `response.completed` or the existing compatibility event `response.done` only when the embedded response status is `completed`. `response.failed`, `response.incomplete`, or an error event is a failure.
 - EOF before the protocol-specific success event is `upstream_stream_incomplete`. A valid protocol failure event is `upstream_stream_failed`.
-- A valid terminal event with no observable text, refusal, or tool output and missing/zero output-token evidence is recorded as a semantic empty-response failure, `upstream_empty_response`. The log separately records that the protocol did terminate, preserving the distinction between HTTP/protocol success and application usefulness.
+- `outputObserved` means user-facing text, refusal, tool, or media output; hidden reasoning/thinking is tracked separately as optional `reasoningObserved` metadata. A valid terminal event with no observable output is a semantic empty-response failure, `upstream_empty_response`, when output usage is absent/zero or the only observed generation is reasoning. The log separately records that the protocol did terminate and retains numeric usage, preserving the distinction between protocol completion and application usefulness.
+- Known non-text output events/items (including audio and media content) count as output so they are not mislabeled as empty. Unknown non-reasoning Responses output items are treated conservatively as output.
+- Successful terminal frames are held until EOF and validated. An empty completed stream does not emit a downstream success terminator; it returns a bounded Gateway error if no bytes were sent, or closes the already-started stream without a success terminator.
 - A valid response with observable content but no usage remains protocol-complete and records that usage was absent; token values stay missing rather than being fabricated as zero.
 
 ### Disconnect classification
@@ -44,7 +47,7 @@ Create a dedicated Gateway PR that distinguishes a protocol-complete stream from
 
 ## Verification and limits
 
-Use local HTTP fixtures for Chat, Messages, and Responses. Cover valid completion, complete-but-empty, missing terminal, explicit failure, heartbeat-only EOF, reset after first content, downstream cancellation, and old log compatibility. Run all Runtime tests, all Desktop tests, Desktop production build, and `git diff --check`. No real New API/Sub2API requests are authorized or required. A provider that fabricates a syntactically valid completion with no content cannot be diagnosed beyond the evidence it exposes; the log must say "疑似空响应" rather than claim an internal cause.
+Use local HTTP fixtures for Chat, Messages, and Responses. Cover valid completion, complete-but-empty (including reasoning-only output with nonzero usage), non-text media output, invalid early Chat `[DONE]` before a later valid completion in the same chunk, missing terminal, explicit failure, heartbeat-only EOF, reset after first content, downstream cancellation, and old log compatibility. Run all Runtime tests, all Desktop tests, Desktop production build, and `git diff --check`. No real New API/Sub2API requests are authorized or required. A provider that fabricates a syntactically valid completion with no content cannot be diagnosed beyond the evidence it exposes; the log must say "疑似空响应" rather than claim an internal cause.
 
 ## Rollback
 

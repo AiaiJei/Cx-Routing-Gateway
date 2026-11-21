@@ -59,7 +59,7 @@ test('Responses records generation but ignores lifecycle and recognizes nested c
   metrics.push(Buffer.from(frame({ type: 'response.reasoning_summary_text.delta', delta: 'thinking' })));
   metrics.push(Buffer.from(frame({ type: 'response.completed', response: { status: 'completed', usage: { input_tokens: 12, output_tokens: 4, output_tokens_details: { reasoning_tokens: 2 } } } })));
   metrics.finish();
-  assert.deepEqual(metrics.snapshot(), { stream: true, firstTokenMs: 32, tokens: { input: 12, output: 4, total: 16, reasoning: 2 }, streamCompletion: 'completed', outputObserved: true, usageObserved: true });
+  assert.deepEqual(metrics.snapshot(), { stream: true, firstTokenMs: 32, tokens: { input: 12, output: 4, total: 16, reasoning: 2 }, streamCompletion: 'completed', outputObserved: false, reasoningObserved: true, usageObserved: true });
 });
 
 test('malformed and oversized frames are skipped without losing following metrics', () => {
@@ -131,6 +131,51 @@ test('Responses completion can be valid while output and usage are absent', () =
   metrics.push(Buffer.from(frame({ type: 'response.completed', response: { status: 'completed', output: [] } }, 'response.completed')));
   metrics.finish();
   assert.deepEqual(metrics.snapshot(), { stream: true, streamCompletion: 'completed', outputObserved: false, usageObserved: false });
+});
+
+test('Responses reasoning-only completion is not observable user output, even with reasoning usage', () => {
+  const metrics = createRequestMetrics({ protocol: 'Res', stream: true, startedAt: 10 });
+  metrics.push(Buffer.from(frame({ type: 'response.output_item.added', item: { type: 'reasoning', id: 'r1', encrypted_content: 'private-reasoning' } }, 'response.output_item.added')));
+  metrics.push(Buffer.from(frame({ type: 'response.completed', response: {
+    status: 'completed',
+    output: [{ type: 'reasoning', id: 'r1', encrypted_content: 'private-reasoning' }],
+    usage: { input_tokens: 4, output_tokens: 7, output_tokens_details: { reasoning_tokens: 7 } },
+  } }, 'response.completed')));
+  metrics.finish();
+  assert.deepEqual(metrics.snapshot(), {
+    stream: true,
+    tokens: { input: 4, output: 7, reasoning: 7, total: 11 },
+    streamCompletion: 'completed',
+    outputObserved: false,
+    reasoningObserved: true,
+    usageObserved: true,
+  });
+});
+
+test('Chat reasoning and Messages thinking do not count as observable output', () => {
+  const chat = createRequestMetrics({ protocol: 'Chat', stream: true, startedAt: 10 });
+  chat.push(Buffer.from(frame({ choices: [{ delta: { reasoning_content: 'private reasoning' } }] })));
+  chat.push(Buffer.from(frame({ choices: [{ delta: {}, finish_reason: 'stop' }] }) + 'data: [DONE]\n\n'));
+  chat.finish();
+  assert.equal(chat.snapshot().streamCompletion, 'completed');
+  assert.equal(chat.snapshot().outputObserved, false);
+  assert.equal(chat.snapshot().reasoningObserved, true);
+
+  const messages = createRequestMetrics({ protocol: 'Mes', stream: true, startedAt: 10 });
+  messages.push(Buffer.from(frame({ type: 'content_block_delta', delta: { type: 'thinking_delta', thinking: 'private thinking' } })));
+  messages.push(Buffer.from(frame({ type: 'message_stop' }, 'message_stop')));
+  messages.finish();
+  assert.equal(messages.snapshot().streamCompletion, 'completed');
+  assert.equal(messages.snapshot().outputObserved, false);
+  assert.equal(messages.snapshot().reasoningObserved, true);
+});
+
+test('Responses audio output remains observable without text', () => {
+  const metrics = createRequestMetrics({ protocol: 'Res', stream: true, startedAt: 10 });
+  metrics.push(Buffer.from(frame({ type: 'response.output_audio.delta', delta: 'base64-audio' }, 'response.output_audio.delta')));
+  metrics.push(Buffer.from(frame({ type: 'response.completed', response: { status: 'completed', output: [{ type: 'message', content: [{ type: 'output_audio', audio: 'base64-audio' }] }] } }, 'response.completed')));
+  metrics.finish();
+  assert.equal(metrics.snapshot().outputObserved, true);
 });
 
 test('default stream metrics ignore wall-clock jumps', async () => {

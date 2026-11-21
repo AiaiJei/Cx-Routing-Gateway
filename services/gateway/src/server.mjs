@@ -173,7 +173,7 @@ function upstreamTimeoutError() {
 
 function streamFailureCode(error, clientDisconnected) {
   if (clientDisconnected || error?.code === 'request_aborted') return 'client_disconnected';
-  if (['upstream_stream_incomplete', 'upstream_stream_failed', 'upstream_timeout'].includes(error?.code)) return error.code;
+  if (['upstream_stream_incomplete', 'upstream_stream_failed', 'upstream_empty_response', 'upstream_timeout'].includes(error?.code)) return error.code;
   let current = error;
   for (let depth = 0; current && depth < 4; depth += 1, current = current.cause) {
     if (['ECONNRESET', 'ECONNABORTED', 'EPIPE', 'ERR_STREAM_PREMATURE_CLOSE', 'UND_ERR_SOCKET'].includes(current.code)) return 'upstream_connection_reset';
@@ -257,17 +257,55 @@ function streamCompletionError(metrics) {
   return Object.assign(new Error('Upstream stream did not complete successfully'), { code, statusCode: 502 });
 }
 
-function isChatDoneFrame(frame) {
+function emptyStreamError() {
+  return Object.assign(new Error('Upstream stream completed without observable output'), { code: 'upstream_empty_response', statusCode: 502 });
+}
+
+function emptyStream(metrics) {
+  const snapshot = metrics.snapshot();
+  const noOutputTokens = !Number.isSafeInteger(snapshot.tokens?.output) || snapshot.tokens.output === 0;
+  return snapshot.outputObserved === false && (noOutputTokens || snapshot.reasoningObserved === true);
+}
+
+function inspectSseFrame(frame) {
   const data = frame.toString('utf8').replace(/\r/g, '').split('\n')
     .filter(line => line.startsWith('data:'))
     .map(line => line.slice(5).trimStart())
     .join('\n');
-  return data === '[DONE]';
+  const eventName = frame.toString('utf8').replace(/\r/g, '').split('\n').find(line => line.startsWith('event:'))?.slice(6).trim() || '';
+  let payload;
+  if (data && data !== '[DONE]') {
+    try { payload = JSON.parse(data); } catch { /* Invalid frames remain passthrough data. */ }
+  }
+  return { data, eventName: eventName || payload?.type || '', payload };
 }
 
-function drainChatFrames(buffer, res, metrics, flushRemainder = false) {
+function isSuccessfulTerminalFrame(protocol, { data, eventName }) {
+  if (protocol === 'Chat') return data === '[DONE]';
+  if (protocol === 'Mes') return eventName === 'message_stop';
+  return ['response.completed', 'response.done'].includes(eventName);
+}
+
+function drainStreamFrames(buffer, res, protocol, state, flushRemainder = false) {
   const lineDelimiter = Buffer.from('\n\n');
   const crlfDelimiter = Buffer.from('\r\n\r\n');
+  const processFrame = (frame, rawFrame) => {
+    const info = inspectSseFrame(frame);
+    if (protocol === 'Chat' && info.data === '[DONE]') {
+      if (state.finishReasonSeen) {
+        state.pendingTerminalFrames.push(rawFrame);
+        state.terminalSeen = true;
+      }
+      return;
+    }
+    if (state.terminalSeen || isSuccessfulTerminalFrame(protocol, info)) {
+      state.pendingTerminalFrames.push(rawFrame);
+      state.terminalSeen = true;
+      return;
+    }
+    res.write(rawFrame);
+    if (protocol === 'Chat' && info.payload?.choices?.some(choice => typeof choice?.finish_reason === 'string' && choice.finish_reason.length > 0)) state.finishReasonSeen = true;
+  };
   while (buffer.length) {
     const lineIndex = buffer.indexOf(lineDelimiter);
     const crlfIndex = buffer.indexOf(crlfDelimiter);
@@ -277,11 +315,11 @@ function drainChatFrames(buffer, res, metrics, flushRemainder = false) {
     const length = useCrlf ? crlfDelimiter.length : lineDelimiter.length;
     const frame = buffer.subarray(0, index);
     const rawFrame = buffer.subarray(0, index + length);
-    if (!isChatDoneFrame(frame) || metrics.snapshot().streamCompletion === 'completed') res.write(rawFrame);
+    processFrame(frame, rawFrame);
     buffer = buffer.subarray(index + length);
   }
   if (flushRemainder && buffer.length) {
-    if (!isChatDoneFrame(buffer) || metrics.snapshot().streamCompletion === 'completed') res.write(buffer);
+    processFrame(buffer, buffer);
     return Buffer.alloc(0);
   }
   return buffer;
@@ -290,7 +328,8 @@ function drainChatFrames(buffer, res, metrics, flushRemainder = false) {
 async function pipeStream(response, res, protocol, metrics, deadline, monotonicNow, maxBytes = 4 * 1024 * 1024) {
   const reader = response.body.getReader();
   let size = 0;
-  let chatBuffer = Buffer.alloc(0);
+  let frameBuffer = Buffer.alloc(0);
+  const streamState = { finishReasonSeen: false, terminalSeen: false, pendingTerminalFrames: [] };
   try {
     while (true) {
       const result = await readBeforeDeadline(reader, deadline, monotonicNow);
@@ -298,16 +337,16 @@ async function pipeStream(response, res, protocol, metrics, deadline, monotonicN
       size += result.value.byteLength;
       if (size > maxBytes) throw Object.assign(new Error('Upstream stream too large'), { code: 'upstream_error', statusCode: 502 });
       metrics.push(result.value);
-      const chunk = Buffer.from(result.value);
-      if (protocol === 'Chat') chatBuffer = drainChatFrames(Buffer.concat([chatBuffer, chunk]), res, metrics);
-      else res.write(chunk);
+      frameBuffer = drainStreamFrames(Buffer.concat([frameBuffer, Buffer.from(result.value)]), res, protocol, streamState);
     }
     metrics.finish();
+    frameBuffer = drainStreamFrames(frameBuffer, res, protocol, streamState, true);
     const snapshot = metrics.snapshot();
-    if (protocol === 'Chat') chatBuffer = drainChatFrames(chatBuffer, res, metrics, true);
     if (snapshot.streamCompletion !== 'completed') {
       throw streamCompletionError(metrics);
     }
+    if (emptyStream(metrics)) throw emptyStreamError();
+    for (const frame of streamState.pendingTerminalFrames) res.write(frame);
     res.end();
   } finally { await reader.cancel().catch(() => {}); }
 }
@@ -371,6 +410,7 @@ async function pipeConvertedStream(response, res, outboundProtocol, inboundProto
   let buffer = '';
   let size = 0;
   const streamState = { nextToolIndex: 0, toolIndexes: new Map() };
+  let pendingCompletionEvent;
   const writeFrame = (frame) => {
     const lines = frame.split(/\r?\n/);
     const eventName = lines.find((line) => line.startsWith('event:'))?.slice(6).trim() || '';
@@ -378,7 +418,8 @@ async function pipeConvertedStream(response, res, outboundProtocol, inboundProto
     if (!data) return;
     const payload = data === '[DONE]' ? '[DONE]' : JSON.parse(data);
     const delta = streamDelta(outboundProtocol, eventName, payload, streamState);
-    if (delta.text || delta.tool || delta.tools || delta.done) res.write(serializedStreamEvent(inboundProtocol, delta.text, delta.done, requestId, delta.tool, delta.tools, streamState.sawTool ? 'tool_calls' : 'stop'));
+    if (delta.done) pendingCompletionEvent = serializedStreamEvent(inboundProtocol, delta.text, true, requestId, delta.tool, delta.tools, streamState.sawTool ? 'tool_calls' : 'stop');
+    else if (delta.text || delta.tool || delta.tools) res.write(serializedStreamEvent(inboundProtocol, delta.text, false, requestId, delta.tool, delta.tools, streamState.sawTool ? 'tool_calls' : 'stop'));
   };
   try {
     while (true) {
@@ -395,6 +436,8 @@ async function pipeConvertedStream(response, res, outboundProtocol, inboundProto
     if (buffer.trim()) writeFrame(buffer);
     metrics.finish();
     if (metrics.snapshot().streamCompletion !== 'completed') throw streamCompletionError(metrics);
+    if (emptyStream(metrics)) throw emptyStreamError();
+    if (pendingCompletionEvent) res.write(pendingCompletionEvent);
     res.end();
   } finally { await reader.cancel().catch(() => {}); }
 }
@@ -537,7 +580,7 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
         else await pipeConvertedStream(upstreamResponse, res, route.outboundProtocol, inbound, requestId, metrics, requestDeadline, monotonicNow);
         const streamMetrics = metrics.snapshot();
         const noOutputTokens = !Number.isSafeInteger(streamMetrics.tokens?.output) || streamMetrics.tokens.output === 0;
-        const emptyResponse = streamMetrics.outputObserved === false && noOutputTokens;
+        const emptyResponse = streamMetrics.outputObserved === false && (noOutputTokens || streamMetrics.reasoningObserved === true);
         recordOutcome(emptyResponse);
         await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Math.max(0, monotonicNow() - requestStartedMonotonic), ...streamMetrics, ...(reasoningEffort ? { reasoningEffort } : {}), httpStatus: upstreamResponse.status, inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, upstreamName: upstream.name, modelId: route.modelId, status: emptyResponse ? 'failed' : 'completed', ...(emptyResponse ? { errorCode: 'upstream_empty_response' } : !streamMetrics.usageObserved ? { errorCode: 'upstream_usage_missing' } : {}) });
         if (!credential.temporary) await store.update((value) => ({ ...value, clientKeys: value.clientKeys.map((item) => item.id === credential.id ? { ...item, lastUsedAt: new Date().toISOString() } : item) }));
@@ -556,7 +599,7 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
         const code = streamFailureCode(error, false);
         error = Object.assign(new Error('Upstream stream failed'), { code, statusCode: code === 'client_disconnected' ? 499 : code === 'upstream_timeout' ? 504 : 502 });
       }
-      if (upstreamStarted && error.code !== 'client_disconnected' && (error.code === 'upstream_error' || error.code === 'upstream_timeout' || (typeof error.code === 'string' && error.code.startsWith('upstream_stream_')) || error.code === 'upstream_connection_reset' || !error.statusCode)) recordOutcome(true);
+      if (upstreamStarted && error.code !== 'client_disconnected' && (error.code === 'upstream_error' || error.code === 'upstream_timeout' || error.code === 'upstream_empty_response' || (typeof error.code === 'string' && error.code.startsWith('upstream_stream_')) || error.code === 'upstream_connection_reset' || !error.statusCode)) recordOutcome(true);
       if (route && upstream) await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Math.max(0, monotonicNow() - requestStartedMonotonic), ...metrics?.snapshot(), ...(reasoningEffort ? { reasoningEffort } : {}), ...(upstreamStatus === undefined ? {} : { httpStatus: upstreamStatus }), ...(error.statusCode ? { gatewayStatus: error.statusCode } : {}), inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, upstreamName: upstream.name, modelId: route.modelId, status: error.statusCode === 400 ? 'rejected' : 'failed', errorCode: error.code || 'gateway_error' });
       if (requestController.signal.aborted || res.destroyed) return;
       if (res.headersSent) return res.destroy();

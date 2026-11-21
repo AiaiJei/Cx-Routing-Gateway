@@ -188,8 +188,13 @@ test('a valid empty terminal stream is recorded as an empty response, not a usef
       res.end(fixtures[protocol].body);
     }, protocol);
     const response = await app.request(protocol, true);
-    assert.equal(response.status, 200);
-    await response.text();
+    if (protocol === 'Chat') {
+      assert.equal(response.status, 200);
+      await assert.rejects(response.text());
+    } else {
+      assert.equal(response.status, 502);
+      assert.equal((await response.json()).error, 'upstream_empty_response');
+    }
     assert.equal(receivedPrompt, 'private-prompt');
     const [log] = await app.logs(1);
     assert.equal(log.status, 'failed');
@@ -199,6 +204,50 @@ test('a valid empty terminal stream is recorded as an empty response, not a usef
     assert.equal(log.usageObserved, fixtures[protocol].usageObserved);
     if (protocol === 'Res') assert.equal(log.tokens.output, 0);
   }
+});
+
+test('Responses with reasoning items and nonzero reasoning tokens are recorded as suspected empty output', async t => {
+  const app = await setup(t, (_req, res) => {
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.end(
+      event({ type: 'response.output_item.added', item: { type: 'reasoning', id: 'r1', encrypted_content: 'private-reasoning' } }) +
+      event({ type: 'response.completed', response: {
+        status: 'completed',
+        output: [{ type: 'reasoning', id: 'r1', encrypted_content: 'private-reasoning' }],
+        usage: { input_tokens: 4, output_tokens: 7, output_tokens_details: { reasoning_tokens: 7 } },
+      } }, 'response.completed'),
+    );
+  }, 'Res');
+  const response = await app.request('Res', true);
+  assert.equal(response.status, 200);
+  await assert.rejects(response.text());
+  const [log] = await app.logs(1);
+  assert.equal(log.status, 'failed');
+  assert.equal(log.errorCode, 'upstream_empty_response');
+  assert.equal(log.streamCompletion, 'completed');
+  assert.equal(log.outputObserved, false);
+  assert.equal(log.reasoningObserved, true);
+  assert.deepEqual(log.tokens, { input: 4, output: 7, reasoning: 7, total: 11 });
+  assert.doesNotMatch(JSON.stringify(log), /private-reasoning/);
+});
+
+test('Chat passthrough withholds an early DONE before later completion frames in the same chunk', async t => {
+  const body = 'data: [DONE]\n\n' +
+    event({ choices: [{ delta: { content: 'answer' } }] }) +
+    event({ choices: [{ delta: {}, finish_reason: 'stop' }] }) +
+    'data: [DONE]\n\n';
+  const app = await setup(t, (_req, res) => {
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.end(body);
+  }, 'Chat');
+  const response = await app.request('Chat', true);
+  assert.equal(response.status, 200);
+  const result = await response.text();
+  assert.equal((result.match(/data: \[DONE\]/g) || []).length, 1);
+  assert.match(result, /answer/);
+  const [log] = await app.logs(1);
+  assert.equal(log.status, 'completed');
+  assert.equal(log.streamCompletion, 'completed');
 });
 
 test('a missing terminal event fails the log and preserves observed TTFT', async t => {
@@ -287,6 +336,21 @@ test('converted Responses terminal events require an explicit completed status b
     assert.equal(log.errorCode, 'upstream_stream_incomplete');
     assert.equal(log.streamCompletion, 'incomplete');
   }
+});
+
+test('converted Responses empty completion does not emit a downstream success terminator', async t => {
+  const app = await setup(t, (_req, res) => {
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.end(event({ type: 'response.completed', response: { status: 'completed', output: [], usage: { input_tokens: 2, output_tokens: 0 } } }, 'response.completed'));
+  }, 'Res');
+  const response = await app.request('Chat', true);
+  assert.equal(response.status, 502);
+  assert.equal((await response.json()).error, 'upstream_empty_response');
+  const [log] = await app.logs(1);
+  assert.equal(log.status, 'failed');
+  assert.equal(log.errorCode, 'upstream_empty_response');
+  assert.equal(log.streamCompletion, 'completed');
+  assert.equal(log.outputObserved, false);
 });
 
 test('upstream reset after content is distinct, preserves TTFT, and is not retried', async t => {

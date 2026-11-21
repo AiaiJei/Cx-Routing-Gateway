@@ -46,6 +46,7 @@ export type CallLog = {
   stream?: boolean;
   streamCompletion?: "completed" | "failed" | "incomplete";
   outputObserved?: boolean;
+  reasoningObserved?: boolean;
   usageObserved?: boolean;
   firstTokenMs?: number;
   tokens?: RequestTokens;

@@ -5,6 +5,12 @@ const MAX_FRAME = 256 * 1024;
 const count = value => Number.isSafeInteger(value) && value >= 0;
 const nonempty = value => typeof value === 'string' && value.length > 0;
 const textContent = value => nonempty(value) || (Array.isArray(value) && value.some(part => nonempty(part?.text)));
+function mediaContent(value) {
+  if (nonempty(value)) return true;
+  if (Array.isArray(value)) return value.some(mediaContent);
+  if (!value || typeof value !== 'object') return false;
+  return ['data', 'url', 'transcript', 'audio', 'text', 'refusal', 'partial_json'].some(key => nonempty(value[key])) || nonempty(value.image_url?.url);
+}
 
 function hasGeneration(protocol, event, payload) {
   if (protocol === 'Chat') return payload.choices?.some(choice => {
@@ -21,16 +27,57 @@ function hasGeneration(protocol, event, payload) {
     (event === 'response.output_item.added' && payload.item?.type === 'function_call' && nonempty(payload.item.name));
 }
 
+function hasObservableOutput(protocol, event, payload) {
+  if (protocol === 'Chat') return payload.choices?.some(choice => {
+    const value = choice?.delta ?? choice?.message;
+    return value && (mediaContent(value.content) || nonempty(value.refusal) || value.tool_calls?.some(call => nonempty(call?.function?.name) || nonempty(call?.function?.arguments)) || mediaContent(value.audio) || mediaContent(value.audio_transcript));
+  });
+  if (protocol === 'Mes') {
+    const delta = payload.delta;
+    const block = payload.content_block;
+    if (event === 'content_block_delta') {
+      if (delta?.type === 'thinking_delta') return false;
+      return delta?.type === 'text_delta' ? nonempty(delta.text) : delta?.type === 'input_json_delta' ? nonempty(delta.partial_json) : mediaContent(delta);
+    }
+    if (event === 'content_block_start' && block) {
+      if (['thinking', 'redacted_thinking'].includes(block.type)) return false;
+      return block.type === 'tool_use' ? nonempty(block.name) : mediaContent(block);
+    }
+    return (payload.message?.content || []).some(item => !['thinking', 'redacted_thinking'].includes(item?.type) && (item?.type === 'tool_use' ? nonempty(item.name) : mediaContent(item)));
+  }
+
+  if (typeof event !== 'string') return false;
+  if (['response.reasoning_text.delta', 'response.reasoning_summary_text.delta'].includes(event)) return false;
+  if (event.startsWith('response.') && event.endsWith('.delta')) return mediaContent(payload.delta);
+  if (['response.output_item.added', 'response.output_item.done'].includes(event)) return hasResponseItemOutput(payload.item);
+  if (['response.completed', 'response.done'].includes(event)) return (payload.response?.output || []).some(hasResponseItemOutput);
+  return false;
+}
+
+function hasReasoning(protocol, event, payload) {
+  if (protocol === 'Chat') return payload.choices?.some(choice => nonempty(choice?.delta?.reasoning_content) || nonempty(choice?.delta?.reasoning) || nonempty(choice?.message?.reasoning_content) || nonempty(choice?.message?.reasoning));
+  if (protocol === 'Mes') return event === 'content_block_delta' && payload.delta?.type === 'thinking_delta' && nonempty(payload.delta.thinking) ||
+    event === 'content_block_start' && ['thinking', 'redacted_thinking'].includes(payload.content_block?.type);
+  return ['response.reasoning_text.delta', 'response.reasoning_summary_text.delta'].includes(event) && nonempty(payload.delta) ||
+    ['response.output_item.added', 'response.output_item.done'].includes(event) && payload.item?.type === 'reasoning' ||
+    ['response.completed', 'response.done'].includes(event) && payload.response?.output?.some(item => item?.type === 'reasoning');
+}
+
+function hasResponseItemOutput(item) {
+  if (!item || item.type === 'reasoning') return false;
+  if (item.type === 'message') return (item.content || []).some(part => part?.type !== 'reasoning' && mediaContent(part));
+  if (item.type === 'function_call' || item.type === 'custom_tool_call') return nonempty(item.name) || nonempty(item.arguments);
+  return true;
+}
+
 function hasFinalOutput(protocol, event, payload) {
   if (protocol === 'Chat') return payload.choices?.some(choice => {
     const message = choice?.message;
-    return message && (textContent(message.content) || nonempty(message.refusal) || message.tool_calls?.some(call => nonempty(call?.function?.name) || nonempty(call?.function?.arguments)));
+    return message && (mediaContent(message.content) || nonempty(message.refusal) || message.tool_calls?.some(call => nonempty(call?.function?.name) || nonempty(call?.function?.arguments)) || mediaContent(message.audio) || mediaContent(message.audio_transcript));
   });
-  if (protocol === 'Mes') return (payload.message?.content || []).some(block => nonempty(block?.text) || nonempty(block?.thinking) || (block?.type === 'tool_use' && nonempty(block?.name)));
+  if (protocol === 'Mes') return (payload.message?.content || []).some(block => !['thinking', 'redacted_thinking'].includes(block?.type) && (block?.type === 'tool_use' ? nonempty(block?.name) : mediaContent(block)));
   if (!['response.completed', 'response.done'].includes(event)) return false;
-  return payload.response?.output?.some(item => item.type === 'function_call'
-    ? nonempty(item.name) || nonempty(item.arguments)
-    : item.type === 'message' && item.content?.some(part => (['output_text', 'refusal'].includes(part?.type) && nonempty(part.text || part.refusal))));
+  return payload.response?.output?.some(hasResponseItemOutput);
 }
 
 export function createRequestMetrics({ protocol, stream, startedAt, clock = () => performance.now() }) {
@@ -39,6 +86,7 @@ export function createRequestMetrics({ protocol, stream, startedAt, clock = () =
   let reportedTotal;
   let streamCompletion = 'incomplete';
   let outputObserved = false;
+  let reasoningObserved = false;
   let chatFinishReason = false;
   let buffer = '';
   let discarding = false;
@@ -61,6 +109,7 @@ export function createRequestMetrics({ protocol, stream, startedAt, clock = () =
     put('cacheWrite5m', usage.cache_creation?.ephemeral_5m_input_tokens);
     put('cacheWrite1h', usage.cache_creation?.ephemeral_1h_input_tokens);
     put('reasoning', outputDetails?.reasoning_tokens);
+    if (count(outputDetails?.reasoning_tokens) && outputDetails.reasoning_tokens > 0) reasoningObserved = true;
     put('inputAudio', inputDetails?.audio_tokens);
     put('outputAudio', outputDetails?.audio_tokens);
     if (count(usage.total_tokens)) reportedTotal = usage.total_tokens;
@@ -80,8 +129,8 @@ export function createRequestMetrics({ protocol, stream, startedAt, clock = () =
       const eventName = event || payload.type;
       observeUsage(payload.usage ?? payload.message?.usage ?? payload.response?.usage);
       const generated = hasGeneration(protocol, eventName, payload);
-      if (generated) outputObserved = true;
-      if (hasFinalOutput(protocol, eventName, payload)) outputObserved = true;
+      if (hasReasoning(protocol, eventName, payload)) reasoningObserved = true;
+      if (hasObservableOutput(protocol, eventName, payload) || hasFinalOutput(protocol, eventName, payload)) outputObserved = true;
       if (firstTokenMs === undefined && generated) firstTokenMs = Math.max(0, clock() - startedAt);
 
       if (eventName === 'error' || payload.type === 'error' || (payload.error && !Array.isArray(payload.choices))) streamCompletion = 'failed';
@@ -128,6 +177,7 @@ export function createRequestMetrics({ protocol, stream, startedAt, clock = () =
         ...(firstTokenMs === undefined ? {} : { firstTokenMs }),
         ...(Object.keys(result).length ? { tokens: result } : {}),
         ...(stream ? { streamCompletion, outputObserved, usageObserved: Object.keys(tokens).length > 0 } : {}),
+        ...(stream && reasoningObserved ? { reasoningObserved: true } : {}),
       };
     },
   };
