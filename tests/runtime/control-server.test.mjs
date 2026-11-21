@@ -13,6 +13,116 @@ async function jsonRequest(url, options = {}) {
   return { response, body: await response.json() };
 }
 
+async function controlFixture(t, prefix = 'cxrg-control-actions-') {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
+  const store = new ConfigStore(path.join(dir, 'config.json'));
+  const vault = new SecretVault(path.join(dir, 'secrets.json'), 'test-master-key');
+  const server = createControlServer({ store, vault, allowUnauthenticated: true });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => server.close());
+  return { base: `http://127.0.0.1:${server.address().port}`, store, vault };
+}
+
+test('control API clears all retained logs and persists the removed count', async (t) => {
+  const { base, store } = await controlFixture(t, 'cxrg-control-clear-logs-');
+  await store.update((config) => ({
+    ...config,
+    usage: [
+      { id: 'log-a', status: 'completed' },
+      { id: 'log-b', status: 'failed' },
+      { id: 'log-c', status: 'rejected' },
+    ],
+  }));
+
+  const cleared = await jsonRequest(`${base}/v1/control/logs`, { method: 'DELETE' });
+  assert.equal(cleared.response.status, 200);
+  assert.deepEqual(cleared.body, { deleted: true, removedCount: 3 });
+  assert.deepEqual((await jsonRequest(`${base}/v1/control/logs`)).body.logs, []);
+  assert.deepEqual((await new ConfigStore(store.filePath).read()).usage, []);
+});
+
+test('control API permanently deletes active and revoked keys while DELETE still revokes', async (t) => {
+  const { base } = await controlFixture(t, 'cxrg-control-delete-keys-');
+  const active = await jsonRequest(`${base}/v1/control/client-keys`, { method: 'POST', body: JSON.stringify({ name: 'active' }) });
+  const revoked = await jsonRequest(`${base}/v1/control/client-keys`, { method: 'POST', body: JSON.stringify({ name: 'revoked' }) });
+  assert.equal(active.response.status, 201);
+  assert.equal(revoked.response.status, 201);
+
+  const revoke = await jsonRequest(`${base}/v1/control/client-keys/${revoked.body.id}`, { method: 'DELETE' });
+  assert.deepEqual(revoke.body, { id: revoked.body.id, enabled: false });
+
+  for (const key of [active.body, revoked.body]) {
+    const deleted = await jsonRequest(`${base}/v1/control/client-keys/${key.id}/permanent`, { method: 'DELETE' });
+    assert.equal(deleted.response.status, 200);
+    assert.deepEqual(deleted.body, { id: key.id, deleted: true });
+  }
+  assert.deepEqual((await jsonRequest(`${base}/v1/control/state`)).body.clientKeys, []);
+});
+
+test('control API blocks upstream deletion for every legacy and target route reference', async (t) => {
+  const { base, store } = await controlFixture(t, 'cxrg-control-upstream-references-');
+  const routeIds = ['legacy-active', 'legacy-disabled', 'target-active', 'target-disabled'];
+  await store.update((config) => ({
+    ...config,
+    upstreams: [{ id: 'up-a', name: 'Referenced', enabled: true }, { id: 'up-b', name: 'Other', enabled: true }],
+    routes: [
+      { id: routeIds[0], alias: 'Legacy active', inboundProtocol: 'Chat', upstreamId: 'up-a', enabled: true },
+      { id: routeIds[1], alias: 'Legacy disabled', inboundProtocol: 'Mes', upstreamId: 'up-a', enabled: false },
+      { id: routeIds[2], alias: 'Target active', inboundProtocol: 'Res', upstreamId: 'up-b', targets: [{ upstreamId: 'up-a', modelId: 'a' }], enabled: true },
+      { id: routeIds[3], alias: 'Target disabled', inboundProtocol: 'Chat', upstreamId: 'up-b', targets: [{ upstreamId: 'up-a', modelId: 'b' }], enabled: false },
+    ],
+  }));
+
+  const deleted = await jsonRequest(`${base}/v1/control/upstreams/up-a`, { method: 'DELETE' });
+  assert.equal(deleted.response.status, 409);
+  assert.equal(deleted.body.error, 'upstream_in_use');
+  assert.deepEqual(deleted.body.routes, [
+    { id: routeIds[0], alias: 'Legacy active', inboundProtocol: 'Chat' },
+    { id: routeIds[1], alias: 'Legacy disabled', inboundProtocol: 'Mes' },
+    { id: routeIds[2], alias: 'Target active', inboundProtocol: 'Res' },
+    { id: routeIds[3], alias: 'Target disabled', inboundProtocol: 'Chat' },
+  ]);
+  assert.equal((await store.read()).upstreams.some((item) => item.id === 'up-a'), true);
+});
+
+test('control API serializes route creation against upstream deletion', async (t) => {
+  const { base, store } = await controlFixture(t, 'cxrg-control-route-create-race-');
+  await store.update((config) => ({ ...config, upstreams: [{ id: 'up-race', name: 'Race', enabled: true }] }));
+  const [created, deleted] = await Promise.all([
+    jsonRequest(`${base}/v1/control/routes`, { method: 'POST', body: JSON.stringify({ alias: 'race', inboundProtocol: 'Chat', outboundProtocol: 'Chat', upstreamId: 'up-race', modelId: 'model-a' }) }),
+    jsonRequest(`${base}/v1/control/upstreams/up-race`, { method: 'DELETE' }),
+  ]);
+  const config = await store.read();
+  const upstreamIds = new Set(config.upstreams.map((item) => item.id));
+  for (const route of config.routes) {
+    assert.equal(upstreamIds.has(route.upstreamId), true);
+    for (const target of route.targets ?? []) assert.equal(upstreamIds.has(target.upstreamId), true);
+  }
+  assert.ok([201, 400].includes(created.response.status));
+  assert.ok([200, 409].includes(deleted.response.status));
+});
+
+test('control API serializes route updates against upstream deletion', async (t) => {
+  const { base, store } = await controlFixture(t, 'cxrg-control-route-update-race-');
+  await store.update((config) => ({
+    ...config,
+    upstreams: [{ id: 'up-a', name: 'A', enabled: true }, { id: 'up-b', name: 'B', enabled: true }],
+    routes: [{ id: 'route-race', alias: 'race', inboundProtocol: 'Chat', outboundProtocol: 'Chat', upstreamId: 'up-b', modelId: 'model-a', enabled: true }],
+  }));
+  const [updated, deleted] = await Promise.all([
+    jsonRequest(`${base}/v1/control/routes/route-race`, { method: 'PATCH', body: JSON.stringify({ upstreamId: 'up-a' }) }),
+    jsonRequest(`${base}/v1/control/upstreams/up-a`, { method: 'DELETE' }),
+  ]);
+  const config = await store.read();
+  const upstreamIds = new Set(config.upstreams.map((item) => item.id));
+  for (const route of config.routes) {
+    assert.equal(upstreamIds.has(route.upstreamId), true);
+    for (const target of route.targets ?? []) assert.equal(upstreamIds.has(target.upstreamId), true);
+  }
+  assert.ok([200, 400].includes(updated.response.status));
+  assert.ok([200, 409].includes(deleted.response.status));
+});
+
 test('control API manages upstreams, routes, and one-time client key creation', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-control-'));
   const server = createControlServer({
