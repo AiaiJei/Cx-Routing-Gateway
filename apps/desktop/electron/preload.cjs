@@ -11,6 +11,8 @@ contextBridge.exposeInMainWorld("desktopControls", {
   createClientKey: (name, scope) => ipcRenderer.invoke("runtime:create-client-key", name, scope),
   rotateClientKey: (id) => ipcRenderer.invoke("runtime:rotate-client-key", id),
   revokeClientKey: (id) => ipcRenderer.invoke("runtime:revoke-client-key", id),
+  permanentlyDeleteClientKey: (id) => ipcRenderer.invoke("runtime:permanently-delete-client-key", id),
+  clearRequestLogs: () => ipcRenderer.invoke("runtime:clear-request-logs"),
   createUpstream: (input) => ipcRenderer.invoke("runtime:create-upstream", input),
   deleteUpstream: (id) => ipcRenderer.invoke("runtime:delete-upstream", id),
   saveModelRoutes: selection => ipcRenderer.invoke("runtime:save-model-routes", selection),

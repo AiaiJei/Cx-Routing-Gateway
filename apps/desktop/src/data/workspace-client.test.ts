@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { fixtureWorkspaceClient, mapRuntimeState } from "./workspace-client";
+import { describe, expect, it, vi } from "vitest";
+import { fixtureWorkspaceClient, mapRuntimeState, runtimeWorkspaceClient } from "./workspace-client";
 
 describe("fixtureWorkspaceClient", () => {
   it("marks workspace data as fixtures and returns independent copies", async () => {
@@ -24,6 +24,12 @@ describe("fixtureWorkspaceClient", () => {
     expect(credentials.some(({ preview }) => /[A-Za-z0-9]{24,}/.test(preview))).toBe(false);
   });
 
+  it("does not expose destructive actions in fixture mode", () => {
+    expect(fixtureWorkspaceClient).not.toHaveProperty("clearRequestLogs");
+    expect(fixtureWorkspaceClient).not.toHaveProperty("permanentlyDeleteClientKey");
+    expect(fixtureWorkspaceClient).not.toHaveProperty("deleteUpstream");
+  });
+
   it("marks a checked runtime upstream as connected", () => {
     const workspace = mapRuntimeState({
       settings: { gatewayHost: "127.0.0.1", gatewayPort: 4318, usageRetentionCount: 1000 },
@@ -34,6 +40,28 @@ describe("fixtureWorkspaceClient", () => {
     });
     expect(workspace.upstreams[0].status).toBe("已连接");
   });
+});
+
+it("forwards destructive commands and preserves structured upstream dependencies", async () => {
+  const previous = Object.getOwnPropertyDescriptor(window, "desktopControls");
+  const route = { id: "route-1", alias: "chat-model", inboundProtocol: "Chat" };
+  const controls = {
+    clearRequestLogs: vi.fn(async () => ({ deleted: true as const, removedCount: 4 })),
+    permanentlyDeleteClientKey: vi.fn(async (id: string) => ({ id, deleted: true as const })),
+    deleteUpstream: vi.fn(async () => ({ deleted: false as const, error: "upstream_in_use", routes: [route] })),
+  };
+  Object.defineProperty(window, "desktopControls", { configurable: true, value: controls });
+  try {
+    expect(await runtimeWorkspaceClient.clearRequestLogs!()).toEqual({ deleted: true, removedCount: 4 });
+    expect(await runtimeWorkspaceClient.permanentlyDeleteClientKey!("key-1")).toEqual({ id: "key-1", deleted: true });
+    expect(await runtimeWorkspaceClient.deleteUpstream!("up-1")).toEqual({ deleted: false, error: "upstream_in_use", routes: [route] });
+    expect(controls.clearRequestLogs).toHaveBeenCalledOnce();
+    expect(controls.permanentlyDeleteClientKey).toHaveBeenCalledWith("key-1");
+    expect(controls.deleteUpstream).toHaveBeenCalledWith("up-1");
+  } finally {
+    if (previous) Object.defineProperty(window, "desktopControls", previous);
+    else delete (window as Window & { desktopControls?: unknown }).desktopControls;
+  }
 });
 
 it("maps measured metrics while preserving missing, zero and invalid historical values", () => {

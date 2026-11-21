@@ -11,8 +11,10 @@ export type WorkspaceClient = {
   createClientKey?(name: string, scope?: string[]): Promise<{ id: string; key: string }>;
   rotateClientKey?(id: string): Promise<{ key: string }>;
   revokeClientKey?(id: string): Promise<{ enabled: boolean }>;
+  permanentlyDeleteClientKey?(id: string): Promise<{ id: string; deleted: true }>;
+  clearRequestLogs?(): Promise<{ deleted: true; removedCount: number }>;
   createUpstream?(input: { name: string; baseUrl: string; apiKey?: string; allowPrivateNetwork?: boolean }): Promise<unknown>;
-  deleteUpstream?(id: string): Promise<unknown>;
+  deleteUpstream?(id: string): Promise<{ id: string; deleted: true } | { deleted: false; error: string; routes: Array<{ id: string; alias: string; inboundProtocol: string }> }>;
   saveModelRoutes?(selection: import("../domain/types").ModelRouteSelection): Promise<unknown>;
   createRoute?(input: { alias: string; inboundProtocol: string; outboundProtocol: string; upstreamId: string; modelId: string }): Promise<unknown>;
   deleteRoute?(id: string): Promise<unknown>;
@@ -62,6 +64,8 @@ export const runtimeWorkspaceClient: WorkspaceClient = {
   async createClientKey(name, scope) { if (!window.desktopControls) throw new Error("Desktop runtime unavailable"); return window.desktopControls.createClientKey(name, scope) as Promise<{ id: string; key: string }>; },
   async rotateClientKey(id) { if (!window.desktopControls) throw new Error("Desktop runtime unavailable"); return window.desktopControls.rotateClientKey(id) as Promise<{ key: string }>; },
   async revokeClientKey(id) { if (!window.desktopControls) throw new Error("Desktop runtime unavailable"); return window.desktopControls.revokeClientKey(id) as Promise<{ enabled: boolean }>; },
+  async permanentlyDeleteClientKey(id) { if (!window.desktopControls) throw new Error("Desktop runtime unavailable"); return window.desktopControls.permanentlyDeleteClientKey(id); },
+  async clearRequestLogs() { if (!window.desktopControls) throw new Error("Desktop runtime unavailable"); return window.desktopControls.clearRequestLogs(); },
   async createUpstream(input) { if (!window.desktopControls) throw new Error("Desktop runtime unavailable"); return window.desktopControls.createUpstream(input); },
   async deleteUpstream(id) { if (!window.desktopControls) throw new Error("Desktop runtime unavailable"); return window.desktopControls.deleteUpstream(id); },
   async saveModelRoutes(selection) { if (!window.desktopControls) throw new Error("Desktop runtime unavailable"); return window.desktopControls.saveModelRoutes(selection); },

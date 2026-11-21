@@ -174,6 +174,20 @@ ipcMain.handle("runtime:revoke-client-key", async (event, id) => {
   return response.json();
 });
 
+ipcMain.handle("runtime:permanently-delete-client-key", async (event, id) => {
+  if (!trustedSender(event) || typeof id !== "string" || id.length > 100) throw new Error("Invalid key id");
+  const response = await fetch(`http://127.0.0.1:${controlPort}/v1/control/client-keys/${encodeURIComponent(id)}/permanent`, { method: "DELETE", headers: { authorization: `Bearer ${runtime?.controlToken || ""}` } });
+  if (!response.ok) throw new Error(`Client key deletion returned ${response.status}`);
+  return response.json();
+});
+
+ipcMain.handle("runtime:clear-request-logs", async (event) => {
+  if (!trustedSender(event)) throw new Error("Untrusted runtime request");
+  const response = await fetch(`http://127.0.0.1:${controlPort}/v1/control/logs`, { method: "DELETE", headers: { authorization: `Bearer ${runtime?.controlToken || ""}` } });
+  if (!response.ok) throw new Error(`Request log clearing returned ${response.status}`);
+  return response.json();
+});
+
 ipcMain.handle("runtime:create-upstream", async (event, input) => {
   if (!trustedSender(event) || !input || typeof input.name !== "string" || typeof input.baseUrl !== "string") throw new Error("Invalid upstream");
   const response = await fetch(`http://127.0.0.1:${controlPort}/v1/control/upstreams`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${runtime?.controlToken || ""}` }, body: JSON.stringify({ name: input.name.trim().slice(0, 80), baseUrl: input.baseUrl.trim(), apiKey: typeof input.apiKey === "string" ? input.apiKey : undefined, allowPrivateNetwork: input.allowPrivateNetwork === true }) });
@@ -182,8 +196,12 @@ ipcMain.handle("runtime:create-upstream", async (event, input) => {
 });
 
 ipcMain.handle("runtime:delete-upstream", async (event, id) => {
-  if (!trustedSender(event) || typeof id !== "string") throw new Error("Invalid upstream id");
+  if (!trustedSender(event) || typeof id !== "string" || id.length > 100) throw new Error("Invalid upstream id");
   const response = await fetch(`http://127.0.0.1:${controlPort}/v1/control/upstreams/${encodeURIComponent(id)}`, { method: "DELETE", headers: { authorization: `Bearer ${runtime?.controlToken || ""}` } });
+  if (response.status === 409) {
+    const body = await response.json().catch(() => ({}));
+    if (body.error === "upstream_in_use") return { deleted: false, error: body.error, routes: Array.isArray(body.routes) ? body.routes : [] };
+  }
   if (!response.ok) throw new Error(`Upstream deletion returned ${response.status}`);
   return response.json();
 });
