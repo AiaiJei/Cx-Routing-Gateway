@@ -360,3 +360,16 @@ describe("request log clearing", () => {
     }
   });
 });
+
+it("scopes a single focus indicator to the request-log search", async () => {
+  render(<LogsPage />);
+  const search = await screen.findByRole("searchbox", { name: "搜索请求日志" });
+  search.focus();
+  expect(search.closest(".request-logs-toolbar")).not.toBeNull();
+  const rules = Array.from(document.styleSheets).flatMap((sheet) => Array.from(sheet.cssRules)) as CSSStyleRule[];
+  const fieldFocus = rules.find((rule) => rule.selectorText === ".request-logs-toolbar .search-field:focus-within");
+  const inputFocus = rules.find((rule) => rule.selectorText === ".request-logs-toolbar .search-field .geist-input:focus-visible");
+  expect(fieldFocus?.style.outline).toBe("none");
+  expect(fieldFocus?.style.getPropertyValue("border-color")).toBe("var(--accent)");
+  expect(inputFocus?.style.outline).toBe("none");
+});

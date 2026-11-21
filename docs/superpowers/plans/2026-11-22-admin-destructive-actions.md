@@ -45,11 +45,11 @@
 - A blocked `DELETE /v1/control/upstreams/:id` returns HTTP 409 with `{ error: "upstream_in_use", routes: [{ id, alias, inboundProtocol }] }`.
 - Route create/update validate every upstream reference inside the same `store.update` mutation that writes the route.
 
-- [ ] Add failing API tests for clear count/persistence, permanent-vs-revoke behavior, enabled/disabled legacy/target references, and serialized route/delete races.
-- [ ] Run `node --test tests/runtime/control-server.test.mjs`; confirm the new assertions fail against current behavior.
-- [ ] Implement the three operations and move route reference checks into serialized updates.
-- [ ] Run `node --test tests/runtime/control-server.test.mjs`; all tests pass.
-- [ ] Commit as `feat: add reliable local admin actions`.
+- [x] Add failing API tests for clear count/persistence, permanent-vs-revoke behavior, enabled/disabled legacy/target references, and serialized route/delete races.
+- [x] Run `node --test tests/runtime/control-server.test.mjs`; confirm the new assertions fail against current behavior.
+- [x] Implement the three operations and move route reference checks into serialized updates.
+- [x] Run `node --test tests/runtime/control-server.test.mjs`; all tests pass.
+- [x] Commit as `feat: add reliable local admin actions` (`e116113`).
 
 ### Task 2: Electron and Workspace Client
 
@@ -64,11 +64,11 @@
 - Expose `clearRequestLogs()`, `permanentlyDeleteClientKey(id)`, and a typed `deleteUpstream(id)` result through preload and `WorkspaceClient`.
 - The upstream-delete result distinguishes success from `{ deleted: false, error, routes }` so IPC preserves dependency details without relying on serialized thrown-error properties.
 
-- [ ] Add failing runtime-client tests for command forwarding and structured upstream dependency results.
-- [ ] Run `npm --prefix apps/desktop test -- --run src/data/workspace-client.test.ts`; confirm the new assertions fail.
-- [ ] Add the IPC handlers, preload methods, types, and runtime-client forwarding.
-- [ ] Run the focused workspace-client tests and `npm --prefix apps/desktop run build`; both pass.
-- [ ] Commit as `feat: expose destructive runtime commands to desktop`.
+- [x] Add failing runtime-client tests for command forwarding and structured upstream dependency results.
+- [x] Run `npm --prefix apps/desktop test -- --run src/data/workspace-client.test.ts`; confirm the new assertions fail.
+- [x] Add the IPC handlers, preload methods, types, and runtime-client forwarding.
+- [x] Run the focused workspace-client tests and `npm --prefix apps/desktop run build`; both pass.
+- [x] Commit as `feat: expose destructive runtime commands to desktop` (`d0cf5c4`).
 
 ### Task 3: Admin Page Confirmations and Feedback
 
@@ -83,11 +83,11 @@
 - Credentials show a live-runtime-only permanent delete action separate from revoke; keep the row on cancellation or failure.
 - Upstream delete confirms first, shows dependent route aliases returned by the API, keeps blocked rows, and refreshes only after successful deletion.
 
-- [ ] Add failing page tests for confirm/cancel/success/failure on all three operations and fixture-mode absence of destructive actions.
-- [ ] Run `npm --prefix apps/desktop test -- --run src/pages/LogsPage.test.tsx src/pages/CredentialsPage.test.tsx src/pages/UpstreamsPage.test.tsx`; confirm new assertions fail.
-- [ ] Implement the controls and feedback without optimistic row removal.
-- [ ] Run the focused page tests; all pass.
-- [ ] Commit as `feat: add confirmed admin delete actions`.
+- [x] Add failing page tests for confirm/cancel/success/failure on all three operations and fixture-mode absence of destructive actions.
+- [x] Run `npm --prefix apps/desktop test -- --run src/pages/LogsPage.test.tsx src/pages/CredentialsPage.test.tsx src/pages/UpstreamsPage.test.tsx`; confirm new assertions fail.
+- [x] Implement the controls and feedback without optimistic row removal.
+- [x] Run the focused page tests; all pass (32/32, including focus states).
+- [x] Commit as `feat: add confirmed admin delete actions` (`cd3c2ad`).
 
 ### Task 4: Single Focus Indicator
 
@@ -96,11 +96,11 @@
 - Modify: `apps/desktop/src/styles/app.css`
 - Test: focused-field coverage in the affected page tests and browser inspection.
 
-- [ ] Add a failing focused-state test proving the two target fields use the scoped focus classes.
-- [ ] Run the focused Vitest cases; confirm the new assertions fail.
-- [ ] Remove the outer ring only for request-log search, use one accent border on focus, and remove the extra outline only for credential scope while keeping its accent border.
-- [ ] Run the focused tests and inspect screenshots at 1440, 768, and 390px plus keyboard focus; confirm one indicator remains and layout does not overflow.
-- [ ] Commit as `style: remove duplicate admin field focus rings`.
+- [x] Add a failing focused-state test proving the two target fields use the scoped focus classes.
+- [x] Run the focused Vitest cases; confirm the new assertions fail.
+- [x] Remove the outer ring only for request-log search, use one accent border on focus, and remove the extra outline only for credential scope while keeping its accent border.
+- [x] Run the focused tests and inspect the browser preview at 1280×720 plus keyboard focus; one accent indicator remains. Responsive viewport capture at 1440, 768, and 390px is not available through the current browser-control surface.
+- [x] Commit as `style: remove duplicate admin field focus rings` (pending commit).
 
 ### Task 5: Version 1.1.4 and Local Portable Delivery
 

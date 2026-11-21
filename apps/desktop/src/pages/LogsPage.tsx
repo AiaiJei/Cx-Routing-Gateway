@@ -68,7 +68,7 @@ export function LogsPage() {
       {clearFeedback && <p className="action-feedback" role="status">{clearFeedback}</p>}
       {clearError && <p className="action-feedback route-test-error" role="alert">{clearError}</p>}
       <FixtureNotice live={data.meta.live}>{data.meta.live ? "本机运行时日志 · 正文已脱敏" : "示例日志 · 非运行时记录"}</FixtureNotice>
-      <div className="toolbar"><SearchField label="搜索请求日志" value={query} onChange={setQuery} />
+      <div className="toolbar request-logs-toolbar"><SearchField label="搜索请求日志" value={query} onChange={setQuery} />
         <SegmentedControl ariaLabel="按状态筛选" value={status} options={["全部", "成功", "失败"]} onChange={setStatus} />
         <SegmentedControl ariaLabel="按日期筛选" value={dateRange} options={[...requestLogDateRanges]} onChange={(value) => setDateRange(value as RequestLogDateRange)} />
         <span className="result-count">{logs.length} 条{data.meta.live ? "" : "示例"}</span>

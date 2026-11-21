@@ -104,4 +104,24 @@ describe("CredentialsPage", () => {
       Object.assign(defaultWorkspaceClient, original);
     }
   });
+
+  it("keeps the credential-scope focus border without an extra outer outline", async () => {
+    const original = { ...defaultWorkspaceClient };
+    const liveWorkspace = { ...structuredClone(workspaceFixtures), meta: { source: "runtime", live: true } } as any;
+    Object.assign(defaultWorkspaceClient, { getWorkspace: async () => liveWorkspace });
+    try {
+      render(<CredentialsPage />);
+      const scope = await screen.findByPlaceholderText("gateway-fast, gateway-reasoner");
+      scope.focus();
+      expect(scope.closest(".credential-scope")).not.toBeNull();
+      const rules = Array.from(document.styleSheets).flatMap((sheet) => Array.from(sheet.cssRules)) as CSSStyleRule[];
+      const inputFocus = rules.find((rule) => rule.selectorText === ".credential-scope .geist-input:focus-visible");
+      const accentBorder = rules.find((rule) => rule.selectorText === ".geist-input:focus-visible");
+      expect(inputFocus?.style.outline).toBe("none");
+      expect(accentBorder?.style.getPropertyValue("border-color")).toBe("var(--accent)");
+    } finally {
+      for (const key of Object.keys(defaultWorkspaceClient)) if (!(key in original)) delete (defaultWorkspaceClient as any)[key];
+      Object.assign(defaultWorkspaceClient, original);
+    }
+  });
 });
