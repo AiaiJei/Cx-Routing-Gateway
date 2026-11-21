@@ -22,6 +22,8 @@ test('release manifest includes packaged runtime resources', async (t) => {
   t.after(() => fs.rm(releaseDir, { recursive: true, force: true }));
   const { version, cxrgProductVersion } = JSON.parse(await fs.readFile(new URL('../../apps/desktop/package.json', import.meta.url), 'utf8'));
   const builderConfig = await fs.readFile(new URL('../../apps/desktop/electron-builder.yml', import.meta.url), 'utf8');
+  assert.equal(version, '1.1.4');
+  assert.equal(cxrgProductVersion, '1.1.4');
   assert.equal(builderConfig.split(/\r?\n/).some((line) => line.trim() === `buildVersion: ${cxrgProductVersion}`), true);
   const portableAsset = `Cx-Routing Gateway Portable ${cxrgProductVersion}.exe`;
   const installerAsset = `Cx-Routing Gateway Setup ${cxrgProductVersion}.exe`;
@@ -39,7 +41,7 @@ test('release manifest includes packaged runtime resources', async (t) => {
   await fs.rename(`${metricsModule}.omitted`, metricsModule);
   const pkg = JSON.parse(await fs.readFile(new URL('../../apps/desktop/package.json', import.meta.url), 'utf8'));
   assert.equal(manifest.version, pkg.cxrgProductVersion);
-  assert.equal(pkg.version, '1.1.3');
+  assert.equal(pkg.version, '1.1.4');
   assert.equal(manifest.artifacts.some((item) => item.path === 'win-unpacked/resources/runtime/services/local-control/src/server.mjs'), true);
   assert.equal(manifest.artifacts.some((item) => item.path === 'win-unpacked/resources/runtime/packages/shared/src/config-store.mjs'), true);
   assert.equal(manifest.artifacts.some((item) => item.path === portableAsset), true);

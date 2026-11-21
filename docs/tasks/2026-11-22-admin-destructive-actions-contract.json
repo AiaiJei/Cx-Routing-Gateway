@@ -5,7 +5,7 @@
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
   "status": "active",
-  "stage": "implementation",
+  "stage": "pre-pr-review",
   "base": "master",
   "base_sha": "0f57028f80b0707a2d32a83af5bba4f31bf9bb73",
   "branch": "codex/log-credential-upstream-actions",
@@ -69,7 +69,9 @@
       "docs/superpowers/plans/2026-11-22-admin-destructive-actions.md",
       "docs/tasks/evidence/admin-destructive-actions/**",
       "apps/desktop/package.json",
+      "apps/desktop/package-lock.json",
       "apps/desktop/electron-builder.yml",
+      "apps/desktop/src/pages/SettingsPage.test.tsx",
       "scripts/verify-release.mjs",
       "tests/runtime/release-manifest.test.mjs",
       "apps/desktop/release/1.1.4-local/**",
@@ -100,6 +102,29 @@
     "focused and full required tests/build pass, and independent review findings are resolved or documented"
   ],
   "rollback": "Revert this branch/PR before merge; no schema migration. Clear-log and permanent-key-delete confirmation explicitly warns these user-triggered actions are irreversible. A rejected upstream deletion makes no configuration or vault changes. Preserve Desktop Portable 1.1.3; if the new 1.1.4 copy fails its hash or isolated smoke, remove only that newly created 1.1.4 copy and do not replace 1.1.3.",
+  "verification": {
+    "final_runtime": "PASS: fresh npm test, 131/131",
+    "final_desktop": "PASS: fresh apps/desktop npm test, 154/154 across 23 files",
+    "final_desktop_build": "PASS: fresh TypeScript and Vite production build",
+    "release_artifacts": "PASS: scripts/verify-release.mjs verified 11 x64 unpacked, NSIS and Portable artifacts for package/product 1.1.4",
+    "portable_delivery": "PASS: isolated startup and control/gateway health smoke recorded in delivery evidence; Desktop copy rehashed this turn and matches source SHA-256 FD28C5A424EC775D517408E63C19E2FD9087E451EDEA13D90BB804BD6983A1D9; 1.1.3 Desktop file remains present",
+    "diff_check": "PENDING: rerun after task ledger update",
+    "independent_review": "PENDING",
+    "pull_request_ci": "PENDING",
+    "merge_and_primary_sync": "PENDING",
+    "task_worktree_removal": "PENDING"
+  },
+  "capability": {
+    "skills": [
+      "using-superpowers",
+      "awg-workspace-governance",
+      "verification-before-completion",
+      "requesting-code-review",
+      "finishing-a-development-branch"
+    ],
+    "repo_mcp": "NOT_RUN: no registered workspace_id; source inspection, tests, and GitHub operations are available through the local repository and gh CLI",
+    "independent_code_review": "PENDING"
+  },
   "revision_history": [
     {
       "revision": 1,
@@ -115,6 +140,16 @@
       "revision": 3,
       "date": "2026-11-22",
       "change": "User authorized a 1.1.4 package/product/build version bump, dedicated PR creation and merge, primary master synchronization, a verified Windows x64 Portable copy to Desktop, and removal of only this task worktree; GitHub Release publication and branch deletion remain excluded."
+    },
+    {
+      "revision": 4,
+      "date": "2026-11-22",
+      "change": "Implementation scope includes synchronizing the npm lockfile root package/product versions with the authorized 1.1.4 package/product/build metadata."
+    },
+    {
+      "revision": 5,
+      "date": "2026-11-22",
+      "change": "Implementation scope includes updating the SettingsPage version assertions to the newly authorized 1.1.4 product version."
     }
   ]
 }

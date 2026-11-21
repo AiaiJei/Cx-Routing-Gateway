@@ -100,31 +100,33 @@
 - [x] Run the focused Vitest cases; confirm the new assertions fail.
 - [x] Remove the outer ring only for request-log search, use one accent border on focus, and remove the extra outline only for credential scope while keeping its accent border.
 - [x] Run the focused tests and inspect the browser preview at 1280×720 plus keyboard focus; one accent indicator remains. Responsive viewport capture at 1440, 768, and 390px is not available through the current browser-control surface.
-- [x] Commit as `style: remove duplicate admin field focus rings` (pending commit).
+- [x] Commit as `style: remove duplicate admin field focus rings` (`4a1407c`).
 
 ### Task 5: Version 1.1.4 and Local Portable Delivery
 
 **Files:**
 - Modify: `apps/desktop/package.json`
+- Modify: `apps/desktop/package-lock.json`
 - Modify: `apps/desktop/electron-builder.yml`
+- Modify: `apps/desktop/src/pages/SettingsPage.test.tsx`
 - Modify: `scripts/verify-release.mjs`
 - Modify: `tests/runtime/release-manifest.test.mjs`
 - Create: `docs/tasks/evidence/admin-destructive-actions/delivery.md`
 
-- [ ] Add a failing runtime assertion for package/product/build metadata fixed at `1.1.4`.
-- [ ] Run `node --test tests/runtime/release-manifest.test.mjs`; confirm it fails while metadata remains `1.1.3`.
-- [ ] Set package `version`, `cxrgProductVersion`, and builder `buildVersion` to `1.1.4`; align verifier and manifest test.
-- [ ] Run `node --test tests/runtime/release-manifest.test.mjs`, `npm --prefix apps/desktop test`, and `npm --prefix apps/desktop run build`; all pass.
-- [ ] Build unpacked x64 files with electron-builder into `apps/desktop/release/1.1.4-local`, create the Portable artifact with `scripts/package-portable.ps1 -OutputDirectory apps/desktop/release/1.1.4-local`, and run `scripts/smoke-portable.mjs` plus the packaged version check.
-- [ ] Copy only the verified artifact to `C:\Users\20142\Desktop\Cx-Routing Gateway Portable 1.1.4.exe`; smoke-test the copy and record matching SHA-256 without replacing 1.1.3.
-- [ ] Commit source and delivery evidence as `build: prepare desktop version 1.1.4`.
+- [x] Add a failing runtime assertion for package/product/build metadata fixed at `1.1.4`.
+- [x] Run `node --test tests/runtime/release-manifest.test.mjs`; confirm it fails while metadata remains `1.1.3`.
+- [x] Set package `version`, `cxrgProductVersion`, lockfile root metadata, and builder `buildVersion` to `1.1.4`; align verifier and manifest test.
+- [x] Run `node --test tests/runtime/release-manifest.test.mjs`, `npm test`, `npm --prefix apps/desktop test`, and `npm --prefix apps/desktop run build`; all pass (131 Runtime, 154 Desktop).
+- [x] Build unpacked x64 and NSIS verification artifacts into `apps/desktop/release/1.1.4-local`, create the Portable artifact with `scripts/package-portable.ps1 -OutputDirectory apps/desktop/release/1.1.4-local`, and pass `scripts/smoke-portable.mjs` plus the packaged version check.
+- [x] Copy the verified artifact to `C:\Users\20142\Desktop\Cx-Routing Gateway Portable 1.1.4.exe`; smoke-test the copy and record matching SHA-256 without replacing 1.1.3.
+- [x] Commit source and delivery evidence as `build: prepare desktop version 1.1.4`.
 
 ### Task 6: PR, Merge, Sync, and Worktree Removal
 
 **Files:**
 - Modify: `docs/tasks/2026-11-22-admin-destructive-actions-contract.json` with verified PR, review, CI, merge, and delivery evidence.
 
-- [ ] Run the complete Runtime and Desktop suites, Desktop production build, focused release verification, visual inspection, and `git diff --check` from the task worktree.
+- [x] Run the complete Runtime suite (131/131), Desktop suite (154/154), Desktop production build, release verifier, and `git diff --check`; the focus-state visual inspection is recorded above.
 - [ ] Obtain an independent review of the full branch diff and resolve all blocking findings.
 - [ ] Push the task branch and create one dedicated PR against `master`; record its URL.
 - [ ] Wait for required CI checks, recheck the PR diff and base, then merge the PR.
