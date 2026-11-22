@@ -11,17 +11,24 @@
   "branch": "codex/protocol-adapter-matrix",
   "worktree": ".worktree/protocol-adapter-matrix",
   "authorization": {
-    "source": "2026-11-23 user approved the unified intermediate representation and six-direction adapters after correcting that Codex requests are not ordinary text requests.",
+    "source": "2026-11-23 user approved the unified intermediate representation and six-direction adapters after correcting that Codex requests are not ordinary text requests. Follow-up 2026-11-23 user explicitly authorized bumping version 1.1.5 to 1.1.6, merging PR #20, fast-forwarding the primary master worktree, publishing GitHub v1.1.6 and delivering the verified Portable 1.1.6 to Desktop.",
     "operations": [
       "implement and verify the adapter matrix",
       "commit and push the task branch",
-      "create one dedicated PR against master"
+      "create one dedicated PR against master",
+      "bump package/product/build versions from 1.1.5 to 1.1.6",
+      "build and verify Windows x64 Setup, blockmap, Portable and manifest",
+      "merge PR #20 after local tests/build and required GitHub checks pass",
+      "fast-forward primary master worktree and verify merged result",
+      "publish GitHub Release v1.1.6 with verified assets and notes",
+      "copy the verified Portable 1.1.6 to Desktop without overwriting 1.1.5 and smoke-test the copy"
     ],
     "not_authorized": [
-      "merge",
-      "publish or overwrite releases",
       "make real provider requests",
-      "delete branches or worktrees"
+      "delete branches or worktrees",
+      "rewrite or delete existing releases/tags other than the explicitly authorized new v1.1.6 release/tag",
+      "delete the task branch or worktree",
+      "make real provider requests"
     ]
   },
   "scope": {
@@ -29,7 +36,8 @@
       "Res/Mes/Chat six cross-protocol directions",
       "Codex tools/tool_choice/structured-output handling",
       "stream/tool/error contracts",
-      "tests, evidence and PR"
+      "tests, evidence and PR",
+      "version 1.1.6 metadata, verified Windows x64 artifacts, GitHub release, merge and Desktop Portable delivery"
     ],
     "exclude": [
       "credentials",
@@ -45,9 +53,13 @@
     "unsupported fields return stable field-specific errors without silent loss",
     "streaming preserves order, indexes, terminal events and request IDs",
     "Runtime/Desktop/build/diff checks pass",
-    "one dedicated PR targets master"
+    "one dedicated PR targets master",
+    "package/product/build versions consistently report 1.1.6",
+    "PR #20 is merged and primary master is synchronized",
+    "GitHub v1.1.6 assets pass verifier and packaged/Portable smoke",
+    "Desktop Portable 1.1.6 matches verified hash and passes isolated health smoke while preserving 1.1.5"
   ],
-  "rollback": "Revert only this task's PR commits; preserve published releases, master worktree, other worktrees and untracked governance files.",
+  "rollback": "Before publishing v1.1.6, preserve v1.1.5 and stop publication if artifacts or smoke fail. After publishing v1.1.6, do not rewrite it; use a corrective patch release. Preserve prior releases, the task branch/worktree, and unrelated untracked files.",
   "verification": {
     "baseline_runtime": "PASS: 165/165 after Desktop dist build",
     "baseline_desktop": "PASS: 158/158",
@@ -89,5 +101,12 @@
       "desktop": "SUCCESS",
       "package": "SKIPPED by workflow condition"
     }
-  }
+  },
+  "revisions": [
+    {
+      "date": "2026-11-23",
+      "request": "版本号递增1，提交合并PR#，并发布Github版本。任务工作树合并到主工作树后更新最新版本到本地桌面",
+      "authorization": "Explicitly authorizes version 1.1.6, PR #20 merge, master fast-forward, GitHub v1.1.6 publication and Desktop Portable delivery; preserve 1.1.5 and the task worktree/branch."
+    }
+  ]
 }
