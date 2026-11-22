@@ -353,13 +353,53 @@ async function appendUsage(store, record) {
   } catch {}
 }
 
-export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, maxConcurrentRequests = 32, upstreamHeaderTimeoutMs = 300_000, maxRequestDurationMs = 600_000, routeTestTimeoutMs = 610_000, dnsLookup = dns.lookup, now = Date.now, monotonicNow = () => performance.now() } = {}) {
+export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, maxConcurrentRequests = 32, upstreamHeaderTimeoutMs = 300_000, upstreamHealthProbeTimeoutMs = 5000, maxRequestDurationMs = 600_000, routeTestTimeoutMs = 610_000, dnsLookup = dns.lookup, now = Date.now, monotonicNow = () => performance.now() } = {}) {
   if (!store || !vault) throw new Error('Gateway server requires store and vault');
   const rateBuckets = new Map();
   const healthByRoute = new Map();
   const routeTestCredentials = new Map();
   const routeTestCalls = [];
   let inFlight = 0;
+  async function probeTarget(item) {
+    const health = item.health;
+    if (health.probePromise) return health.probePromise;
+    const generation = health.generation;
+    const probe = (async () => {
+      const controller = new AbortController();
+      let timer;
+      const deadline = monotonicNow() + upstreamHealthProbeTimeoutMs;
+      timer = setTimeout(() => controller.abort(), upstreamHealthProbeTimeoutMs);
+      let healthy = false;
+      try {
+        const addresses = await validateDestination(item.upstream.baseUrl, item.upstream.trustedPrivateNetwork === true, item.upstream.approvedAddresses || [], dnsLookup);
+        if (controller.signal.aborted) return false;
+        const headers = {};
+        const secret = item.upstream.credentialRef ? await vault.get(item.upstream.credentialRef) : undefined;
+        if (secret) headers[item.upstream.protocol === 'Mes' ? 'x-api-key' : 'authorization'] = item.upstream.protocol === 'Mes' ? secret : `Bearer ${secret}`;
+        if (item.upstream.protocol === 'Mes') headers['anthropic-version'] = '2026-10-21';
+        const response = await fetchWithTimeout(upstreamUrl(item.upstream.baseUrl, '/v1/models'), { method: 'GET', headers }, addresses, upstreamHealthProbeTimeoutMs, deadline, controller.signal, () => controller.abort(), monotonicNow);
+        healthy = response.status >= 200 && response.status < 300;
+        await response.body?.cancel().catch(() => {});
+      } catch {
+        healthy = false;
+      } finally {
+        clearTimeout(timer);
+      }
+      if (health.generation === generation) {
+        if (healthy) {
+          health.failures = 0;
+          health.openUntil = 0;
+          health.generation += 1;
+        } else {
+          health.openUntil = now() + health.cooldownSeconds * 1000;
+          health.generation += 1;
+        }
+      }
+      return healthy || (health.generation !== generation && health.openUntil === 0);
+    })();
+    health.probePromise = probe.finally(() => { health.probePromise = undefined; });
+    return health.probePromise;
+  }
   const server = http.createServer(async (req, res) => {
     const requestId = crypto.randomUUID();
     const startedAt = now();
@@ -451,17 +491,24 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
       const signature = JSON.stringify({ targets: healthTargets, policy });
       let health = healthByRoute.get(route.id);
       if (!health || health.signature !== signature) { health = { signature, targets: new Map() }; healthByRoute.set(route.id, health); }
-      const selected = availableTargets.find(item => {
+      const candidates = availableTargets.map(item => {
         const key = JSON.stringify([item.target.upstreamId, item.target.modelId]);
-        if (!health.targets.has(key)) health.targets.set(key, { failures: 0, openUntil: 0, generation: 0, threshold: policy.failureThreshold, cooldownSeconds: policy.cooldownSeconds });
+        if (!health.targets.has(key)) health.targets.set(key, { failures: 0, openUntil: 0, generation: 0, threshold: policy.failureThreshold, cooldownSeconds: policy.cooldownSeconds, probePromise: undefined });
         item.health = health.targets.get(key);
-        return item.health.openUntil <= now();
+        return item;
       });
-      if (!selected) return send(res, 503, { error: 'all_upstreams_unavailable', requestId }, requestId);
-      targetHealth = selected.health;
+      let selectedTarget;
+      for (const item of candidates) {
+        if (item.health.openUntil > now()) continue;
+        if (item.health.openUntil > 0 && !await probeTarget(item)) continue;
+        selectedTarget = item;
+        break;
+      }
+      if (!selectedTarget) return send(res, 503, { error: 'all_upstreams_unavailable', requestId }, requestId);
+      targetHealth = selectedTarget.health;
       requestGeneration = targetHealth.generation;
-      upstream = selected.upstream;
-      route = { ...route, upstreamId: selected.target.upstreamId, modelId: selected.target.modelId };
+      upstream = selectedTarget.upstream;
+      route = { ...route, upstreamId: selectedTarget.target.upstreamId, modelId: selectedTarget.target.modelId };
       metrics = createRequestMetrics({ protocol: route.outboundProtocol, stream: input.stream === true, startedAt: requestStartedMonotonic, clock: monotonicNow });
       const normalized = route.outboundProtocol === inbound ? null : normalize(inbound, input);
       upstreamStarted = true;

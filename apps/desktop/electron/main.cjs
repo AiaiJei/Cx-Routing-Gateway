@@ -1,6 +1,5 @@
 const { app, BrowserWindow, ipcMain, safeStorage, shell, Tray, Menu } = require("electron");
 const path = require("node:path");
-const fs = require("node:fs");
 const crypto = require("node:crypto");
 const { spawn } = require("node:child_process");
 const { startRuntime } = require("./runtime-supervisor.cjs");
@@ -9,6 +8,7 @@ const { createGitHubTokenStore } = require("./github-token-store.cjs");
 const { createGitHubTokenService } = require("./github-token-service.cjs");
 const { registerGitHubUpdateIpc } = require("./github-update-ipc.cjs");
 const { registerUpstreamEditIpc } = require("./upstream-edit-ipc.cjs");
+const { loadOrCreateRuntimeMasterKey } = require("./runtime-master-key.cjs");
 const { cxrgProductVersion } = require("../package.json");
 const { installTrayLifecycle, registerActivateHandler, registerSecondInstanceHandler } = require("./tray-lifecycle.cjs");
 
@@ -57,18 +57,7 @@ function masterKeyPath() {
 }
 
 function getMasterKey() {
-  if (process.env.CXRG_MASTER_KEY) return process.env.CXRG_MASTER_KEY;
-  const target = masterKeyPath();
-  try {
-    const stored = fs.readFileSync(target, "utf8").trim();
-    if (safeStorage.isEncryptionAvailable()) return safeStorage.decryptString(Buffer.from(stored, "base64"));
-    return stored;
-  } catch {}
-  const key = crypto.randomBytes(32).toString("base64url");
-  fs.mkdirSync(path.dirname(target), { recursive: true });
-  const stored = safeStorage.isEncryptionAvailable() ? safeStorage.encryptString(key).toString("base64") : key;
-  fs.writeFileSync(target, `${stored}\n`, { mode: 0o600 });
-  return key;
+  return loadOrCreateRuntimeMasterKey({ filePath: masterKeyPath(), safeStorage, envMasterKey: process.env.CXRG_MASTER_KEY, randomBytes: crypto.randomBytes });
 }
 
 function trustedSender(event) {

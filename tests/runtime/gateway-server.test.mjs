@@ -49,7 +49,7 @@ function replyFailoverResponse(res, status, content) {
   res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content } }] }));
 }
 
-async function createFailoverFixture(t, { primaryHandler, backupHandler, extraRoutes = [] } = {}) {
+async function createFailoverFixture(t, { primaryHandler, backupHandler, extraRoutes = [], gatewayOptions = {}, primaryCredential, backupCredential } = {}) {
   const primary = primaryHandler instanceof http.Server ? primaryHandler : http.createServer(primaryHandler ?? ((_req, res) => replyFailoverResponse(res, 200, 'primary')));
   const backup = backupHandler instanceof http.Server ? backupHandler : http.createServer(backupHandler ?? ((_req, res) => replyFailoverResponse(res, 200, 'backup')));
   const primaryPort = await listen(primary);
@@ -59,13 +59,15 @@ async function createFailoverFixture(t, { primaryHandler, backupHandler, extraRo
   const vault = new SecretVault(path.join(dir, 'secrets.json'), 'test-master-key');
   const clientKey = `cxrg_${crypto.randomBytes(18).toString('base64url')}`;
   const keyHash = crypto.createHash('sha256').update(clientKey).digest('hex');
+  const primaryCredentialRef = primaryCredential ? await vault.put(primaryCredential) : undefined;
+  const backupCredentialRef = backupCredential ? await vault.put(backupCredential) : undefined;
   const targets = [{ upstreamId: 'primary', modelId: 'primary-model' }, { upstreamId: 'backup', modelId: 'backup-model' }];
   const failover = { failureThreshold: 3, statusClasses: [5], cooldownSeconds: 60 };
   await store.update((config) => ({
     ...config,
     upstreams: [
-      { id: 'primary', name: 'Primary', baseUrl: `http://127.0.0.1:${primaryPort}`, protocol: 'Chat', trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'], enabled: true },
-      { id: 'backup', name: 'Backup', baseUrl: `http://127.0.0.1:${backupPort}`, protocol: 'Chat', trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'], enabled: true },
+      { id: 'primary', name: 'Primary', baseUrl: `http://127.0.0.1:${primaryPort}`, protocol: 'Chat', credentialRef: primaryCredentialRef, trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'], enabled: true },
+      { id: 'backup', name: 'Backup', baseUrl: `http://127.0.0.1:${backupPort}`, protocol: 'Chat', credentialRef: backupCredentialRef, trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'], enabled: true },
     ],
     routes: [
       { id: 'failover-route', alias: 'failover', inboundProtocol: 'Chat', outboundProtocol: 'Chat', targets, failover, enabled: true },
@@ -73,7 +75,7 @@ async function createFailoverFixture(t, { primaryHandler, backupHandler, extraRo
     ],
     clientKeys: [{ id: 'failover-key', keyHash, scope: [], createdAt: new Date().toISOString(), enabled: true, name: 'failover' }],
   }));
-  const gateway = createGatewayServer({ store, vault });
+  const gateway = createGatewayServer({ store, vault, ...gatewayOptions });
   const gatewayPort = await listen(gateway);
   t.after(() => {
     gateway.closeAllConnections();
@@ -1191,4 +1193,123 @@ test('gateway resets target health for routing changes but not display-name chan
   assert.equal(primaryCalls, 3);
   assert.equal(replacementCalls, 1);
   assert.equal(backupCalls, 2);
+});
+
+test('gateway keeps using backup after cooldown until a preferred health probe succeeds', async (t) => {
+  let currentTime = 1_000_000;
+  let probeCalls = 0;
+  let primaryRequests = 0;
+  const primary = http.createServer(async (req, res) => {
+    for await (const _chunk of req) { /* consume request body */ }
+    if (req.url === '/v1/models') {
+      probeCalls += 1;
+      res.writeHead(503, { 'content-type': 'application/json' });
+      return res.end('{}');
+    }
+    primaryRequests += 1;
+    replyFailoverResponse(res, 502, 'primary-failed');
+  });
+  const backup = http.createServer(async (req, res) => {
+    for await (const _chunk of req) { /* consume request body */ }
+    replyFailoverResponse(res, 200, 'backup');
+  });
+  const app = await createFailoverFixture(t, {
+    primaryHandler: primary,
+    backupHandler: backup,
+    primaryCredential: 'preferred-secret',
+    gatewayOptions: { now: () => currentTime, upstreamHealthProbeTimeoutMs: 100 },
+  });
+  for (let index = 0; index < 3; index += 1) {
+    const response = await app.request();
+    assert.equal(response.status, 502);
+    await response.arrayBuffer();
+  }
+  assert.equal((await (await app.request()).json()).choices[0].message.content, 'backup');
+  currentTime += 61_000;
+  const held = await app.request();
+  assert.equal(held.status, 200);
+  assert.equal((await held.json()).choices[0].message.content, 'backup');
+  assert.equal(probeCalls, 1);
+  assert.equal(primaryRequests, 3);
+});
+
+test('gateway requires an authenticated preferred health probe before failback and shares it', async (t) => {
+  let currentTime = 2_000_000;
+  let probeCalls = 0;
+  let primaryRequests = 0;
+  const primary = http.createServer(async (req, res) => {
+    for await (const _chunk of req) { /* consume request body */ }
+    if (req.url === '/v1/models') {
+      probeCalls += 1;
+      assert.equal(req.headers.authorization, 'Bearer preferred-secret');
+      return replyFailoverResponse(res, 200, 'probe-ok');
+    }
+    primaryRequests += 1;
+    replyFailoverResponse(res, primaryRequests <= 3 ? 502 : 200, primaryRequests <= 3 ? 'primary-failed' : 'primary-recovered');
+  });
+  const backup = http.createServer(async (req, res) => {
+    for await (const _chunk of req) { /* consume request body */ }
+    replyFailoverResponse(res, 200, 'backup');
+  });
+  const app = await createFailoverFixture(t, {
+    primaryHandler: primary,
+    backupHandler: backup,
+    primaryCredential: 'preferred-secret',
+    gatewayOptions: { now: () => currentTime, upstreamHealthProbeTimeoutMs: 100 },
+  });
+  for (let index = 0; index < 3; index += 1) {
+    const response = await app.request();
+    assert.equal(response.status, 502);
+    await response.arrayBuffer();
+  }
+  assert.equal((await (await app.request()).json()).choices[0].message.content, 'backup');
+  currentTime += 61_000;
+  const recovered = await app.request();
+  assert.equal(recovered.status, 200);
+  assert.equal((await recovered.json()).choices[0].message.content, 'primary-recovered');
+  assert.equal(probeCalls, 1);
+  assert.equal(primaryRequests, 4);
+});
+
+test('gateway shares one in-flight preferred probe across concurrent post-cooldown requests', async (t) => {
+  let currentTime = 3_000_000;
+  let releaseProbe;
+  const probeGate = new Promise((resolve) => { releaseProbe = resolve; });
+  let probeCalls = 0;
+  let primaryRequests = 0;
+  const primary = http.createServer(async (req, res) => {
+    for await (const _chunk of req) { /* consume request body */ }
+    if (req.url === '/v1/models') {
+      probeCalls += 1;
+      await probeGate;
+      return replyFailoverResponse(res, 200, 'probe-ok');
+    }
+    primaryRequests += 1;
+    replyFailoverResponse(res, primaryRequests <= 3 ? 502 : 200, primaryRequests <= 3 ? 'primary-failed' : 'primary-recovered');
+  });
+  const backup = http.createServer(async (req, res) => {
+    for await (const _chunk of req) { /* consume request body */ }
+    replyFailoverResponse(res, 200, 'backup');
+  });
+  const app = await createFailoverFixture(t, {
+    primaryHandler: primary,
+    backupHandler: backup,
+    primaryCredential: 'preferred-secret',
+    gatewayOptions: { now: () => currentTime, upstreamHealthProbeTimeoutMs: 1000 },
+  });
+  for (let index = 0; index < 3; index += 1) {
+    const response = await app.request();
+    assert.equal(response.status, 502);
+    await response.arrayBuffer();
+  }
+  currentTime += 61_000;
+  const first = app.request('failover', 'concurrent-probe-1');
+  const second = app.request('failover', 'concurrent-probe-2');
+  for (let attempt = 0; attempt < 20 && probeCalls === 0; attempt += 1) await new Promise((resolve) => setTimeout(resolve, 5));
+  assert.equal(probeCalls, 1);
+  releaseProbe();
+  const responses = await Promise.all([first, second]);
+  assert.deepEqual(await Promise.all(responses.map((response) => response.json().then((body) => body.choices[0].message.content))), ['primary-recovered', 'primary-recovered']);
+  assert.equal(probeCalls, 1);
+  assert.equal(primaryRequests, 5);
 });
