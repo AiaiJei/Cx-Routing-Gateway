@@ -330,3 +330,17 @@
 - 2026-11-20 用户授权提交合并 PR #8、同步主工作树并移除历史任务工作树。合并前重新运行 Desktop 88/88、Runtime 75/75 通过。
 - 六个 linked task worktree 纳入清理；先保留历史分支、未提交修改、构建成果和本地证据，再移除目录。未合并的 PR #1 只归档工作树，不合并/关闭 PR。
 - 当前 Desktop 包迁至主工作树 `apps/desktop/release/pr8-1.0.3/` 后运行；清理结果及可恢复档案放在 `.worktree/archives/2026-11-20-pr8-integration/`。用户数据、现有归档和其他仓库内容保留。
+
+## 2026-11-22 上游服务编辑与故障切换稳定性
+
+- 任务 ID：`CXRG-UPSTREAM-EDIT-FAILOVER-2026-11-22`；项目/仓库：Cx-Routing Gateway / `AiaiJei/Cx-Routing-Gateway`。
+- 用户选择预填弹窗并授权“执行”；用户澄清故障现象为优先级 1 正常时仍会突然尝试优先级 2。保持三次失败阈值等策略不变，修复并发结果竞态。
+- 独立 worktree `.worktree/upstream-service-edit`，分支 `codex/upstream-service-edit`，基于 `master` `75716847b8e308f53ae0a3284f74241373ea2aa4`。初始范围止于创建 PR；后续授权修订见本节末尾。
+- 已实现上游预填编辑弹窗、现有鉴权 PATCH 的 IPC/WorkspaceClient 接线、空 Key 保留凭证、凭证轮换失败保护、Base URL 编辑时继承私网信任，以及 Gateway 成功恢复断路器和路由相关配置签名刷新。
+- 独立审查发现 DNS 延迟期间并发换钥可能被旧记录覆盖，已改为在串行存储更新中合并最新上游，并按实际替换的凭证引用清理；同时拒绝空 Base URL，并在撤销私网信任时重新验证当前目标。
+- 新鲜 Runtime 146/146、Desktop 158/158、Desktop TypeScript/Vite build 通过；Electron 语法、任务合同 JSON 和 `git diff --check` 通过。迟到成功与延迟编辑并发换钥两个回归用例均定向连续 5 次通过；详细结果见 [任务记录](tasks/2026-11-22-upstream-edit-failover.md) 与 [验证证据](tasks/evidence/upstream-service-edit-failover/verification.md)。
+- 测试夹具曾因按服务端到达顺序释放响应、却按客户端创建顺序等待而出现时序超时；为并发请求增加唯一标记后，定向 5/5 与完整运行时套件均通过。
+- 独立复审 `PASS`：审查范围 `75716847..f7041b9`，此前问题均已修复，无 Critical/Important/Minor findings；审查者未重跑测试。已创建面向 `master` 的 [PR #18](https://github.com/AiaiJei/Cx-Routing-Gateway/pull/18)，当前 OPEN。
+- 2026-11-22 用户追加授权：合并 PR #18、快进同步主工作树、移除仅本任务 worktree、从当前最新稳定版 1.1.4 升级到 GitHub Release v1.1.5，并发布经校验的 Windows x64 安装包、便携包、blockmap 与 manifest；将新 Portable 1.1.5 复制到 Desktop 并 smoke 验证。保留任务分支和现有 1.1.4 release/桌面文件。
+- 本地预览视觉检查 `NOT_RUN`：Computer Use URL 安全校验未能授权读取浏览器页面。真实 provider 调用 `NOT_RUN`。
+- 合同、设计和计划分别见 `docs/tasks/2026-11-22-upstream-edit-failover-contract.json`、`docs/superpowers/specs/2026-11-22-upstream-service-edit-failover-stability-design.md` 与两份对应实施计划。回退仅撤销本任务 PR 提交；不包含合并、发布或 worktree/分支清理授权。

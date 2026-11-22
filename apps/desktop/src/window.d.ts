@@ -16,6 +16,7 @@ declare global {
       permanentlyDeleteClientKey: (id: string) => Promise<{ id: string; deleted: true }>;
       clearRequestLogs: () => Promise<{ deleted: true; removedCount: number }>;
       createUpstream: (input: { name: string; baseUrl: string; apiKey?: string; allowPrivateNetwork?: boolean }) => Promise<unknown>;
+      updateUpstream: (id: string, input: import("./domain/types").UpstreamUpdateInput) => Promise<unknown>;
       deleteUpstream: (id: string) => Promise<{ id: string; deleted: true } | { deleted: false; error: string; routes: Array<{ id: string; alias: string; inboundProtocol: string }> }>;
       saveModelRoutes: (selection: import("./domain/types").ModelRouteSelection) => Promise<unknown>;
       createRoute: (input: { alias: string; inboundProtocol: string; outboundProtocol: string; upstreamId: string; modelId: string }) => Promise<unknown>;

@@ -44,6 +44,60 @@ async function createTimeoutFixture(t, upstream, gatewayOptions = {}) {
   };
 }
 
+function replyFailoverResponse(res, status, content) {
+  res.writeHead(status, { 'content-type': 'application/json' });
+  res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content } }] }));
+}
+
+async function createFailoverFixture(t, { primaryHandler, backupHandler, extraRoutes = [] } = {}) {
+  const primary = primaryHandler instanceof http.Server ? primaryHandler : http.createServer(primaryHandler ?? ((_req, res) => replyFailoverResponse(res, 200, 'primary')));
+  const backup = backupHandler instanceof http.Server ? backupHandler : http.createServer(backupHandler ?? ((_req, res) => replyFailoverResponse(res, 200, 'backup')));
+  const primaryPort = await listen(primary);
+  const backupPort = await listen(backup);
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-failover-health-'));
+  const store = new ConfigStore(path.join(dir, 'config.json'));
+  const vault = new SecretVault(path.join(dir, 'secrets.json'), 'test-master-key');
+  const clientKey = `cxrg_${crypto.randomBytes(18).toString('base64url')}`;
+  const keyHash = crypto.createHash('sha256').update(clientKey).digest('hex');
+  const targets = [{ upstreamId: 'primary', modelId: 'primary-model' }, { upstreamId: 'backup', modelId: 'backup-model' }];
+  const failover = { failureThreshold: 3, statusClasses: [5], cooldownSeconds: 60 };
+  await store.update((config) => ({
+    ...config,
+    upstreams: [
+      { id: 'primary', name: 'Primary', baseUrl: `http://127.0.0.1:${primaryPort}`, protocol: 'Chat', trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'], enabled: true },
+      { id: 'backup', name: 'Backup', baseUrl: `http://127.0.0.1:${backupPort}`, protocol: 'Chat', trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'], enabled: true },
+    ],
+    routes: [
+      { id: 'failover-route', alias: 'failover', inboundProtocol: 'Chat', outboundProtocol: 'Chat', targets, failover, enabled: true },
+      ...extraRoutes,
+    ],
+    clientKeys: [{ id: 'failover-key', keyHash, scope: [], createdAt: new Date().toISOString(), enabled: true, name: 'failover' }],
+  }));
+  const gateway = createGatewayServer({ store, vault });
+  const gatewayPort = await listen(gateway);
+  t.after(() => {
+    gateway.closeAllConnections();
+    gateway.close();
+    primary.closeAllConnections();
+    primary.close();
+    backup.closeAllConnections();
+    backup.close();
+  });
+  return {
+    store,
+    gateway,
+    primaryPort,
+    request(alias = 'failover', content = 'hello') {
+      return fetch(`http://127.0.0.1:${gatewayPort}/v1/chat/completions`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${clientKey}` },
+        body: JSON.stringify({ model: alias, messages: [{ role: 'user', content }] }),
+        signal: AbortSignal.timeout(15000),
+      });
+    },
+  };
+}
+
 test('gateway authenticates and forwards Chat requests through a configured route', async (t) => {
   const upstream = http.createServer(async (req, res) => {
     assert.match(req.headers['x-request-id'], /^[0-9a-f-]{36}$/);
@@ -971,4 +1025,170 @@ test('gateway cancels the active upstream request when its client disconnects', 
   assert.equal(upstreamCalls, 2);
   const state = await store.read();
   assert.deepEqual(state.usage.map(entry => entry.status), ['failed', 'completed']);
+});
+
+test('gateway restores primary priority when a primary success arrives after concurrent failures open its circuit', async (t) => {
+  let resolveFourPrimaryRequests;
+  const fourPrimaryRequests = new Promise((resolve) => { resolveFourPrimaryRequests = resolve; });
+  const responders = new Map();
+  let primaryCalls = 0;
+  let backupCalls = 0;
+  const primary = http.createServer(async (req, res) => {
+    let body = '';
+    for await (const chunk of req) body += chunk;
+    const requestBody = JSON.parse(body);
+    const content = requestBody.messages[0].content;
+    primaryCalls += 1;
+    const concurrentIndex = Number(content.replace('concurrent-', ''));
+    if (Number.isInteger(concurrentIndex) && concurrentIndex >= 0 && concurrentIndex < 4) {
+      responders.set(concurrentIndex, (status) => replyFailoverResponse(res, status, `primary-${concurrentIndex + 1}`));
+      if (responders.size === 4) resolveFourPrimaryRequests();
+      return;
+    }
+    replyFailoverResponse(res, 200, `primary-${primaryCalls}`);
+  });
+  const backup = http.createServer(async (req, res) => {
+    for await (const _chunk of req) { /* consume request body */ }
+    backupCalls += 1;
+    replyFailoverResponse(res, 200, `backup-${backupCalls}`);
+  });
+  const app = await createFailoverFixture(t, { primaryHandler: primary, backupHandler: backup });
+  const inFlight = Array.from({ length: 4 }, (_, index) => app.request('failover', `concurrent-${index}`));
+  void Promise.allSettled(inFlight);
+  await fourPrimaryRequests;
+
+  for (let index = 0; index < 3; index += 1) responders.get(index)(502);
+  const failures = await Promise.all(inFlight.slice(0, 3));
+  for (const response of failures) {
+    assert.equal(response.status, 502);
+    await response.arrayBuffer();
+  }
+
+  responders.get(3)(200);
+  const lateSuccess = await inFlight[3];
+  assert.equal(lateSuccess.status, 200);
+  assert.equal((await lateSuccess.json()).choices[0].message.content, 'primary-4');
+
+  const next = await app.request();
+  assert.equal(next.status, 200);
+  assert.equal((await next.json()).choices[0].message.content, 'primary-5');
+  assert.equal(primaryCalls, 5);
+  assert.equal(backupCalls, 0);
+});
+
+test('gateway ignores an older failure that completes after a newer primary success', async (t) => {
+  let resolveFirstPrimaryRequest;
+  const firstPrimaryRequest = new Promise((resolve) => { resolveFirstPrimaryRequest = resolve; });
+  let respondFirst;
+  let primaryCalls = 0;
+  let backupCalls = 0;
+  const primary = http.createServer(async (req, res) => {
+    for await (const _chunk of req) { /* consume request body */ }
+    primaryCalls += 1;
+    if (primaryCalls === 1) {
+      respondFirst = (status) => replyFailoverResponse(res, status, 'primary-1');
+      resolveFirstPrimaryRequest();
+    } else if ([2, 3, 5, 6].includes(primaryCalls)) replyFailoverResponse(res, 502, `primary-${primaryCalls}`);
+    else replyFailoverResponse(res, 200, `primary-${primaryCalls}`);
+  });
+  const backup = http.createServer(async (req, res) => {
+    for await (const _chunk of req) { /* consume request body */ }
+    backupCalls += 1;
+    replyFailoverResponse(res, 200, `backup-${backupCalls}`);
+  });
+  const app = await createFailoverFixture(t, { primaryHandler: primary, backupHandler: backup });
+
+  const staleFailure = app.request();
+  await firstPrimaryRequest;
+  for (const response of await Promise.all([app.request(), app.request()])) {
+    assert.equal(response.status, 502);
+    await response.arrayBuffer();
+  }
+  const recovery = await app.request();
+  assert.equal(recovery.status, 200);
+  assert.equal((await recovery.json()).choices[0].message.content, 'primary-4');
+
+  respondFirst(502);
+  assert.equal((await staleFailure).status, 502);
+  for (const response of await Promise.all([app.request(), app.request()])) {
+    assert.equal(response.status, 502);
+    await response.arrayBuffer();
+  }
+  const stillPrimary = await app.request();
+  assert.equal(stillPrimary.status, 200);
+  assert.equal((await stillPrimary.json()).choices[0].message.content, 'primary-7');
+  assert.equal(primaryCalls, 7);
+  assert.equal(backupCalls, 0);
+});
+
+test('gateway keeps circuit health isolated by route and target', async (t) => {
+  let primaryCalls = 0;
+  let backupCalls = 0;
+  const primary = http.createServer(async (_req, res) => {
+    primaryCalls += 1;
+    replyFailoverResponse(res, primaryCalls <= 3 ? 502 : 200, `primary-${primaryCalls}`);
+  });
+  const backup = http.createServer(async (_req, res) => {
+    backupCalls += 1;
+    replyFailoverResponse(res, 200, `backup-${backupCalls}`);
+  });
+  const app = await createFailoverFixture(t, {
+    primaryHandler: primary,
+    backupHandler: backup,
+    extraRoutes: [{ id: 'second-route', alias: 'second-route', inboundProtocol: 'Chat', outboundProtocol: 'Chat', targets: [{ upstreamId: 'primary', modelId: 'primary-model' }, { upstreamId: 'backup', modelId: 'backup-model' }], failover: { failureThreshold: 3, statusClasses: [5], cooldownSeconds: 60 }, enabled: true }],
+  });
+
+  for (let index = 0; index < 3; index += 1) {
+    const failed = await app.request();
+    assert.equal(failed.status, 502);
+    await failed.arrayBuffer();
+  }
+  const backupSuccess = await app.request();
+  assert.equal((await backupSuccess.json()).choices[0].message.content, 'backup-1');
+  const backupStillSelected = await app.request();
+  assert.equal((await backupStillSelected.json()).choices[0].message.content, 'backup-2');
+
+  const otherRoute = await app.request('second-route');
+  assert.equal((await otherRoute.json()).choices[0].message.content, 'primary-4');
+  assert.equal(primaryCalls, 4);
+  assert.equal(backupCalls, 2);
+});
+
+test('gateway resets target health for routing changes but not display-name changes', async (t) => {
+  let primaryCalls = 0;
+  let backupCalls = 0;
+  let replacementCalls = 0;
+  const primary = http.createServer(async (_req, res) => {
+    primaryCalls += 1;
+    replyFailoverResponse(res, 502, `old-primary-${primaryCalls}`);
+  });
+  const backup = http.createServer(async (_req, res) => {
+    backupCalls += 1;
+    replyFailoverResponse(res, 200, `backup-${backupCalls}`);
+  });
+  const replacement = http.createServer(async (_req, res) => {
+    replacementCalls += 1;
+    replyFailoverResponse(res, 200, `replacement-${replacementCalls}`);
+  });
+  const app = await createFailoverFixture(t, { primaryHandler: primary, backupHandler: backup });
+  const replacementPort = await listen(replacement);
+  t.after(() => { replacement.closeAllConnections(); replacement.close(); });
+
+  for (let index = 0; index < 3; index += 1) {
+    const failed = await app.request();
+    assert.equal(failed.status, 502);
+    await failed.arrayBuffer();
+  }
+  assert.equal((await (await app.request()).json()).choices[0].message.content, 'backup-1');
+
+  await app.store.update((config) => ({ ...config, upstreams: config.upstreams.map((item) => item.id === 'primary' ? { ...item, name: 'Renamed primary' } : item) }));
+  assert.equal((await (await app.request()).json()).choices[0].message.content, 'backup-2');
+  assert.equal(primaryCalls, 3);
+
+  await app.store.update((config) => ({ ...config, upstreams: config.upstreams.map((item) => item.id === 'primary' ? { ...item, baseUrl: `http://127.0.0.1:${replacementPort}` } : item) }));
+  const updatedPrimary = await app.request();
+  assert.equal((await updatedPrimary.json()).choices[0].message.content, 'replacement-1');
+  assert.equal(primaryCalls, 3);
+  assert.equal(replacementCalls, 1);
+  assert.equal(backupCalls, 2);
 });

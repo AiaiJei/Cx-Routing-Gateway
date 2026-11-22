@@ -8,6 +8,7 @@ const { isTrustedDocumentUrl } = require("./security.cjs");
 const { createGitHubTokenStore } = require("./github-token-store.cjs");
 const { createGitHubTokenService } = require("./github-token-service.cjs");
 const { registerGitHubUpdateIpc } = require("./github-update-ipc.cjs");
+const { registerUpstreamEditIpc } = require("./upstream-edit-ipc.cjs");
 const { cxrgProductVersion } = require("../package.json");
 const { installTrayLifecycle, registerActivateHandler, registerSecondInstanceHandler } = require("./tray-lifecycle.cjs");
 
@@ -193,6 +194,13 @@ ipcMain.handle("runtime:create-upstream", async (event, input) => {
   const response = await fetch(`http://127.0.0.1:${controlPort}/v1/control/upstreams`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${runtime?.controlToken || ""}` }, body: JSON.stringify({ name: input.name.trim().slice(0, 80), baseUrl: input.baseUrl.trim(), apiKey: typeof input.apiKey === "string" ? input.apiKey : undefined, allowPrivateNetwork: input.allowPrivateNetwork === true }) });
   if (!response.ok) throw new Error(`Upstream creation returned ${response.status}`);
   return response.json();
+});
+
+registerUpstreamEditIpc({
+  ipcMain,
+  isTrustedSender: trustedSender,
+  getControlPort: () => controlPort,
+  getControlToken: () => runtime?.controlToken || "",
 });
 
 ipcMain.handle("runtime:delete-upstream", async (event, id) => {
