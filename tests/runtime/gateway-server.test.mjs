@@ -80,15 +80,20 @@ async function createFailoverFixture(t, { primaryHandler, backupHandler, extraRo
   t.after(() => {
     gateway.closeAllConnections();
     gateway.close();
-    primary.closeAllConnections();
-    primary.close();
+    if (primary.listening) {
+      primary.closeAllConnections();
+      primary.close();
+    }
     backup.closeAllConnections();
     backup.close();
   });
   return {
     store,
     gateway,
+    primary,
     primaryPort,
+    vault,
+    primaryCredentialRef,
     request(alias = 'failover', content = 'hello') {
       return fetch(`http://127.0.0.1:${gatewayPort}/v1/chat/completions`, {
         method: 'POST',
@@ -1284,16 +1289,15 @@ test('gateway resets target health for routing changes but not display-name chan
   assert.equal(backupCalls, 2);
 });
 
-test('gateway keeps using backup after cooldown until a preferred health probe succeeds', async (t) => {
+test('gateway stays on backup after the preferred TCP probe fails without reading its credential', async (t) => {
   let currentTime = 1_000_000;
-  let probeCalls = 0;
+  let modelProbeRequests = 0;
   let primaryRequests = 0;
   const primary = http.createServer(async (req, res) => {
     for await (const _chunk of req) { /* consume request body */ }
     if (req.url === '/v1/models') {
-      probeCalls += 1;
-      res.writeHead(503, { 'content-type': 'application/json' });
-      return res.end('{}');
+      modelProbeRequests += 1;
+      return replyFailoverResponse(res, 200, 'unexpected-model-probe');
     }
     primaryRequests += 1;
     replyFailoverResponse(res, 502, 'primary-failed');
@@ -1308,30 +1312,37 @@ test('gateway keeps using backup after cooldown until a preferred health probe s
     primaryCredential: 'preferred-secret',
     gatewayOptions: { now: () => currentTime, upstreamHealthProbeTimeoutMs: 100 },
   });
+  const originalGet = app.vault.get.bind(app.vault);
+  let primaryCredentialReads = 0;
+  app.vault.get = async (credentialRef) => {
+    if (credentialRef === app.primaryCredentialRef) primaryCredentialReads += 1;
+    return originalGet(credentialRef);
+  };
   for (let index = 0; index < 3; index += 1) {
     const response = await app.request();
     assert.equal(response.status, 502);
     await response.arrayBuffer();
   }
   assert.equal((await (await app.request()).json()).choices[0].message.content, 'backup');
+  await new Promise((resolve, reject) => app.primary.close((error) => error ? reject(error) : resolve()));
   currentTime += 61_000;
   const held = await app.request();
   assert.equal(held.status, 200);
   assert.equal((await held.json()).choices[0].message.content, 'backup');
-  assert.equal(probeCalls, 1);
+  assert.equal(primaryCredentialReads, 3);
+  assert.equal(modelProbeRequests, 0);
   assert.equal(primaryRequests, 3);
 });
 
-test('gateway requires an authenticated preferred health probe before failback and shares it', async (t) => {
+test('gateway fails back after TCP connectivity without sending an HTTP health request', async (t) => {
   let currentTime = 2_000_000;
-  let probeCalls = 0;
+  let modelProbeRequests = 0;
   let primaryRequests = 0;
   const primary = http.createServer(async (req, res) => {
     for await (const _chunk of req) { /* consume request body */ }
     if (req.url === '/v1/models') {
-      probeCalls += 1;
-      assert.equal(req.headers.authorization, 'Bearer preferred-secret');
-      return replyFailoverResponse(res, 200, 'probe-ok');
+      modelProbeRequests += 1;
+      return replyFailoverResponse(res, 503, 'API health endpoint unavailable');
     }
     primaryRequests += 1;
     replyFailoverResponse(res, primaryRequests <= 3 ? 502 : 200, primaryRequests <= 3 ? 'primary-failed' : 'primary-recovered');
@@ -1346,6 +1357,12 @@ test('gateway requires an authenticated preferred health probe before failback a
     primaryCredential: 'preferred-secret',
     gatewayOptions: { now: () => currentTime, upstreamHealthProbeTimeoutMs: 100 },
   });
+  const originalGet = app.vault.get.bind(app.vault);
+  let primaryCredentialReads = 0;
+  app.vault.get = async (credentialRef) => {
+    if (credentialRef === app.primaryCredentialRef) primaryCredentialReads += 1;
+    return originalGet(credentialRef);
+  };
   for (let index = 0; index < 3; index += 1) {
     const response = await app.request();
     assert.equal(response.status, 502);
@@ -1356,21 +1373,22 @@ test('gateway requires an authenticated preferred health probe before failback a
   const recovered = await app.request();
   assert.equal(recovered.status, 200);
   assert.equal((await recovered.json()).choices[0].message.content, 'primary-recovered');
-  assert.equal(probeCalls, 1);
+  assert.equal(modelProbeRequests, 0);
+  assert.equal(primaryCredentialReads, 4);
   assert.equal(primaryRequests, 4);
 });
 
-test('gateway shares one in-flight preferred probe across concurrent post-cooldown requests', async (t) => {
+test('gateway shares one in-flight transport check across concurrent post-cooldown requests', async (t) => {
   let currentTime = 3_000_000;
   let releaseProbe;
   const probeGate = new Promise((resolve) => { releaseProbe = resolve; });
-  let probeCalls = 0;
+  let connectivityChecks = 0;
+  let modelProbeRequests = 0;
   let primaryRequests = 0;
   const primary = http.createServer(async (req, res) => {
     for await (const _chunk of req) { /* consume request body */ }
     if (req.url === '/v1/models') {
-      probeCalls += 1;
-      await probeGate;
+      modelProbeRequests += 1;
       return replyFailoverResponse(res, 200, 'probe-ok');
     }
     primaryRequests += 1;
@@ -1384,7 +1402,19 @@ test('gateway shares one in-flight preferred probe across concurrent post-cooldo
     primaryHandler: primary,
     backupHandler: backup,
     primaryCredential: 'preferred-secret',
-    gatewayOptions: { now: () => currentTime, upstreamHealthProbeTimeoutMs: 1000 },
+    gatewayOptions: {
+      now: () => currentTime,
+      upstreamHealthProbeTimeoutMs: 1000,
+      connectivityCheck: async (baseUrl, addresses, timeoutMs, signal) => {
+        connectivityChecks += 1;
+        assert.equal(new URL(baseUrl).hostname, '127.0.0.1');
+        assert.deepEqual(addresses, ['127.0.0.1']);
+        assert.equal(timeoutMs, 1000);
+        assert.equal(signal instanceof AbortSignal, true);
+        await probeGate;
+        return true;
+      },
+    },
   });
   for (let index = 0; index < 3; index += 1) {
     const response = await app.request();
@@ -1394,13 +1424,61 @@ test('gateway shares one in-flight preferred probe across concurrent post-cooldo
   currentTime += 61_000;
   const first = app.request('failover', 'concurrent-probe-1');
   const second = app.request('failover', 'concurrent-probe-2');
-  for (let attempt = 0; attempt < 20 && probeCalls === 0; attempt += 1) await new Promise((resolve) => setTimeout(resolve, 5));
-  assert.equal(probeCalls, 1);
+  for (let attempt = 0; attempt < 20 && connectivityChecks === 0; attempt += 1) await new Promise((resolve) => setTimeout(resolve, 5));
+  const checksBeforeRelease = connectivityChecks;
   releaseProbe();
   const responses = await Promise.all([first, second]);
   assert.deepEqual(await Promise.all(responses.map((response) => response.json().then((body) => body.choices[0].message.content))), ['primary-recovered', 'primary-recovered']);
-  assert.equal(probeCalls, 1);
+  assert.equal(checksBeforeRelease, 1);
+  assert.equal(connectivityChecks, 1);
+  assert.equal(modelProbeRequests, 0);
   assert.equal(primaryRequests, 5);
+});
+
+test('gateway bounds a stalled post-cooldown transport check and stays on backup', async (t) => {
+  let currentTime = 4_000_000;
+  let connectivityChecks = 0;
+  let modelProbeRequests = 0;
+  let primaryRequests = 0;
+  const primary = http.createServer(async (req, res) => {
+    for await (const _chunk of req) { /* consume request body */ }
+    if (req.url === '/v1/models') {
+      modelProbeRequests += 1;
+      return replyFailoverResponse(res, 200, 'unexpected-model-probe');
+    }
+    primaryRequests += 1;
+    replyFailoverResponse(res, primaryRequests <= 3 ? 502 : 200, primaryRequests <= 3 ? 'primary-failed' : 'primary-recovered');
+  });
+  const backup = http.createServer(async (req, res) => {
+    for await (const _chunk of req) { /* consume request body */ }
+    replyFailoverResponse(res, 200, 'backup');
+  });
+  const app = await createFailoverFixture(t, {
+    primaryHandler: primary,
+    backupHandler: backup,
+    gatewayOptions: {
+      now: () => currentTime,
+      upstreamHealthProbeTimeoutMs: 40,
+      connectivityCheck: () => {
+        connectivityChecks += 1;
+        return new Promise(() => {});
+      },
+    },
+  });
+  for (let index = 0; index < 3; index += 1) {
+    const response = await app.request();
+    assert.equal(response.status, 502);
+    await response.arrayBuffer();
+  }
+  currentTime += 61_000;
+  const startedAt = Date.now();
+  const response = await app.request();
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).choices[0].message.content, 'backup');
+  assert.equal(connectivityChecks, 1);
+  assert.ok(Date.now() - startedAt < 1000);
+  assert.equal(modelProbeRequests, 0);
+  assert.equal(primaryRequests, 3);
 });
 
 test('gateway normalizes a reset upstream response into a readable sanitized error', async (t) => {

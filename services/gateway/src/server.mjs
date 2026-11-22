@@ -1,6 +1,7 @@
 import { createRequestMetrics } from './request-metrics.mjs';
 import http from 'node:http';
 import https from 'node:https';
+import tls from 'node:tls';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -163,6 +164,67 @@ async function fetchWithTimeout(url, options, addresses, headerTimeoutMs, reques
   });
 }
 
+function raceWithAbort(work, signal) {
+  if (signal.aborted) return Promise.reject(new Error('Connectivity probe timed out'));
+  let onAbort;
+  const aborted = new Promise((_, reject) => {
+    onAbort = () => reject(new Error('Connectivity probe timed out'));
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
+  return Promise.race([work, aborted]).finally(() => signal.removeEventListener('abort', onAbort));
+}
+
+function connectAddress(target, address, port, timeoutMs, signal) {
+  return new Promise((resolve) => {
+    let socket;
+    let settled = false;
+    let timer;
+    const finish = (connected) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      signal.removeEventListener('abort', onAbort);
+      socket?.destroy();
+      resolve(connected);
+    };
+    const onAbort = () => finish(false);
+    if (signal.aborted) return finish(false);
+    signal.addEventListener('abort', onAbort, { once: true });
+    timer = setTimeout(() => finish(false), Math.max(1, timeoutMs));
+    try {
+      if (target.protocol === 'https:') {
+        const hostname = target.hostname.replace(/^\[(.*)\]$/, '$1');
+        const options = { host: address, port, rejectUnauthorized: true };
+        if (!net.isIP(hostname)) options.servername = hostname;
+        socket = tls.connect(options);
+      } else {
+        socket = net.createConnection({ host: address, port });
+      }
+    } catch {
+      finish(false);
+      return;
+    }
+    socket.once(target.protocol === 'https:' ? 'secureConnect' : 'connect', () => finish(true));
+    socket.once('error', () => finish(false));
+    socket.once('close', () => finish(false));
+  });
+}
+
+async function checkTransportConnectivity(baseUrl, addresses, timeoutMs, signal, monotonicNow) {
+  const target = new URL(baseUrl);
+  if (!['http:', 'https:'].includes(target.protocol) || !Array.isArray(addresses) || !addresses.length) return false;
+  const port = Number(target.port || (target.protocol === 'https:' ? 443 : 80));
+  const deadline = monotonicNow() + timeoutMs;
+  for (const address of addresses) {
+    const remaining = deadline - monotonicNow();
+    if (remaining <= 0 || signal.aborted) return false;
+    if (!net.isIP(address)) continue;
+    // Connect to the validated IP; use the URL hostname only for TLS identity.
+    if (await connectAddress(target, address, port, remaining, signal)) return true;
+  }
+  return false;
+}
+
 async function readJson(response, deadline, monotonicNow, maxBytes = 4 * 1024 * 1024) {
   let size = 0; let data = '';
   const reader = response.body.getReader();
@@ -238,7 +300,7 @@ async function appendUsage(store, record) {
   } catch {}
 }
 
-export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, maxConcurrentRequests = 32, upstreamHeaderTimeoutMs = 300_000, upstreamHealthProbeTimeoutMs = 5000, maxRequestDurationMs = 600_000, routeTestTimeoutMs = 610_000, dnsLookup = dns.lookup, now = Date.now, monotonicNow = () => performance.now() } = {}) {
+export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, maxConcurrentRequests = 32, upstreamHeaderTimeoutMs = 300_000, upstreamHealthProbeTimeoutMs = 5000, maxRequestDurationMs = 600_000, routeTestTimeoutMs = 610_000, dnsLookup = dns.lookup, connectivityCheck = checkTransportConnectivity, now = Date.now, monotonicNow = () => performance.now() } = {}) {
   if (!store || !vault) throw new Error('Gateway server requires store and vault');
   const rateBuckets = new Map();
   const healthByRoute = new Map();
@@ -256,15 +318,9 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
       timer = setTimeout(() => controller.abort(), upstreamHealthProbeTimeoutMs);
       let healthy = false;
       try {
-        const addresses = await validateDestination(item.upstream.baseUrl, item.upstream.trustedPrivateNetwork === true, item.upstream.approvedAddresses || [], dnsLookup);
+        const addresses = await raceWithAbort(validateDestination(item.upstream.baseUrl, item.upstream.trustedPrivateNetwork === true, item.upstream.approvedAddresses || [], dnsLookup), controller.signal);
         if (controller.signal.aborted) return false;
-        const headers = {};
-        const secret = item.upstream.credentialRef ? await vault.get(item.upstream.credentialRef) : undefined;
-        if (secret) headers[item.upstream.protocol === 'Mes' ? 'x-api-key' : 'authorization'] = item.upstream.protocol === 'Mes' ? secret : `Bearer ${secret}`;
-        if (item.upstream.protocol === 'Mes') headers['anthropic-version'] = '2026-10-21';
-        const response = await fetchWithTimeout(upstreamUrl(item.upstream.baseUrl, '/v1/models'), { method: 'GET', headers }, addresses, upstreamHealthProbeTimeoutMs, deadline, controller.signal, () => controller.abort(), monotonicNow);
-        healthy = response.status >= 200 && response.status < 300;
-        await response.body?.cancel().catch(() => {});
+        healthy = await raceWithAbort(connectivityCheck(item.upstream.baseUrl, addresses, upstreamHealthProbeTimeoutMs, controller.signal, monotonicNow), controller.signal);
       } catch {
         healthy = false;
       } finally {

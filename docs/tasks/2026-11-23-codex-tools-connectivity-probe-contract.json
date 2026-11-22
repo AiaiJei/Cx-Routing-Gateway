@@ -78,7 +78,8 @@
     "repo_mcp": "UNAVAILABLE: no .codex/repo-map.json or registered workspace_id; live source inspection used",
     "task1_adapter": "PASS: 18/18; namespace/function/custom, Chat/Messages tool choice, history and streaming",
     "task1_gateway": "PASS: 7/7 focused protocol integration tests",
-    "implementation": "IN_PROGRESS: Task 1 complete; Task 2 pending",
+    "task2_probe": "PASS: 4/4 focused failback tests; refused TCP, HTTP-free recovery, deduplication, and timeout",
+    "implementation": "IN_PROGRESS: Tasks 1 and 2 complete; Task 3 full verification/review/evidence pending",
     "independent_review": "PENDING",
     "pull_request": "PENDING"
   },

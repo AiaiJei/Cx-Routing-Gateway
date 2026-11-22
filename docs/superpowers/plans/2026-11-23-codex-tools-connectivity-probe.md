@@ -61,12 +61,12 @@
 - HTTP upstreams use TCP connect; HTTPS upstreams use a TLS handshake with the original hostname for SNI and certificate validation.
 - The probe takes no credential and sends no HTTP request; a narrow injected connectivity function is permitted for deterministic timeout/deduplication tests.
 
-- [ ] Replace the existing /v1/models-based success test with a failing assertion that a successful post-cooldown probe does not create an HTTP request or credential lookup.
-- [ ] Add failing tests for TCP failure keeping the backup selected and concurrent calls sharing one probe.
-- [ ] Run the focused probe tests and confirm the old authenticated HTTP probe violates the expected boundary.
-- [ ] Implement bounded TCP/TLS connectivity checks over approved addresses, retaining DNS validation, abort/timeout handling, and deduplication.
-- [ ] Run all focused probe tests; verify failed connectivity stays on backup and successful connectivity restores preferred priority.
-- [ ] Commit the verified transport-probe change as the Task 2 commit.
+- [x] Replace the existing /v1/models-based success test with a failing assertion that a successful post-cooldown probe does not create an HTTP request or credential lookup.
+- [x] Add failing tests for TCP failure keeping the backup selected and concurrent calls sharing one probe.
+- [x] Run the focused probe tests and confirm the old authenticated HTTP probe violates the expected boundary.
+- [x] Implement bounded TCP/TLS connectivity checks over approved addresses, retaining DNS validation, abort/timeout handling, and deduplication.
+- [x] Run all focused probe tests; verify failed connectivity stays on backup and successful connectivity restores preferred priority.
+- [x] Commit the verified transport-probe change as the Task 2 commit.
 
 ### Task 3: Verify, Review, and Open the Dedicated PR
 
