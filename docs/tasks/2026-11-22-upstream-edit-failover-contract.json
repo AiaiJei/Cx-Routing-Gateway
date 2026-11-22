@@ -4,8 +4,8 @@
   "title": "Edit existing upstreams and stabilize failover recovery",
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
-  "status": "active",
-  "stage": "cleanup",
+  "status": "complete",
+  "stage": "complete",
   "base": "master",
   "base_sha": "75716847b8e308f53ae0a3284f74241373ea2aa4",
   "branch": "codex/upstream-service-edit",
@@ -105,7 +105,7 @@
     "only the clean upstream-service-edit task worktree is removed after all results and evidence are recorded; the task branch is retained"
   ],
   "rollback": "Before publishing v1.1.5, preserve v1.1.4 and its Desktop file; if release verification fails, stop before publication and keep the merged worktree available for repair. After publishing v1.1.5, do not rewrite or delete its tag/release; use a corrective patch release. If the newly created Desktop 1.1.5 copy fails hash or isolated smoke, remove only that new copy and preserve Desktop 1.1.4. Retain the task branch.",
-  "owner_acceptance": "pending final user review after authorized release and Desktop delivery; task-worktree removal is still being completed.",
+  "owner_acceptance": "pending final user review; all explicitly authorized execution steps, including release, Desktop delivery, and task-worktree removal, are complete.",
   "verification": {
     "preflight_investigation": "Prior isolated investigation recorded Gateway 34/34 and UpstreamsPage 6/6; concurrent primary failures followed by a held late primary success reproduced backup selection. Rerun baselines and task tests in this worktree before completion.",
     "pre_merge_runtime": "PASS: fresh npm test, 146/146 on task worktree at 4f2b9bb before this documentation-only authorization revision",
@@ -134,7 +134,7 @@
     "release_preflight": "PASS: GitHub v1.1.4 remains latest, v1.1.5 release/tag absent, new Desktop target absent, and existing 1.1.4 Desktop Portable present",
     "github_release": "PASS: published v1.1.5 at https://github.com/AiaiJei/Cx-Routing-Gateway/releases/tag/v1.1.5 on 2026-11-22 11:20:21 UTC; four asset names, sizes, and SHA-256 values match; tag points to 07f213cbe36cbc821ffb7328beaffe3e41057913",
     "desktop_portable_copy": "PASS: copied 115021442-byte Portable to Desktop; source/copy SHA-256 af57be5ab7c4810844b2ce911bc862fc0b4c1d97acdfd2b415a2b2775f21be00 matches; isolated Local Control/Gateway smoke passed; 1.1.4 preserved",
-    "task_worktree_removal": "PENDING: clean status and ancestry verified; remove only .worktree/upstream-service-edit after this evidence commit; retain local and remote branch refs"
+    "task_worktree_removal": "PASS: clean task worktree removed after release evidence was committed; branch head is reachable from master; local and remote codex/upstream-service-edit branches retained; unrelated worktrees preserved"
   },
   "pull_request": {
     "number": 18,

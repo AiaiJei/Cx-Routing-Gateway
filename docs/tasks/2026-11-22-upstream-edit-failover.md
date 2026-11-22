@@ -5,7 +5,7 @@
 - Base: `master` at `75716847b8e308f53ae0a3284f74241373ea2aa4`
 - Branch/worktree: `codex/upstream-service-edit` / `.worktree/upstream-service-edit`
 - Date: 2026-11-22
-- Status: PR #18 merged; GitHub Release v1.1.5 published and Desktop Portable delivered; task-worktree removal remains pending
+- Status: PR #18 merged; GitHub Release v1.1.5 published; Desktop Portable delivered; task worktree removed
 - Contract: `docs/tasks/2026-11-22-upstream-edit-failover-contract.json`
 - Design: `docs/superpowers/specs/2026-11-22-upstream-service-edit-failover-stability-design.md`
 
@@ -41,7 +41,7 @@
 
 - Visual inspection of the local browser preview is `NOT_RUN`: the preview tab opened, then Computer Use stopped because its URL safety verification could not authorize reading the page.
 - Independent review passed. PR #18 Runtime/Desktop CI passed at final head `0df656c` (package job skipped by its workflow condition); PR #18 was merged at `351693e61ee30ea52f590775a4c3d7fdceb27641`. The latest user instruction authorizes v1.1.5 release, Desktop delivery, and removal of only this task worktree. Branch deletion and unrelated worktree changes remain unauthorized.
-- Owner review remains pending after the authorized merge, release, and Desktop delivery; only task-worktree removal remains in execution.
+- All explicitly authorized execution steps are complete. Final user review remains pending.
 
 ## Integration
 
@@ -59,3 +59,4 @@ Detailed command evidence and the diagnosed test-fixture race are recorded in `d
 - GitHub Release v1.1.5 is published at `https://github.com/AiaiJei/Cx-Routing-Gateway/releases/tag/v1.1.5`; the tag points to the 1.1.5 version commit. GitHub asset names, sizes, and hashes were read back and matched the verified files.
 - Portable 1.1.5 is on the Desktop at `C:\Users\20142\Desktop\Cx-Routing Gateway Portable 1.1.5.exe`; its size and hash match the release artifact, and isolated Local Control/Gateway health smoke passed. The 1.1.4 Desktop Portable remains unchanged.
 - Final publication and delivery evidence is recorded in `docs/tasks/2026-11-22-upstream-edit-failover-release.md` and `docs/tasks/evidence/upstream-service-edit-failover/release-1.1.5/verification.md`.
+- After recording and committing release evidence, the clean `.worktree/upstream-service-edit` was removed. The local and remote task branches remain; unrelated worktrees were preserved.
