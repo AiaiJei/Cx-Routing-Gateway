@@ -5,7 +5,7 @@
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
   "status": "active",
-  "stage": "implementation",
+  "stage": "independent-review",
   "base": "master",
   "base_sha": "75716847b8e308f53ae0a3284f74241373ea2aa4",
   "branch": "codex/upstream-service-edit",
@@ -85,7 +85,7 @@
   "owner_acceptance": "pending",
   "verification": {
     "preflight_investigation": "Prior isolated investigation recorded Gateway 34/34 and UpstreamsPage 6/6; concurrent primary failures followed by a held late primary success reproduced backup selection. Rerun baselines and task tests in this worktree before completion.",
-    "runtime": "PASS: npm test, 143/143; focused concurrent late-success regression repeated 5/5",
+    "runtime": "PASS: fresh npm test, 146/146; focused delayed blank-key/concurrent credential-rotation regression repeated 5/5",
     "desktop": "PASS: apps/desktop npm test, 158/158",
     "production_build": "PASS: apps/desktop npm run build (TypeScript and Vite)",
     "independent_review": "PENDING",
@@ -107,6 +107,10 @@
     {
       "date": "2026-11-22",
       "scope": "Register the upstream edit IPC through an injected handler module, matching the repository's GitHub update IPC pattern so sender validation, encoded IDs, token forwarding, and key omission are directly testable."
+    },
+    {
+      "date": "2026-11-22",
+      "scope": "Independent review found a credential-reference race when a Base URL edit was delayed by DNS validation while a concurrent key rotation completed. Merge edits into the latest stored upstream and retire the credential reference actually replaced; also reject empty Base URLs and validate the current destination when private-network trust is revoked."
     }
   ],
   "capability": {

@@ -13,11 +13,11 @@ async function jsonRequest(url, options = {}) {
   return { response, body: await response.json() };
 }
 
-async function controlFixture(t, prefix = 'cxrg-control-actions-') {
+async function controlFixture(t, prefix = 'cxrg-control-actions-', serverOptions = {}) {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
   const store = new ConfigStore(path.join(dir, 'config.json'));
   const vault = new SecretVault(path.join(dir, 'secrets.json'), 'test-master-key');
-  const server = createControlServer({ store, vault, allowUnauthenticated: true });
+  const server = createControlServer({ store, vault, allowUnauthenticated: true, ...serverOptions });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   t.after(() => server.close());
   return { base: `http://127.0.0.1:${server.address().port}`, store, vault };
@@ -187,6 +187,26 @@ test('control API preserves existing private-network trust when an edit omits th
   assert.deepEqual(updated.body.approvedAddresses, ['127.0.0.1']);
 });
 
+test('control API rejects an empty upstream Base URL without changing configuration', async (t) => {
+  const { base, store } = await controlFixture(t, 'cxrg-control-upstream-empty-url-');
+  await store.update((config) => ({ ...config, upstreams: [{ id: 'empty-url', name: 'Configured', baseUrl: 'https://api.example/v1', protocol: 'Chat', enabled: true }] }));
+
+  const updated = await jsonRequest(`${base}/v1/control/upstreams/empty-url`, { method: 'PATCH', body: JSON.stringify({ baseUrl: '' }) });
+  assert.equal(updated.response.status, 400);
+  assert.equal((await store.read()).upstreams[0].baseUrl, 'https://api.example/v1');
+});
+
+test('control API validates the existing destination when private-network trust is revoked', async (t) => {
+  const { base, store } = await controlFixture(t, 'cxrg-control-upstream-revoke-trust-', {
+    dnsLookup: async () => [{ address: '127.0.0.1', family: 4 }],
+  });
+  await store.update((config) => ({ ...config, upstreams: [{ id: 'revoke-trust', name: 'Trusted', baseUrl: 'http://127.0.0.1:4321', protocol: 'Chat', trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'], enabled: true }] }));
+
+  const updated = await jsonRequest(`${base}/v1/control/upstreams/revoke-trust`, { method: 'PATCH', body: JSON.stringify({ allowPrivateNetwork: false }) });
+  assert.equal(updated.response.status, 400);
+  assert.equal((await store.read()).upstreams[0].trustedPrivateNetwork, true);
+});
+
 test('control API keeps the active credential when writing a replacement key fails', async (t) => {
   const { base, store, vault } = await controlFixture(t, 'cxrg-control-upstream-vault-failure-');
   const oldRef = await vault.put('old-upstream-secret');
@@ -244,6 +264,39 @@ test('control API persists a replacement credential before retiring the old one'
   assert.notEqual(activeRef, oldRef);
   assert.equal(await vault.get(activeRef), 'replacement-secret');
   assert.equal(oldCredentialRetiredAfterSwitch, true);
+  assert.equal(await vault.get(oldRef), undefined);
+});
+
+test('control API merges a delayed blank-key edit with a concurrent credential rotation', async (t) => {
+  let markLookupStarted;
+  let releaseLookup;
+  const lookupStarted = new Promise((resolve) => { markLookupStarted = resolve; });
+  const lookupGate = new Promise((resolve) => { releaseLookup = resolve; });
+  const { base, store, vault } = await controlFixture(t, 'cxrg-control-upstream-edit-rotation-race-', {
+    dnsLookup: async (hostname) => {
+      if (hostname === 'delayed.example') {
+        markLookupStarted();
+        await lookupGate;
+      }
+      return [{ address: '8.8.8.8', family: 4 }];
+    },
+  });
+  const oldRef = await vault.put('old-upstream-secret');
+  await store.update((config) => ({ ...config, upstreams: [{ id: 'key-edit', name: 'Key edit', baseUrl: 'https://api.example/v1', protocol: 'Chat', credentialRef: oldRef, enabled: true }] }));
+
+  const delayedEdit = jsonRequest(`${base}/v1/control/upstreams/key-edit`, { method: 'PATCH', body: JSON.stringify({ name: 'Renamed', baseUrl: 'https://delayed.example/v1', apiKey: '' }) });
+  await lookupStarted;
+  const rotation = await jsonRequest(`${base}/v1/control/upstreams/key-edit`, { method: 'PATCH', body: JSON.stringify({ apiKey: 'replacement-secret' }) });
+  assert.equal(rotation.response.status, 200);
+  const replacementRef = rotation.body.credentialRef;
+  assert.equal(await vault.get(replacementRef), 'replacement-secret');
+
+  releaseLookup();
+  const edited = await delayedEdit;
+  assert.equal(edited.response.status, 200);
+  const activeRef = (await store.read()).upstreams[0].credentialRef;
+  assert.equal(activeRef, replacementRef);
+  assert.equal(await vault.get(activeRef), 'replacement-secret');
   assert.equal(await vault.get(oldRef), undefined);
 });
 

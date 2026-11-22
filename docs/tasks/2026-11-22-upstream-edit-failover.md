@@ -5,7 +5,7 @@
 - Base: `master` at `75716847b8e308f53ae0a3284f74241373ea2aa4`
 - Branch/worktree: `codex/upstream-service-edit` / `.worktree/upstream-service-edit`
 - Date: 2026-11-22
-- Status: implementation complete; independent review and dedicated PR creation pending
+- Status: implementation and fresh verification complete; independent review and dedicated PR creation pending
 - Contract: `docs/tasks/2026-11-22-upstream-edit-failover-contract.json`
 - Design: `docs/superpowers/specs/2026-11-22-upstream-service-edit-failover-stability-design.md`
 
@@ -20,10 +20,12 @@
 
 ## Verification
 
-- Runtime: `npm test` from repository root, 143/143 passed.
+- Runtime: `npm test` from repository root, 146/146 passed after review-driven race and input-validation fixes.
 - Desktop: `npm test` from `apps/desktop`, 158/158 passed.
 - Desktop production build: `npm run build`, TypeScript and Vite passed.
 - The concurrent late-success regression passed five consecutive focused runs and passed in the full runtime suite.
+- The delayed blank-key edit/concurrent credential-rotation regression passed five consecutive focused runs; it confirms the active replacement secret remains usable.
+- Independent review exposed a race where delayed DNS validation could overwrite a concurrently rotated key. Updates now merge against the latest stored upstream, remove only the credential reference they actually replaced, reject empty Base URLs, and revalidate the current URL when revoking private-network trust.
 - Electron `main.cjs`, `preload.cjs`, and `upstream-edit-ipc.cjs` passed `node --check`.
 - Contract JSON parsed successfully; `git diff --check` passed.
 - No real third-party provider request was made.

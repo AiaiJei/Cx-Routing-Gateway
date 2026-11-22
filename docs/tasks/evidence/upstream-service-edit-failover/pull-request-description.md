@@ -8,10 +8,11 @@ Fix Gateway recovery when a same-target success arrives after concurrent failure
 
 ## Validation
 
-- Runtime: 143/143 tests passed.
+- Runtime: 146/146 tests passed, including delayed edits racing with credential rotation.
 - Desktop: 158/158 tests passed.
 - Desktop TypeScript/Vite production build passed.
 - Concurrent late-success regression passed five consecutive focused runs.
+- Delayed blank-key edit/concurrent credential-rotation regression passed five consecutive focused runs; the active secret remains usable.
 - Electron syntax checks, contract JSON parse, and `git diff --check` passed.
 - No real provider calls were made.
 

@@ -247,23 +247,48 @@ export function createControlServer({ store, vault, controlToken = process.env.C
         }
         const input = await bodyOf(req);
         if (input.protocol) requireProtocol(input.protocol);
-        const next = { ...current, ...Object.fromEntries(['name', 'baseUrl', 'protocol', 'enabled'].filter((key) => input[key] !== undefined).map((key) => [key, input[key]])) };
-        if (input.protocol) Object.assign(next, profileFor(input.protocol, input));
-        else if (input.providerId !== undefined || input.apiProfile !== undefined) Object.assign(next, profileFor(current.protocol, { providerId: input.providerId ?? current.providerId, apiProfile: input.apiProfile ?? current.apiProfile }));
-        const trustedPrivateNetwork = input.allowPrivateNetwork === undefined ? current.trustedPrivateNetwork === true : input.allowPrivateNetwork === true;
-        if (input.baseUrl) { const destination = await validateBaseUrl(input.baseUrl, trustedPrivateNetwork, dnsLookup); next.baseUrl = input.baseUrl.replace(/\/$/, ''); next.approvedAddresses = destination.addresses; next.trustedPrivateNetwork = trustedPrivateNetwork; }
-        if (input.allowPrivateNetwork !== undefined) next.trustedPrivateNetwork = input.allowPrivateNetwork === true;
+        if (input.baseUrl !== undefined && (typeof input.baseUrl !== 'string' || !input.baseUrl.trim())) throw Object.assign(new Error('Invalid upstream URL'), { statusCode: 400 });
         if (input.apiKey !== undefined && typeof input.apiKey !== 'string') throw Object.assign(new Error('Invalid upstream key'), { statusCode: 400 });
+        const baseUrl = input.baseUrl === undefined ? current.baseUrl : input.baseUrl.trim();
+        const shouldValidateDestination = input.baseUrl !== undefined || input.allowPrivateNetwork !== undefined;
+        const trustedPrivateNetwork = input.allowPrivateNetwork === undefined ? current.trustedPrivateNetwork === true : input.allowPrivateNetwork === true;
+        let destination;
+        if (shouldValidateDestination) {
+          if (typeof baseUrl !== 'string' || !baseUrl.trim()) throw Object.assign(new Error('Invalid upstream URL'), { statusCode: 400 });
+          try { destination = await validateBaseUrl(baseUrl, trustedPrivateNetwork, dnsLookup); }
+          catch (error) { if (!error.statusCode) error.statusCode = 400; throw error; }
+        }
         const replacementCredentialRef = input.apiKey ? await vault.put(input.apiKey) : undefined;
-        if (replacementCredentialRef) next.credentialRef = replacementCredentialRef;
+        let replacedCredentialRef;
+        let updatedUpstream;
         try {
-          await store.update((value) => ({ ...value, upstreams: value.upstreams.map((item) => item.id === id ? next : item) }));
+          await store.update((value) => {
+            const latest = value.upstreams.find((item) => item.id === id);
+            if (!latest) throw Object.assign(new Error('not_found'), { statusCode: 404 });
+            if (shouldValidateDestination && input.baseUrl === undefined && latest.baseUrl !== current.baseUrl) throw Object.assign(new Error('Upstream changed while validating its destination'), { statusCode: 409 });
+            if (input.baseUrl !== undefined && input.allowPrivateNetwork === undefined && (latest.trustedPrivateNetwork === true) !== (current.trustedPrivateNetwork === true)) throw Object.assign(new Error('Upstream trust changed while validating its destination'), { statusCode: 409 });
+            const next = { ...latest, ...Object.fromEntries(['name', 'baseUrl', 'protocol', 'enabled'].filter((key) => input[key] !== undefined).map((key) => [key, input[key]])) };
+            if (input.protocol) Object.assign(next, profileFor(input.protocol, input));
+            else if (input.providerId !== undefined || input.apiProfile !== undefined) Object.assign(next, profileFor(latest.protocol, { providerId: input.providerId ?? latest.providerId, apiProfile: input.apiProfile ?? latest.apiProfile }));
+            if (destination) {
+              next.baseUrl = baseUrl.replace(/\/$/, '');
+              next.approvedAddresses = destination.addresses;
+              next.trustedPrivateNetwork = trustedPrivateNetwork;
+            }
+            if (input.allowPrivateNetwork !== undefined) next.trustedPrivateNetwork = input.allowPrivateNetwork === true;
+            if (replacementCredentialRef) {
+              replacedCredentialRef = latest.credentialRef;
+              next.credentialRef = replacementCredentialRef;
+            }
+            updatedUpstream = next;
+            return { ...value, upstreams: value.upstreams.map((item) => item.id === id ? next : item) };
+          });
         } catch (error) {
           if (replacementCredentialRef) await vault.remove(replacementCredentialRef).catch(() => {});
           throw error;
         }
-        if (replacementCredentialRef && current.credentialRef) await vault.remove(current.credentialRef).catch(() => {});
-        return send(res, 200, next);
+        if (replacementCredentialRef && replacedCredentialRef) await vault.remove(replacedCredentialRef).catch(() => {});
+        return send(res, 200, updatedUpstream);
       }
       if (req.method === 'PATCH' && parts[2] === 'routes' && parts[3]) {
         const id = parts[3];
