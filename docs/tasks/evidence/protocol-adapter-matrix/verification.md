@@ -39,3 +39,10 @@ Branch: codex/protocol-adapter-matrix
 - Gateway full suite: 43/43; adapter unit matrix: 10/10; stream-focused Gateway cases: 17/17.
 - Syntax checks and git diff --check: PASS.
 - Independent review: UNAVAILABLE; reviewer dispatch failed with local a6api HTTP 404 for /v1/responses. Author self-review found no Critical or Important findings.
+
+## Version 1.1.6 delivery evidence
+
+- PR #20 merged as 4e77c8a; primary master synchronized.
+- Version metadata 1.1.6; Runtime 165/165, Desktop 158/158 and build passed before packaging.
+- GitHub v1.1.6 tag/assets verified; remote digests match the local release manifest.
+- Desktop Portable 1.1.6 source/target hash matched 4ad3574f3240d5cb8a25fac4c4f62569a7bc34e4b0ebdbe5acdee44e88a4a8f6, size 115024111 bytes, and isolated Desktop-path smoke returned Local Control/Gateway health ok.

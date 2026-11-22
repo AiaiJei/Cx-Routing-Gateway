@@ -4,8 +4,8 @@
   "title": "Complete six-direction Res/Mes/Chat protocol adapters",
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
-  "status": "active",
-  "stage": "ready-for-pr",
+  "status": "complete",
+  "stage": "complete",
   "base": "master",
   "base_sha": "5c24c114deb09fb4602f5f98bda9ea48299d44cb",
   "branch": "codex/protocol-adapter-matrix",
@@ -71,7 +71,11 @@
     "diff_check": "PASS",
     "provider": "NOT_RUN",
     "independent_review": "UNAVAILABLE: reviewer endpoint returned local a6api HTTP 404 for /v1/responses; author self-review no Critical/Important findings",
-    "pull_request": "PASS: PR #20 OPEN/MERGEABLE; Runtime/Desktop SUCCESS; package job SKIPPED by workflow condition"
+    "pull_request": "PASS: PR #20 OPEN/MERGEABLE; Runtime/Desktop SUCCESS; package job SKIPPED by workflow condition",
+    "version": "PASS: package/product/build all 1.1.6",
+    "merge": "PASS: PR #20 merged as 4e77c8a; primary master synchronized",
+    "release": "PASS: GitHub v1.1.6 published; tag/assets verified",
+    "desktop": "PASS: Portable 1.1.6 copied and smoked; 1.1.5 preserved"
   },
   "capability": {
     "skills": [
@@ -91,7 +95,7 @@
   },
   "pull_request": {
     "number": 20,
-    "state": "OPEN",
+    "state": "MERGED",
     "base": "master",
     "branch": "codex/protocol-adapter-matrix",
     "head_sha": "80577c5ce2162b6a70327b60ee31537ff21eaa71",
@@ -100,7 +104,8 @@
       "runtime": "SUCCESS",
       "desktop": "SUCCESS",
       "package": "SKIPPED by workflow condition"
-    }
+    },
+    "merge_commit": "4e77c8aafe60b69c1d54a0837775121a19f6c4b8"
   },
   "revisions": [
     {

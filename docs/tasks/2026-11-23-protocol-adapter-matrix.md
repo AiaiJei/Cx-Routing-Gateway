@@ -37,3 +37,11 @@
 - Six off-diagonal directions and Native-Forward diagonal behavior pass local fixtures. Codex tool_choice, function tools, tool results, JSON schema/object format and field-specific unsupported errors are covered.
 - Stream adapter preserves text, tool starts, argument fragments, parallel indexes and terminal finish reasons across existing direction tests.
 - Independent reviewer dispatch was unavailable because the local a6api proxy returned HTTP 404 for the reviewer /v1/responses endpoint; author self-review found no Critical or Important findings.
+
+## Version 1.1.6 merge, release and Desktop delivery
+
+- PR #20 merged as 4e77c8aafe60b69c1d54a0837775121a19f6c4b8; primary master synchronized to that merge result.
+- Package/product/build version metadata is 1.1.6.
+- GitHub v1.1.6 published at https://github.com/AiaiJei/Cx-Routing-Gateway/releases/tag/v1.1.6 with Setup, blockmap, Portable and manifest assets; tag points to 4e77c8a.
+- Release verifier recorded 11 artifact hashes; unpacked version smoke and explicit absolute-path Portable smoke passed.
+- Desktop Portable 1.1.6 copied to C:/Users/20142/Desktop/Cx-Routing Gateway Portable 1.1.6.exe; source/target SHA-256 4ad3574f3240d5cb8a25fac4c4f62569a7bc34e4b0ebdbe5acdee44e88a4a8f6, size 115024111 bytes; existing Desktop Portable 1.1.5 preserved; Desktop-path Portable smoke passed.
