@@ -14,12 +14,12 @@ Merge PR #18, release the upstream edit/failover fixes as version 1.1.5, deliver
 
 ## Execution
 
-1. Recheck PR #18, its required checks, mergeability, and current `master`. Merge only after checks pass; fast-forward the primary master worktree and run Runtime/Desktop tests and the Desktop production build on the merged result.
-2. Change package, product, lockfile root, builder, SettingsPage assertions, and release verifier metadata from 1.1.4 to 1.1.5. Add/update release-manifest tests and prepare release notes plus task evidence.
-3. Run the complete Runtime and Desktop suites and production build. Build Windows x64 NSIS Setup and Portable artifacts into the isolated 1.1.5 output directory, generate the manifest, verify all required artifact hashes, and run unpacked-app and Portable health smoke checks.
-4. Confirm v1.1.5 tag/release and the Desktop target file do not already exist. Publish GitHub Release v1.1.5 with Setup, blockmap, Portable, manifest, and release notes. Re-read the published release and verify asset names, digests, and tag target.
-5. Copy the verified Portable to `C:\Users\20142\Desktop\Cx-Routing Gateway Portable 1.1.5.exe` only if absent. Compare source/copy size and SHA-256 and run isolated health smoke against the Desktop copy.
-6. Record merge, release, artifact hashes, Desktop delivery, CI, remaining limitations, and rollback evidence. Confirm the task worktree is clean and all commits are reachable from master, then remove only `.worktree/upstream-service-edit`; retain the task branch.
+1. [x] Recheck PR #18, its required checks, mergeability, and current `master`. Merge only after checks pass; fast-forward the primary master worktree and run Runtime/Desktop tests and the Desktop production build on the merged result.
+2. [x] Change package, product, lockfile root, builder, SettingsPage assertions, and release verifier metadata from 1.1.4 to 1.1.5. Add/update release-manifest tests and prepare release notes plus task evidence.
+3. [x] Run the complete Runtime and Desktop suites and production build. Build Windows x64 NSIS Setup and Portable artifacts into the isolated 1.1.5 output directory, generate the manifest, verify all required artifact hashes, and run unpacked-app and Portable health smoke checks. Runtime 146/146, Desktop 158/158, production build, release verifier, unpacked version smoke, and Portable Local Control/Gateway health smoke passed; artifacts are unsigned.
+4. [ ] Confirm v1.1.5 tag/release and the Desktop target file do not already exist. Publish GitHub Release v1.1.5 with Setup, blockmap, Portable, manifest, and release notes. Re-read the published release and verify asset names, digests, and tag target.
+5. [ ] Copy the verified Portable to `C:\Users\20142\Desktop\Cx-Routing Gateway Portable 1.1.5.exe` only if absent. Compare source/copy size and SHA-256 and run isolated health smoke against the Desktop copy.
+6. [ ] Record merge, release, artifact hashes, Desktop delivery, CI, remaining limitations, and rollback evidence. Confirm the task worktree is clean and all commits are reachable from master, then remove only `.worktree/upstream-service-edit`; retain the task branch.
 
 ## Acceptance
 

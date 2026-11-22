@@ -5,7 +5,7 @@
 - Base: `master` at `75716847b8e308f53ae0a3284f74241373ea2aa4`
 - Branch/worktree: `codex/upstream-service-edit` / `.worktree/upstream-service-edit`
 - Date: 2026-11-22
-- Status: PR #18 is open against `master`; latest instruction authorizes merge, v1.1.5 release, Desktop delivery, and this task-worktree removal
+- Status: PR #18 merged to `master` at `351693e`; v1.1.5 release artifacts verified; GitHub publication, Desktop delivery, and task-worktree removal remain pending
 - Contract: `docs/tasks/2026-11-22-upstream-edit-failover-contract.json`
 - Design: `docs/superpowers/specs/2026-11-22-upstream-service-edit-failover-stability-design.md`
 
@@ -40,7 +40,19 @@
 ## Limits and Follow-Up
 
 - Visual inspection of the local browser preview is `NOT_RUN`: the preview tab opened, then Computer Use stopped because its URL safety verification could not authorize reading the page.
-- Independent review passed and PR #18 is open. Its Runtime/Desktop CI passed at head `4f2b9bb`; this task-contract amendment will trigger checks on a new head. The latest user instruction authorizes merge, v1.1.5 release, Desktop delivery, and removal of only this task worktree. Branch deletion and unrelated worktree changes remain unauthorized.
+- Independent review passed. PR #18 Runtime/Desktop CI passed at final head `0df656c` (package job skipped by its workflow condition); PR #18 was merged at `351693e61ee30ea52f590775a4c3d7fdceb27641`. The latest user instruction authorizes v1.1.5 release, Desktop delivery, and removal of only this task worktree. Branch deletion and unrelated worktree changes remain unauthorized.
 - Owner acceptance remains pending until the authorized merge, release, Desktop delivery, and worktree-removal steps complete.
 
+## Integration
+
+- PR #18 merged on 2026-11-22 as `351693e61ee30ea52f590775a4c3d7fdceb27641`; the primary `master` worktree was fast-forwarded to the merge commit.
+- Post-merge verification: Runtime 146/146, Desktop 158/158 across 23 files, and TypeScript/Vite production build passed.
+- PR final-head GitHub Runtime and Desktop checks passed at `0df656c`; the package job was skipped by its workflow condition.
+
 Detailed command evidence and the diagnosed test-fixture race are recorded in `docs/tasks/evidence/upstream-service-edit-failover/verification.md`.
+
+## Version 1.1.5 Release
+
+- Package/product/build metadata is 1.1.5. Fresh Runtime 146/146, Desktop 158/158, TypeScript/Vite build, and release-manifest checks passed on the primary `master` worktree.
+- Windows x64 Setup, blockmap, Portable, and unpacked application artifacts were generated in `apps/desktop/release/1.1.5-final-reviewed/`. The verifier recorded 11 non-empty artifact hashes in `manifest.json`; unpacked version smoke and isolated Portable Local Control/Gateway health smoke passed.
+- The manifest records `signed: false`; no signing certificate is configured. Full release, Desktop-copy, and cleanup evidence will be appended in `docs/tasks/2026-11-22-upstream-edit-failover-release.md`.

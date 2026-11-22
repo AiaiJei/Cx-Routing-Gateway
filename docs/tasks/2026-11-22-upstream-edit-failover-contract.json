@@ -5,7 +5,7 @@
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
   "status": "active",
-  "stage": "release-preparation",
+  "stage": "release-publish",
   "base": "master",
   "base_sha": "75716847b8e308f53ae0a3284f74241373ea2aa4",
   "branch": "codex/upstream-service-edit",
@@ -105,26 +105,44 @@
     "only the clean upstream-service-edit task worktree is removed after all results and evidence are recorded; the task branch is retained"
   ],
   "rollback": "Before publishing v1.1.5, preserve v1.1.4 and its Desktop file; if release verification fails, stop before publication and keep the merged worktree available for repair. After publishing v1.1.5, do not rewrite or delete its tag/release; use a corrective patch release. If the newly created Desktop 1.1.5 copy fails hash or isolated smoke, remove only that new copy and preserve Desktop 1.1.4. Retain the task branch.",
-  "owner_acceptance": "pending until PR merge, v1.1.5 publication, verified Desktop copy, and task-worktree removal are confirmed.",
+  "owner_acceptance": "pending until v1.1.5 publication, verified Desktop copy, and task-worktree removal are confirmed.",
   "verification": {
     "preflight_investigation": "Prior isolated investigation recorded Gateway 34/34 and UpstreamsPage 6/6; concurrent primary failures followed by a held late primary success reproduced backup selection. Rerun baselines and task tests in this worktree before completion.",
     "pre_merge_runtime": "PASS: fresh npm test, 146/146 on task worktree at 4f2b9bb before this documentation-only authorization revision",
     "pre_merge_desktop": "PASS: fresh apps/desktop npm test, 158/158 across 23 files on task worktree at 4f2b9bb",
     "pre_merge_build": "PASS: fresh apps/desktop TypeScript/Vite production build on task worktree at 4f2b9bb",
     "pull_request_ci_previous_head": "PASS: PR #18 Runtime and Desktop checks on 4f2b9bb; package job skipped by workflow condition. Recheck the new head after this authorization amendment.",
+    "pull_request_ci_final_head": "PASS: Runtime and Desktop checks on 0df656c; package job skipped by workflow condition",
+    "merge_and_primary_sync": "PASS: PR #18 merged by merge commit 351693e61ee30ea52f590775a4c3d7fdceb27641; primary master fast-forwarded to the same commit",
+    "merged_runtime": "PASS: npm test on primary master, 146/146",
+    "merged_desktop": "PASS: apps/desktop npm test on primary master, 158/158 across 23 files",
+    "merged_build": "PASS: apps/desktop TypeScript/Vite production build on primary master",
     "runtime": "PASS: fresh npm test, 146/146; focused delayed blank-key/concurrent credential-rotation regression repeated 5/5",
     "desktop": "PASS: apps/desktop npm test, 158/158",
     "production_build": "PASS: apps/desktop npm run build (TypeScript and Vite)",
     "independent_review": "PASS: read-only review of 75716847..f7041b9; no Critical, Important, or Minor findings; reviewer did not rerun tests",
     "git_diff_check": "PASS: git diff --check; Electron main, preload and IPC module syntax checks; task contract JSON parse",
     "visual_inspection": "NOT_RUN: local preview opened, but Computer Use stopped when URL safety verification could not authorize reading the page",
-    "provider": "NOT_RUN"
+    "provider": "NOT_RUN",
+    "release_metadata": "PASS: package, package-lock root, product, and Electron build version are 1.1.5; release verifier version assertions and focused tests pass",
+    "release_runtime": "PASS: fresh npm test on primary master with 1.1.5 release metadata, 146/146",
+    "release_desktop": "PASS: fresh apps/desktop npm test, 158/158 across 23 files",
+    "release_build": "PASS: fresh apps/desktop npm run build, TypeScript and Vite",
+    "release_manifest": "PASS: verify-release generated manifest for 11 non-empty artifacts and recomputed SHA-256 values; manifest signed=false",
+    "unpacked_smoke": "PASS: packaged app reports version 1.1.5",
+    "portable_smoke": "PASS: isolated Portable started Local Control and Gateway; both health endpoints returned ok",
+    "release_preflight": "PASS: GitHub v1.1.4 remains latest, v1.1.5 release/tag absent, new Desktop target absent, and existing 1.1.4 Desktop Portable present",
+    "github_release": "PENDING",
+    "desktop_portable_copy": "PENDING",
+    "task_worktree_removal": "PENDING"
   },
   "pull_request": {
     "number": 18,
-    "state": "OPEN",
+    "state": "MERGED",
     "base": "master",
     "branch": "codex/upstream-service-edit",
+    "head_sha": "0df656c791f2e5a1c328e32769b9fdb04f1a0dcb",
+    "merge_commit": "351693e61ee30ea52f590775a4c3d7fdceb27641",
     "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/18"
   },
   "revisions": [
@@ -166,6 +184,13 @@
       "finishing-a-development-branch"
     ],
     "repo_mcp": "NOT_RUN: repository entry points and current state were directly inspected; no registered workspace_id was available.",
-    "independent_reviewer": "PASS: all prior findings resolved; no remaining findings on 75716847..f7041b9"
+    "independent_reviewer": "PASS: all prior findings resolved; no remaining findings on 75716847..f7041b9",
+    "current_turn_skill_invocations": [
+      "awg-workspace-governance: read and applied before further repository work",
+      "verification-before-completion: read and applied before making fresh verification claims",
+      "finishing-a-development-branch: read and applied; user's explicit merge and removal authorization governs the integration choice"
+    ],
+    "project_contract_alignment": "PARTIAL: .codex/awg-task.json still identifies the earlier 2026-11-21 gateway-timeout-metrics release 1.1.3 task. The current upstream task contract contains this task's explicit release scope and authorization; the older pointer was preserved to avoid modifying another task's contract.",
+    "repo_mcp_availability": "UNAVAILABLE: no registered workspace_id was present for this project; used direct git/source inspection."
   }
 }
