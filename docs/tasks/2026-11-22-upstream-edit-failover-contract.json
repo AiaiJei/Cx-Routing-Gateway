@@ -5,24 +5,28 @@
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
   "status": "active",
-  "stage": "owner-review",
+  "stage": "release-preparation",
   "base": "master",
   "base_sha": "75716847b8e308f53ae0a3284f74241373ea2aa4",
   "branch": "codex/upstream-service-edit",
   "worktree": ".worktree/upstream-service-edit",
   "authorization": {
-    "source": "2026-11-22 user requested an exclusive PR for editing existing upstream services and added failover stability. The user selected a prefilled dialog, clarified that priority 1 can be healthy while routing unexpectedly tries priority 2, and replied 执行 to approve implementation.",
+    "source": "2026-11-22 user requested an exclusive PR for editing existing upstream services and added failover stability. The user selected a prefilled dialog, clarified that priority 1 can be healthy while routing unexpectedly tries priority 2, and replied 执行 to approve implementation. The user's later instruction explicitly authorizes merging PR #18, syncing master, removing only this task worktree, publishing the next patch release, and syncing the verified Portable to Desktop.",
     "operations": [
       "implement the approved upstream editing and failover recovery changes",
       "run focused and full runtime/Desktop tests and the Desktop production build",
       "record evidence and independent review",
       "commit and push the task branch",
-      "create one dedicated PR against master"
+      "create one dedicated PR against master",
+      "merge PR #18 after required checks pass and fast-forward the primary master worktree",
+      "remove only the clean upstream-service-edit task worktree after merged-result and release verification",
+      "increment the current latest stable version 1.1.4 to 1.1.5 and build/verify Windows x64 Setup, blockmap, Portable, and manifest artifacts",
+      "publish GitHub Release v1.1.5 with verified assets and release notes",
+      "copy the verified Portable 1.1.5 to the Desktop as a new versioned file and run isolated smoke checks"
     ],
     "not_authorized": [
-      "merge the PR",
-      "publish or deploy a release",
-      "delete the task branch or worktree",
+      "delete the local or remote task branch",
+      "rewrite or delete existing releases/tags, including v1.1.4",
       "change unrelated release tasks or existing worktrees",
       "make real provider requests"
     ],
@@ -36,14 +40,19 @@
       "preserve current private-network trust when an edit omits allowPrivateNetwork",
       "heal target circuit state on a late same-target success and ignore older failures after recovery",
       "refresh per-route target health when routing-relevant upstream configuration changes",
-      "add regression tests, task evidence, independent review, and a dedicated PR"
+      "add regression tests, task evidence, independent review, and a dedicated PR",
+      "merge PR #18 and synchronize the primary master worktree",
+      "bump package/product/build version from the latest stable 1.1.4 to 1.1.5",
+      "build and verify Windows x64 Setup, blockmap, Portable, and manifest artifacts; publish GitHub Release v1.1.5",
+      "deliver a new verified Portable 1.1.5 file to Desktop without replacing 1.1.4, then smoke-test it",
+      "remove only the clean upstream-service-edit task worktree after final verification while retaining its branch"
     ],
     "exclude": [
       "change the configured failure threshold, status classes, 60-second cooldown, or current-request no-retry behavior",
       "add a retry, probe, or manual circuit-reset feature",
       "make real third-party provider calls",
-      "change product version, publish, deploy, or merge",
-      "delete branches, worktrees, or unrelated files"
+      "change unrelated release tasks or worktrees",
+      "delete the task branch or rewrite/delete existing releases and tags"
     ]
   },
   "authorized_paths": [
@@ -66,7 +75,17 @@
     "docs/tasks/2026-11-22-upstream-edit-failover-contract.json",
     "docs/tasks/2026-11-22-upstream-edit-failover.md",
     "docs/tasks/evidence/upstream-service-edit-failover/**",
-    "docs/task-record.md"
+    "docs/task-record.md",
+    "apps/desktop/package.json",
+    "apps/desktop/package-lock.json",
+    "apps/desktop/electron-builder.yml",
+    "apps/desktop/src/pages/SettingsPage.test.tsx",
+    "scripts/verify-release.mjs",
+    "tests/runtime/release-manifest.test.mjs",
+    "docs/superpowers/plans/2026-11-22-upstream-edit-release-1.1.5.md",
+    "docs/tasks/2026-11-22-upstream-edit-failover-release.md",
+    "docs/tasks/evidence/upstream-service-edit-failover/release-1.1.5/**",
+    "apps/desktop/release/1.1.5-final-reviewed/**"
   ],
   "acceptance": [
     "Desktop offers a prefilled edit dialog with a blank optional API Key; blank preserves the existing credential",
@@ -79,12 +98,20 @@
     "health remains isolated by route and target and resets only for routing-relevant upstream changes",
     "configured threshold, status classes, 60-second cooldown, and no retry for the current failed request remain unchanged",
     "focused regressions, full runtime suite, full Desktop suite, Desktop production build, independent review, and diff check pass",
-    "one dedicated PR is created against master; merge/release/deployment remain outside this contract"
+    "PR #18 is merged to master after checks pass and the primary master worktree is fast-forwarded",
+    "package/product/build metadata consistently reports 1.1.5 and the release verifier plus focused version tests pass",
+    "Windows x64 Setup, blockmap, Portable and manifest assets pass verification and packaged/Portable smoke checks before publishing GitHub Release v1.1.5",
+    "the new Desktop Portable 1.1.5 copy matches the verified artifact hash and passes isolated control/gateway health smoke without replacing 1.1.4",
+    "only the clean upstream-service-edit task worktree is removed after all results and evidence are recorded; the task branch is retained"
   ],
-  "rollback": "Revert only this task's PR commits. Preserve its branch, worktree, contract, and evidence so the work can be recovered or revised.",
-  "owner_acceptance": "pending: PR #18 is open for user review; merge is not authorized.",
+  "rollback": "Before publishing v1.1.5, preserve v1.1.4 and its Desktop file; if release verification fails, stop before publication and keep the merged worktree available for repair. After publishing v1.1.5, do not rewrite or delete its tag/release; use a corrective patch release. If the newly created Desktop 1.1.5 copy fails hash or isolated smoke, remove only that new copy and preserve Desktop 1.1.4. Retain the task branch.",
+  "owner_acceptance": "pending until PR merge, v1.1.5 publication, verified Desktop copy, and task-worktree removal are confirmed.",
   "verification": {
     "preflight_investigation": "Prior isolated investigation recorded Gateway 34/34 and UpstreamsPage 6/6; concurrent primary failures followed by a held late primary success reproduced backup selection. Rerun baselines and task tests in this worktree before completion.",
+    "pre_merge_runtime": "PASS: fresh npm test, 146/146 on task worktree at 4f2b9bb before this documentation-only authorization revision",
+    "pre_merge_desktop": "PASS: fresh apps/desktop npm test, 158/158 across 23 files on task worktree at 4f2b9bb",
+    "pre_merge_build": "PASS: fresh apps/desktop TypeScript/Vite production build on task worktree at 4f2b9bb",
+    "pull_request_ci_previous_head": "PASS: PR #18 Runtime and Desktop checks on 4f2b9bb; package job skipped by workflow condition. Recheck the new head after this authorization amendment.",
     "runtime": "PASS: fresh npm test, 146/146; focused delayed blank-key/concurrent credential-rotation regression repeated 5/5",
     "desktop": "PASS: apps/desktop npm test, 158/158",
     "production_build": "PASS: apps/desktop npm run build (TypeScript and Vite)",
@@ -117,6 +144,11 @@
     {
       "date": "2026-11-22",
       "scope": "Independent review found a credential-reference race when a Base URL edit was delayed by DNS validation while a concurrent key rotation completed. Merge edits into the latest stored upstream and retire the credential reference actually replaced; also reject empty Base URLs and validate the current destination when private-network trust is revoked."
+    },
+    {
+      "date": "2026-11-22",
+      "request": "提交合并PR#，任务工作树合并到主工作树，并移除任务工作树；Github发布版本号递增1的修复和更新内容，并同步更新最新版本到本地桌面",
+      "authorization": "Explicitly authorizes merging PR #18 to master, fast-forwarding the primary master worktree, removing only the clean upstream-service-edit task worktree, bumping latest stable 1.1.4 to 1.1.5, publishing verified Windows release assets, and copying/smoke-testing a new Desktop Portable 1.1.5. The task branch and prior releases remain preserved."
     }
   ],
   "capability": {
@@ -130,7 +162,8 @@
       "executing-plans",
       "design-taste-frontend",
       "verification-before-completion",
-      "requesting-code-review"
+      "requesting-code-review",
+      "finishing-a-development-branch"
     ],
     "repo_mcp": "NOT_RUN: repository entry points and current state were directly inspected; no registered workspace_id was available.",
     "independent_reviewer": "PASS: all prior findings resolved; no remaining findings on 75716847..f7041b9"
