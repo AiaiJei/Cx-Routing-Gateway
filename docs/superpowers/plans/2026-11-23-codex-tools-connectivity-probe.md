@@ -79,5 +79,5 @@
 - [x] Run the full Runtime suite, Desktop suite, Desktop production build, changed-file syntax checks, and git diff --check.
 - [x] Review the full branch against the plan using a fresh read-only reviewer; resolve Critical/Important findings with RED/GREEN tests.
 - [x] Record exact commands, results, review limits, and provider NOT_RUN status in task evidence and contract.
-- [ ] Commit final evidence and task-state updates, push the task branch, and create one dedicated PR against master.
-- [ ] Leave the PR open; do not merge, bump a version, publish, copy a Desktop binary, or delete the worktree.
+- [x] Commit final evidence and task-state updates, push the task branch, and create one dedicated PR against master.
+- [x] Leave the PR open; do not merge, bump a version, publish, copy a Desktop binary, or delete the worktree.

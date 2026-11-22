@@ -40,4 +40,7 @@ Base: `f58341f5224224bea9ae7abf03818d9cadb4df47`
 - The AWG Repo MCP is available, but this checkout has no `.codex/repo-map.json` and no registered `workspace_id`; Repo MCP calls were not made. Local source inspection and tests were used.
 - No real third-party provider request was made. Packaged Desktop quit/relaunch UI acceptance, merge, release, and Desktop binary delivery are `NOT_RUN`.
 - The user authorized creating a dedicated PR; that authorization does not imply in-product Owner acceptance or permission to merge/release.
-- PR: pending.
+## Pull Request
+
+- PR #21 targets `master`, is open, and remains unmerged.
+- At PR creation, Runtime and Desktop CI jobs were pending and package jobs were skipped by the workflow. This records the initial observed status and does not claim those jobs completed.

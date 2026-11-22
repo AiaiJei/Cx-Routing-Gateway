@@ -26,4 +26,4 @@ See [verification evidence](evidence/codex-tools-connectivity-probe/verification
 
 ## Delivery
 
-One dedicated PR against `master` is authorized. It must remain open and unmerged; release, Desktop binary delivery, and branch/worktree deletion are not authorized.
+PR #21 targets `master` and is `OPEN` for review. At PR creation, Runtime and Desktop CI jobs were pending and packaging jobs were skipped by the workflow. The PR remains unmerged. Release, Desktop binary delivery, and branch/worktree deletion are not authorized.

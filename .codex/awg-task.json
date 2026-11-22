@@ -5,7 +5,7 @@
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
   "status": "active",
-  "stage": "review-and-delivery",
+  "stage": "pull-request",
   "base": "master",
   "base_sha": "f58341f5224224bea9ae7abf03818d9cadb4df47",
   "branch": "codex/tool-definition-probe",
@@ -78,7 +78,7 @@
     "repo_mcp": "UNAVAILABLE: no .codex/repo-map.json or registered workspace_id; live source inspection used",
     "implementation": "PASS: Tasks 1 and 2 complete; fresh Runtime 178/178, Desktop 158/158, Desktop build, adapter 20/20, probe 4/4, syntax, and diff checks passed",
     "independent_review": "PASS: initial reviewer found two Important adapter validation gaps; both were fixed with RED/GREEN tests; read-only follow-up found no Critical or Important issues",
-    "pull_request": "PENDING"
+    "pull_request": "OPEN: PR #21 targets master; at creation, Runtime and Desktop CI jobs were pending and package jobs skipped"
   },
   "capability": {
     "skills": [
