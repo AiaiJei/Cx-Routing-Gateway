@@ -1,0 +1,80 @@
+{
+  "contract_version": 1,
+  "task_id": "CXRG-PROTOCOL-ADAPTER-MATRIX-2026-11-23",
+  "title": "Complete six-direction Res/Mes/Chat protocol adapters",
+  "project": "Cx-Routing Gateway",
+  "repository": "AiaiJei/Cx-Routing-Gateway",
+  "status": "active",
+  "stage": "ready-for-pr",
+  "base": "master",
+  "base_sha": "5c24c114deb09fb4602f5f98bda9ea48299d44cb",
+  "branch": "codex/protocol-adapter-matrix",
+  "worktree": ".worktree/protocol-adapter-matrix",
+  "authorization": {
+    "source": "2026-11-23 user approved the unified intermediate representation and six-direction adapters after correcting that Codex requests are not ordinary text requests.",
+    "operations": [
+      "implement and verify the adapter matrix",
+      "commit and push the task branch",
+      "create one dedicated PR against master"
+    ],
+    "not_authorized": [
+      "merge",
+      "publish or overwrite releases",
+      "make real provider requests",
+      "delete branches or worktrees"
+    ]
+  },
+  "scope": {
+    "include": [
+      "Res/Mes/Chat six cross-protocol directions",
+      "Codex tools/tool_choice/structured-output handling",
+      "stream/tool/error contracts",
+      "tests, evidence and PR"
+    ],
+    "exclude": [
+      "credentials",
+      "failover",
+      "timeouts",
+      "version or release changes",
+      "real provider calls"
+    ]
+  },
+  "acceptance": [
+    "six directions have symmetric request/response/tool fixtures",
+    "Codex tool_choice and supported structured-output fields no longer fail at the generic preflight",
+    "unsupported fields return stable field-specific errors without silent loss",
+    "streaming preserves order, indexes, terminal events and request IDs",
+    "Runtime/Desktop/build/diff checks pass",
+    "one dedicated PR targets master"
+  ],
+  "rollback": "Revert only this task's PR commits; preserve published releases, master worktree, other worktrees and untracked governance files.",
+  "verification": {
+    "baseline_runtime": "PASS: 165/165 after Desktop dist build",
+    "baseline_desktop": "PASS: 158/158",
+    "adapter_unit": "PASS: 10/10",
+    "gateway": "PASS: 43/43",
+    "stream_focus": "PASS: 17/17",
+    "desktop_build": "PASS",
+    "syntax": "PASS",
+    "diff_check": "PASS",
+    "provider": "NOT_RUN",
+    "independent_review": "UNAVAILABLE: reviewer endpoint returned local a6api HTTP 404 for /v1/responses; author self-review no Critical/Important findings",
+    "pull_request": "PENDING"
+  },
+  "capability": {
+    "skills": [
+      "using-superpowers",
+      "awg-workspace-governance",
+      "brainstorming",
+      "systematic-debugging",
+      "test-driven-development",
+      "using-git-worktrees",
+      "writing-plans",
+      "executing-plans",
+      "verification-before-completion",
+      "requesting-code-review",
+      "finishing-a-development-branch"
+    ],
+    "repo_mcp": "UNAVAILABLE: no registered workspace_id; live source inspection used"
+  }
+}
