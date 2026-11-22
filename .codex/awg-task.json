@@ -5,7 +5,7 @@
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
   "status": "active",
-  "stage": "implementation",
+  "stage": "review-and-delivery",
   "base": "master",
   "base_sha": "f58341f5224224bea9ae7abf03818d9cadb4df47",
   "branch": "codex/tool-definition-probe",
@@ -70,14 +70,14 @@
     "one dedicated PR targets master; no merge or release is performed"
   ],
   "rollback": "Revert only this task's PR commits. Preserve the already merged PR #19/#20 behavior, all existing releases and Desktop files, and the task branch/worktree.",
-  "owner_acceptance": "The user explicitly requested a dedicated PR and instructed this task to continue. PR review is the final deliverable; merge and release remain outside this authorization.",
+  "owner_acceptance": "NOT_RUN: the user authorized a dedicated PR; no in-product acceptance, merge, or release is implied.",
   "verification": {
     "existing_worktree": "PASS: clean at base f58341f5224224bea9ae7abf03818d9cadb4df47",
     "adapter_baseline": "PASS: 10/10",
     "probe_baseline": "PASS: 3/3 focused failback tests",
     "repo_mcp": "UNAVAILABLE: no .codex/repo-map.json or registered workspace_id; live source inspection used",
-    "implementation": "PENDING",
-    "independent_review": "PENDING",
+    "implementation": "PASS: Tasks 1 and 2 complete; fresh Runtime 178/178, Desktop 158/158, Desktop build, adapter 20/20, probe 4/4, syntax, and diff checks passed",
+    "independent_review": "PASS: initial reviewer found two Important adapter validation gaps; both were fixed with RED/GREEN tests; read-only follow-up found no Critical or Important issues",
     "pull_request": "PENDING"
   },
   "capability": {
@@ -91,9 +91,11 @@
       "writing-plans",
       "executing-plans",
       "verification-before-completion",
-      "requesting-code-review"
+      "requesting-code-review",
+      "receiving-code-review",
+      "finishing-a-development-branch"
     ],
     "repo_mcp": "UNAVAILABLE: no registered workspace_id; live source inspection used",
-    "subagent_review": "AVAILABLE: will use one read-only independent reviewer after implementation"
+    "subagent_review": "AVAILABLE: one read-only reviewer completed initial and follow-up reviews; follow-up found no Critical or Important issues"
   }
 }

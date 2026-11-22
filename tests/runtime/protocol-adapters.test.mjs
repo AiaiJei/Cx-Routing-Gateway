@@ -206,6 +206,24 @@ test('accepts a Responses function tool with no parameters as an empty object sc
   assert.deepEqual(normalized.tools[0].parameters, { type: 'object', properties: {} });
 });
 
+test('rejects malformed Responses custom tool formats with a field-specific error', () => {
+  const formats = [
+    null,
+    { type: 'grammar' },
+    { type: 'grammar', syntax: 'peg', definition: 'start: WORD' },
+    { type: 'grammar', syntax: 'lark', definition: '' },
+  ];
+  for (const format of formats) {
+    assert.throws(() => parseRequest('Res', {
+      tools: [{ type: 'custom', name: 'emit', format }],
+    }, { direction: 'Res->Chat' }), (error) => {
+      assert.equal(error.field, 'tools.format');
+      assert.equal(error.direction, 'Res->Chat');
+      return true;
+    });
+  }
+});
+
 test('rejects an unrepresentable Responses built-in tool with its field and direction', () => {
   assert.throws(() => parseRequest('Res', { tools: [{ type: 'web_search_preview' }] }, { direction: 'Res->Chat' }), (error) => {
     assert.equal(error.code, 'unsupported_feature');
@@ -242,11 +260,24 @@ test('round-trips tool calls from Chat response to Responses response', () => {
 
 test('parses tool choices from all three protocols into the normalized contract', () => {
   const cases = [
-    ['Res', { input: 'x', tool_choice: { type: 'function', name: 'lookup' } }, { mode: 'function', name: 'lookup' }],
+    ['Res', { input: 'x', tools: [{ type: 'function', name: 'lookup', parameters: { type: 'object' } }], tool_choice: { type: 'function', name: 'lookup' } }, { mode: 'function', name: 'lookup' }],
     ['Mes', { messages: [{ role: 'user', content: 'x' }], tool_choice: { type: 'tool', name: 'lookup' } }, { mode: 'function', name: 'lookup' }],
     ['Chat', { messages: [{ role: 'user', content: 'x' }], tool_choice: { type: 'function', function: { name: 'lookup' } } }, { mode: 'function', name: 'lookup' }],
   ];
   for (const [protocol, body, expected] of cases) assert.deepEqual(parseRequest(protocol, body).toolChoice, expected);
+});
+
+test('rejects undeclared Responses function choices when no tools are provided', () => {
+  for (const toolChoice of [
+    { type: 'function', name: 'missing' },
+    { type: 'function', namespace: 'mcp__missing', name: 'run' },
+  ]) {
+    assert.throws(() => parseRequest('Res', { tool_choice: toolChoice }, { direction: 'Res->Chat' }), (error) => {
+      assert.equal(error.field, 'tool_choice');
+      assert.equal(error.direction, 'Res->Chat');
+      return true;
+    });
+  }
 });
 
 test('serializes normalized tool choice and JSON schema for every destination protocol', () => {

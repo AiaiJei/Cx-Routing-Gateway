@@ -45,7 +45,7 @@ function normalizeToolChoice(protocol, value, direction, tools = []) {
   if (protocol === 'Mes' && value.type === 'any') return { mode: 'required' };
   if (typeof value === 'object' && value.type === 'function' && typeof (value.function?.name || value.name) === 'string') {
     const name = value.function?.name || value.name;
-    if (protocol === 'Res' && tools.length) {
+    if (protocol === 'Res') {
       const matches = tools.filter((tool) => tool.name === name && (value.namespace ? tool.namespace === value.namespace : !tool.namespace));
       if (matches.length !== 1) throw featureError('tool_choice', direction);
       return { mode: 'function', name: targetToolName(matches[0]) };
@@ -92,8 +92,15 @@ function normalizeTools(protocol, tools, direction) {
     let parameters;
     let format;
     if (kind === 'custom') {
-      format = source.format || { type: 'text' };
-      if (!['text', 'grammar'].includes(format.type)) throw featureError('tools.format', direction);
+      format = source.format === undefined ? { type: 'text' } : source.format;
+      if (!format || typeof format !== 'object' || Array.isArray(format)) throw featureError('tools.format', direction);
+      if (format.type === 'grammar') {
+        if (!['lark', 'regex'].includes(format.syntax) || typeof format.definition !== 'string' || !format.definition.trim()) {
+          throw featureError('tools.format', direction);
+        }
+      } else if (format.type !== 'text') {
+        throw featureError('tools.format', direction);
+      }
       descriptions.push('Original custom input format: ' + JSON.stringify(format));
       parameters = {
         type: 'object',
