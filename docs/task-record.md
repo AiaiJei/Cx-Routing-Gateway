@@ -342,5 +342,8 @@
 - 测试夹具曾因按服务端到达顺序释放响应、却按客户端创建顺序等待而出现时序超时；为并发请求增加唯一标记后，定向 5/5 与完整运行时套件均通过。
 - 独立复审 `PASS`：审查范围 `75716847..f7041b9`，此前问题均已修复，无 Critical/Important/Minor findings；审查者未重跑测试。[PR #18](https://github.com/AiaiJei/Cx-Routing-Gateway/pull/18) 已合并到 `master`，merge commit `351693e`；主工作树已快进同步，合并后 Runtime 146/146、Desktop 158/158、生产构建通过。
 - 2026-11-22 用户追加授权：合并 PR #18、快进同步主工作树、移除仅本任务 worktree、从当前最新稳定版 1.1.4 升级到 GitHub Release v1.1.5，并发布经校验的 Windows x64 安装包、便携包、blockmap 与 manifest；将新 Portable 1.1.5 复制到 Desktop 并 smoke 验证。保留任务分支和现有 1.1.4 release/桌面文件。
+- GitHub Release v1.1.5 已发布，tag 指向 `07f213cbe36cbc821ffb7328beaffe3e41057913`；4 个发布资产的大小与 SHA-256 回读匹配。GitHub 上传时将二进制资产文件名中的空格规范化为点号。
+- Portable 已同步至 `C:\Users\20142\Desktop\Cx-Routing Gateway Portable 1.1.5.exe`，115021442 字节，SHA-256 与已验证 release artifact 一致，隔离健康检查通过；原 Desktop Portable 1.1.4 保留。
+- 任务 worktree 已验证干净，任务分支 HEAD 是 master 的祖先，且本地/远端任务分支保留；仅待移除 `.worktree/upstream-service-edit`。详细发布和清理证据见 `docs/tasks/2026-11-22-upstream-edit-failover-release.md`。
 - 本地预览视觉检查 `NOT_RUN`：Computer Use URL 安全校验未能授权读取浏览器页面。真实 provider 调用 `NOT_RUN`。
-- 合同、设计和计划分别见 `docs/tasks/2026-11-22-upstream-edit-failover-contract.json`、`docs/superpowers/specs/2026-11-22-upstream-service-edit-failover-stability-design.md` 与两份对应实施计划。回退仅撤销本任务 PR 提交；不包含合并、发布或 worktree/分支清理授权。
+- 合同、设计和计划分别见 `docs/tasks/2026-11-22-upstream-edit-failover-contract.json`、`docs/superpowers/specs/2026-11-22-upstream-service-edit-failover-stability-design.md` 与对应实施计划。发布后不改写或删除 v1.1.5；需要修复时发布后续补丁版。保留任务分支和其他 worktrees。

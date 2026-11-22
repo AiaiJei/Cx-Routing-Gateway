@@ -5,7 +5,7 @@
 - Base: `master` at `75716847b8e308f53ae0a3284f74241373ea2aa4`
 - Branch/worktree: `codex/upstream-service-edit` / `.worktree/upstream-service-edit`
 - Date: 2026-11-22
-- Status: PR #18 merged to `master` at `351693e`; v1.1.5 release artifacts verified; GitHub publication, Desktop delivery, and task-worktree removal remain pending
+- Status: PR #18 merged; GitHub Release v1.1.5 published and Desktop Portable delivered; task-worktree removal remains pending
 - Contract: `docs/tasks/2026-11-22-upstream-edit-failover-contract.json`
 - Design: `docs/superpowers/specs/2026-11-22-upstream-service-edit-failover-stability-design.md`
 
@@ -41,7 +41,7 @@
 
 - Visual inspection of the local browser preview is `NOT_RUN`: the preview tab opened, then Computer Use stopped because its URL safety verification could not authorize reading the page.
 - Independent review passed. PR #18 Runtime/Desktop CI passed at final head `0df656c` (package job skipped by its workflow condition); PR #18 was merged at `351693e61ee30ea52f590775a4c3d7fdceb27641`. The latest user instruction authorizes v1.1.5 release, Desktop delivery, and removal of only this task worktree. Branch deletion and unrelated worktree changes remain unauthorized.
-- Owner acceptance remains pending until the authorized merge, release, Desktop delivery, and worktree-removal steps complete.
+- Owner review remains pending after the authorized merge, release, and Desktop delivery; only task-worktree removal remains in execution.
 
 ## Integration
 
@@ -56,3 +56,6 @@ Detailed command evidence and the diagnosed test-fixture race are recorded in `d
 - Package/product/build metadata is 1.1.5. Fresh Runtime 146/146, Desktop 158/158, TypeScript/Vite build, and release-manifest checks passed on the primary `master` worktree.
 - Windows x64 Setup, blockmap, Portable, and unpacked application artifacts were generated in `apps/desktop/release/1.1.5-final-reviewed/`. The verifier recorded 11 non-empty artifact hashes in `manifest.json`; unpacked version smoke and isolated Portable Local Control/Gateway health smoke passed.
 - The manifest records `signed: false`; no signing certificate is configured. Full release, Desktop-copy, and cleanup evidence will be appended in `docs/tasks/2026-11-22-upstream-edit-failover-release.md`.
+- GitHub Release v1.1.5 is published at `https://github.com/AiaiJei/Cx-Routing-Gateway/releases/tag/v1.1.5`; the tag points to the 1.1.5 version commit. GitHub asset names, sizes, and hashes were read back and matched the verified files.
+- Portable 1.1.5 is on the Desktop at `C:\Users\20142\Desktop\Cx-Routing Gateway Portable 1.1.5.exe`; its size and hash match the release artifact, and isolated Local Control/Gateway health smoke passed. The 1.1.4 Desktop Portable remains unchanged.
+- Final publication and delivery evidence is recorded in `docs/tasks/2026-11-22-upstream-edit-failover-release.md` and `docs/tasks/evidence/upstream-service-edit-failover/release-1.1.5/verification.md`.

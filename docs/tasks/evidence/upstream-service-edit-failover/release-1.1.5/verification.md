@@ -38,5 +38,16 @@ Date: 2026-11-22
 
 - The generated manifest records `signed: false`; code signing was not configured or performed.
 - No real upstream provider request was made.
-- GitHub publication, Desktop copy hash/smoke, and task-worktree removal are pending.
+- GitHub Release v1.1.5 was published at `https://github.com/AiaiJei/Cx-Routing-Gateway/releases/tag/v1.1.5` on 2026-11-22 at 11:20:21 UTC. The tag points to `07f213cbe36cbc821ffb7328beaffe3e41057913`.
+- GitHub returned four assets. Canonicalized names, sizes, and SHA-256 values matched the local files:
+
+| GitHub asset | Bytes | SHA-256 |
+|---|---:|---|
+| `Cx-Routing.Gateway.Setup.1.1.5.exe` | 126502860 | `eaa0a9de899a91b125564f3d7cfa43b7e8658bc1ad1279dae1704b29e32ce86e` |
+| `Cx-Routing.Gateway.Setup.1.1.5.exe.blockmap` | 133201 | `6e1fcad38322813feeb0a1b58f45acf5121cc7bc5595f3bdfd54e4b983dea30a` |
+| `Cx-Routing.Gateway.Portable.1.1.5.exe` | 115021442 | `af57be5ab7c4810844b2ce911bc862fc0b4c1d97acdfd2b415a2b2775f21be00` |
+| `manifest.json` | 2275 | `41182f9499efde860469418f24022bf7228ca4917e9415aa4f13ce2351e30964` |
+- Desktop copy: `C:\Users\20142\Desktop\Cx-Routing Gateway Portable 1.1.5.exe`; 115021442 bytes, SHA-256 `af57be5ab7c4810844b2ce911bc862fc0b4c1d97acdfd2b415a2b2775f21be00`, isolated Local Control/Gateway health smoke passed.
+- Existing Desktop Portable 1.1.4 was preserved; its pre-copy SHA-256 was `FD28C5A424EC775D517408E63C19E2FD9087E451EDEA13D90BB804BD6983A1D9`.
+- Task worktree `.worktree/upstream-service-edit` is clean, its HEAD `0df656c791f2e5a1c328e32769b9fdb04f1a0dcb` is an ancestor of master, and local/remote branch `codex/upstream-service-edit` exists. Only its authorized worktree removal remains pending; the branch will be retained.
 - The repository-level `.codex/awg-task.json` still identifies an earlier timeout-metrics task. The current upstream task contract contains the explicit authorization and scoped release paths; the older project pointer was left unchanged to avoid modifying another task's contract.

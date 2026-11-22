@@ -17,9 +17,9 @@ This patch release includes the upstream editing and failover stability improvem
 
 ## Windows x64 assets
 
-- `Cx-Routing Gateway Setup 1.1.5.exe`
-- `Cx-Routing Gateway Setup 1.1.5.exe.blockmap`
-- `Cx-Routing Gateway Portable 1.1.5.exe`
+- `Cx-Routing.Gateway.Setup.1.1.5.exe`
+- `Cx-Routing.Gateway.Setup.1.1.5.exe.blockmap`
+- `Cx-Routing.Gateway.Portable.1.1.5.exe`
 - `manifest.json`
 
-The Setup, blockmap, Portable, and manifest SHA-256 values are recorded in the attached manifest. The binaries are unsigned because no code-signing certificate was configured for this build.
+GitHub canonicalized spaces in the local binary filenames to dots when publishing the assets. Their SHA-256 values and the manifest digest were read back and matched against the local release files. The binaries are unsigned because no code-signing certificate was configured for this build.
