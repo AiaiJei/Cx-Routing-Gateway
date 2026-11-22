@@ -27,6 +27,20 @@ const upstreamStatusMap = new Map([
 export function classifyUpstreamStatus(status) {
   return upstreamStatusMap.get(status) || { clientStatus: 502, errorCode: 'upstream_error' };
 }
+
+const connectionErrorCodes = new Set(['ECONNRESET', 'EPIPE', 'UND_ERR_SOCKET', 'ECONNABORTED']);
+function normalizeUpstreamError(error) {
+  let current = error;
+  for (let depth = 0; current && depth < 3; depth += 1) {
+    if (connectionErrorCodes.has(current.code)) return Object.assign(new Error('Upstream connection reset'), { code: 'upstream_connection_reset', statusCode: 502 });
+    current = current.cause;
+  }
+  if (typeof error?.message === 'string' && /(?:socket hang up|fetch failed|terminated)/i.test(error.message) && connectionErrorCodes.has(error?.cause?.code)) {
+    return Object.assign(new Error('Upstream connection reset'), { code: 'upstream_connection_reset', statusCode: 502 });
+  }
+  if (error?.statusCode) return error;
+  return Object.assign(new Error('Upstream unavailable'), { code: 'upstream_error', statusCode: 502, cause: error });
+}
 function upstreamUrl(baseUrl, endpoint) {
   const base = baseUrl.replace(/\/$/, '');
   return base.endsWith('/v1') && endpoint.startsWith('/v1/') ? `${base}${endpoint.slice(3)}` : `${base}${endpoint}`;
@@ -218,7 +232,7 @@ async function fetchWithTimeout(url, options, addresses, headerTimeoutMs, reques
       cleanup();
       if (settled) return;
       settled = true;
-      reject(timedOut ? upstreamTimeoutError() : error.code === 'request_aborted' ? error : Object.assign(new Error('Upstream unavailable'), { code: 'upstream_error', statusCode: 502 }));
+      reject(timedOut ? upstreamTimeoutError() : error.code === 'request_aborted' ? error : normalizeUpstreamError(error));
     });
     if (signal?.aborted) abortRequest();
     else signal?.addEventListener('abort', abortRequest, { once: true });
@@ -353,13 +367,53 @@ async function appendUsage(store, record) {
   } catch {}
 }
 
-export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, maxConcurrentRequests = 32, upstreamHeaderTimeoutMs = 300_000, maxRequestDurationMs = 600_000, routeTestTimeoutMs = 610_000, dnsLookup = dns.lookup, now = Date.now, monotonicNow = () => performance.now() } = {}) {
+export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, maxConcurrentRequests = 32, upstreamHeaderTimeoutMs = 300_000, upstreamHealthProbeTimeoutMs = 5000, maxRequestDurationMs = 600_000, routeTestTimeoutMs = 610_000, dnsLookup = dns.lookup, now = Date.now, monotonicNow = () => performance.now() } = {}) {
   if (!store || !vault) throw new Error('Gateway server requires store and vault');
   const rateBuckets = new Map();
   const healthByRoute = new Map();
   const routeTestCredentials = new Map();
   const routeTestCalls = [];
   let inFlight = 0;
+  async function probeTarget(item) {
+    const health = item.health;
+    if (health.probePromise) return health.probePromise;
+    const generation = health.generation;
+    const probe = (async () => {
+      const controller = new AbortController();
+      let timer;
+      const deadline = monotonicNow() + upstreamHealthProbeTimeoutMs;
+      timer = setTimeout(() => controller.abort(), upstreamHealthProbeTimeoutMs);
+      let healthy = false;
+      try {
+        const addresses = await validateDestination(item.upstream.baseUrl, item.upstream.trustedPrivateNetwork === true, item.upstream.approvedAddresses || [], dnsLookup);
+        if (controller.signal.aborted) return false;
+        const headers = {};
+        const secret = item.upstream.credentialRef ? await vault.get(item.upstream.credentialRef) : undefined;
+        if (secret) headers[item.upstream.protocol === 'Mes' ? 'x-api-key' : 'authorization'] = item.upstream.protocol === 'Mes' ? secret : `Bearer ${secret}`;
+        if (item.upstream.protocol === 'Mes') headers['anthropic-version'] = '2026-10-21';
+        const response = await fetchWithTimeout(upstreamUrl(item.upstream.baseUrl, '/v1/models'), { method: 'GET', headers }, addresses, upstreamHealthProbeTimeoutMs, deadline, controller.signal, () => controller.abort(), monotonicNow);
+        healthy = response.status >= 200 && response.status < 300;
+        await response.body?.cancel().catch(() => {});
+      } catch {
+        healthy = false;
+      } finally {
+        clearTimeout(timer);
+      }
+      if (health.generation === generation) {
+        if (healthy) {
+          health.failures = 0;
+          health.openUntil = 0;
+          health.generation += 1;
+        } else {
+          health.openUntil = now() + health.cooldownSeconds * 1000;
+          health.generation += 1;
+        }
+      }
+      return healthy || (health.generation !== generation && health.openUntil === 0);
+    })();
+    health.probePromise = probe.finally(() => { health.probePromise = undefined; });
+    return health.probePromise;
+  }
   const server = http.createServer(async (req, res) => {
     const requestId = crypto.randomUUID();
     const startedAt = now();
@@ -451,17 +505,24 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
       const signature = JSON.stringify({ targets: healthTargets, policy });
       let health = healthByRoute.get(route.id);
       if (!health || health.signature !== signature) { health = { signature, targets: new Map() }; healthByRoute.set(route.id, health); }
-      const selected = availableTargets.find(item => {
+      const candidates = availableTargets.map(item => {
         const key = JSON.stringify([item.target.upstreamId, item.target.modelId]);
-        if (!health.targets.has(key)) health.targets.set(key, { failures: 0, openUntil: 0, generation: 0, threshold: policy.failureThreshold, cooldownSeconds: policy.cooldownSeconds });
+        if (!health.targets.has(key)) health.targets.set(key, { failures: 0, openUntil: 0, generation: 0, threshold: policy.failureThreshold, cooldownSeconds: policy.cooldownSeconds, probePromise: undefined });
         item.health = health.targets.get(key);
-        return item.health.openUntil <= now();
+        return item;
       });
-      if (!selected) return send(res, 503, { error: 'all_upstreams_unavailable', requestId }, requestId);
-      targetHealth = selected.health;
+      let selectedTarget;
+      for (const item of candidates) {
+        if (item.health.openUntil > now()) continue;
+        if (item.health.openUntil > 0 && !await probeTarget(item)) continue;
+        selectedTarget = item;
+        break;
+      }
+      if (!selectedTarget) return send(res, 503, { error: 'all_upstreams_unavailable', requestId }, requestId);
+      targetHealth = selectedTarget.health;
       requestGeneration = targetHealth.generation;
-      upstream = selected.upstream;
-      route = { ...route, upstreamId: selected.target.upstreamId, modelId: selected.target.modelId };
+      upstream = selectedTarget.upstream;
+      route = { ...route, upstreamId: selectedTarget.target.upstreamId, modelId: selectedTarget.target.modelId };
       metrics = createRequestMetrics({ protocol: route.outboundProtocol, stream: input.stream === true, startedAt: requestStartedMonotonic, clock: monotonicNow });
       const normalized = route.outboundProtocol === inbound ? null : normalize(inbound, input);
       upstreamStarted = true;
@@ -504,8 +565,9 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
       if (!credential.temporary) await store.update((value) => ({ ...value, clientKeys: value.clientKeys.map((item) => item.id === credential.id ? { ...item, lastUsedAt: new Date().toISOString() } : item) }));
       return send(res, 200, route.outboundProtocol === inbound ? upstreamBody : inboundResponse(inbound, route.outboundProtocol, upstreamBody, requestId), requestId);
     } catch (error) {
+      error = normalizeUpstreamError(error);
       if (upstreamTimedOut) error = Object.assign(new Error('Upstream timeout'), { code: 'upstream_timeout', statusCode: 504 });
-      if (upstreamStarted && (error.code === 'upstream_error' || error.code === 'upstream_timeout' || !error.statusCode)) recordOutcome(true);
+      if (upstreamStarted && (error.code === 'upstream_error' || error.code === 'upstream_connection_reset' || error.code === 'upstream_timeout' || !error.statusCode)) recordOutcome(true);
       if (route && upstream) await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Math.max(0, monotonicNow() - requestStartedMonotonic), ...metrics?.snapshot(), ...(reasoningEffort ? { reasoningEffort } : {}), ...(error.statusCode ? { gatewayStatus: error.statusCode } : {}), inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, upstreamName: upstream.name, modelId: route.modelId, status: error.statusCode === 400 ? 'rejected' : 'failed', errorCode: error.code || 'gateway_error' });
       if (requestController.signal.aborted || res.destroyed) return;
       if (res.headersSent) return res.destroy();
