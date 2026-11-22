@@ -5,7 +5,7 @@
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
   "status": "active",
-  "stage": "pr-preparation",
+  "stage": "owner-review",
   "base": "master",
   "base_sha": "75716847b8e308f53ae0a3284f74241373ea2aa4",
   "branch": "codex/upstream-service-edit",
@@ -82,7 +82,7 @@
     "one dedicated PR is created against master; merge/release/deployment remain outside this contract"
   ],
   "rollback": "Revert only this task's PR commits. Preserve its branch, worktree, contract, and evidence so the work can be recovered or revised.",
-  "owner_acceptance": "pending",
+  "owner_acceptance": "pending: PR #18 is open for user review; merge is not authorized.",
   "verification": {
     "preflight_investigation": "Prior isolated investigation recorded Gateway 34/34 and UpstreamsPage 6/6; concurrent primary failures followed by a held late primary success reproduced backup selection. Rerun baselines and task tests in this worktree before completion.",
     "runtime": "PASS: fresh npm test, 146/146; focused delayed blank-key/concurrent credential-rotation regression repeated 5/5",
@@ -93,7 +93,13 @@
     "visual_inspection": "NOT_RUN: local preview opened, but Computer Use stopped when URL safety verification could not authorize reading the page",
     "provider": "NOT_RUN"
   },
-  "pull_request": null,
+  "pull_request": {
+    "number": 18,
+    "state": "OPEN",
+    "base": "master",
+    "branch": "codex/upstream-service-edit",
+    "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/18"
+  },
   "revisions": [
     {
       "date": "2026-11-22",

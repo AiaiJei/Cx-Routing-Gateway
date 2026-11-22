@@ -5,7 +5,7 @@
 - Base: `master` at `75716847b8e308f53ae0a3284f74241373ea2aa4`
 - Branch/worktree: `codex/upstream-service-edit` / `.worktree/upstream-service-edit`
 - Date: 2026-11-22
-- Status: implementation and fresh verification complete; independent review passed; dedicated PR creation pending
+- Status: PR #18 is open against `master`; awaiting user review and acceptance
 - Contract: `docs/tasks/2026-11-22-upstream-edit-failover-contract.json`
 - Design: `docs/superpowers/specs/2026-11-22-upstream-service-edit-failover-stability-design.md`
 

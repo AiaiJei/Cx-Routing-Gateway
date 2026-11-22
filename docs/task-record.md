@@ -340,6 +340,6 @@
 - 独立审查发现 DNS 延迟期间并发换钥可能被旧记录覆盖，已改为在串行存储更新中合并最新上游，并按实际替换的凭证引用清理；同时拒绝空 Base URL，并在撤销私网信任时重新验证当前目标。
 - 新鲜 Runtime 146/146、Desktop 158/158、Desktop TypeScript/Vite build 通过；Electron 语法、任务合同 JSON 和 `git diff --check` 通过。迟到成功与延迟编辑并发换钥两个回归用例均定向连续 5 次通过；详细结果见 [任务记录](tasks/2026-11-22-upstream-edit-failover.md) 与 [验证证据](tasks/evidence/upstream-service-edit-failover/verification.md)。
 - 测试夹具曾因按服务端到达顺序释放响应、却按客户端创建顺序等待而出现时序超时；为并发请求增加唯一标记后，定向 5/5 与完整运行时套件均通过。
-- 独立复审 `PASS`：审查范围 `75716847..f7041b9`，此前问题均已修复，无 Critical/Important/Minor findings；审查者未重跑测试。专属 PR 创建待完成，Owner acceptance 在 PR 上继续待用户验收。
+- 独立复审 `PASS`：审查范围 `75716847..f7041b9`，此前问题均已修复，无 Critical/Important/Minor findings；审查者未重跑测试。已创建面向 `master` 的 [PR #18](https://github.com/AiaiJei/Cx-Routing-Gateway/pull/18)，当前 OPEN，Owner acceptance 待用户验收；未合并。
 - 本地预览视觉检查 `NOT_RUN`：Computer Use URL 安全校验未能授权读取浏览器页面。真实 provider 调用 `NOT_RUN`。
 - 合同、设计和计划分别见 `docs/tasks/2026-11-22-upstream-edit-failover-contract.json`、`docs/superpowers/specs/2026-11-22-upstream-service-edit-failover-stability-design.md` 与两份对应实施计划。回退仅撤销本任务 PR 提交；不包含合并、发布或 worktree/分支清理授权。
