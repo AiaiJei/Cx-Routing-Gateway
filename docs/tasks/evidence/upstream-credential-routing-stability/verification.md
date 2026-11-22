@@ -32,3 +32,5 @@ Branch: `codex/upstream-credential-routing-stability`
 - `npm install` reported six moderate audit findings and pending install-script approvals; no dependency version changes were introduced.
 - Independent review: UNAVAILABLE. Two reviewer dispatches failed because the local a6api proxy returned HTTP 404 for `/v1/responses`; author self-review completed and found no Critical or Important findings.
 - Follow-up reset parsing: local upstream reset regression PASS; Runtime 154/154; Desktop 158/158; Desktop build PASS. Raw internal connection codes are no longer exposed in the request-log status detail.
+- Merge/release: PR #19 merged as ce77ce4733967afc71e6f8973cc5d8bc13e90c08; primary master synchronized; v1.1.5 tag moved to that commit without changing the version; four GitHub assets were replaced and remote digests matched locally verified artifacts.
+- Release artifact verification: 11 artifact hashes generated; unpacked 1.1.5 smoke PASS; explicit absolute-path Portable smoke PASS for Local Control and Gateway health.

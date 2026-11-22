@@ -36,3 +36,11 @@
 - Normalized low-level upstream connection resets (ECONNRESET, EPIPE, UND_ERR_SOCKET, and related causes) to the stable sanitized code upstream_connection_reset with HTTP 502.
 - Desktop request-log mapping now renders 上游连接被重置，请检查上游服务或网络 instead of exposing a raw internal code such as ECONNRESET.
 - Runtime suite after this follow-up: 154/154. Desktop suite: 158/158. Desktop build: PASS.
+
+## Merge and same-version release
+
+- PR #19 merged into master as ce77ce4733967afc71e6f8973cc5d8bc13e90c08; the primary worktree was synchronized to that commit. The task worktree and branch remain preserved.
+- Package, product and build versions remain 1.1.5.
+- GitHub v1.1.5 was refreshed in place. Its tag now points to ce77ce4 and the Setup, blockmap, Portable and manifest assets were replaced with artifacts built from the merged code.
+- Release verifier, unpacked version smoke and explicit absolute-path Portable health smoke passed. The first Portable invocation used an unquoted multi-word path and failed with Windows code -4058; the explicit rerun passed Local Control and Gateway health checks.
+- Final remote asset digests: Portable 6cb872606c45947876230fdfab710a6573e52ff13e75befac0aaebc7b1694ded; Setup deb3d162c546c8ce8be455d54425e4e0da0cf4f504cfe1ae20af28f8800223b9; blockmap 0e4f0b643d6d3fbf0a4aab5a2ad84d378e3b9fde25e3a79de973c7797d7841fa; manifest 0f41c198e1945fcc3391b3cdef755b39ed2289fcf761b0e83406b6c10d8532e5.
