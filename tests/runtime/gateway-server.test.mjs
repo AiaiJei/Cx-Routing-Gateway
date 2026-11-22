@@ -422,8 +422,15 @@ test('gateway converts Chat text requests to Messages and returns Chat response 
   assert.equal(body.choices[0].message.content, 'cross reply');
 });
 
-test('gateway rejects unsupported cross-protocol features before upstream I/O', async (t) => {
-  const upstream = http.createServer(() => { throw new Error('upstream should not be called'); });
+test('gateway maps Responses structured output to the supported Messages format', async (t) => {
+  let received;
+  const upstream = http.createServer(async (req, res) => {
+    let body = '';
+    for await (const chunk of req) body += chunk;
+    received = JSON.parse(body);
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify({ id: 'json-message', content: [{ type: 'text', text: '{"ok":true}' }], stop_reason: 'end_turn' }));
+  });
   const upstreamPort = await listen(upstream);
   t.after(() => upstream.close());
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-reject-'));
@@ -433,16 +440,37 @@ test('gateway rejects unsupported cross-protocol features before upstream I/O', 
   await listen(control);
   const base = `http://127.0.0.1:${control.address().port}`;
   const upstreamRecord = await fetch(`${base}/v1/control/upstreams`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Messages', baseUrl: `http://127.0.0.1:${upstreamPort}`, protocol: 'Mes', allowPrivateNetwork: true }) }).then((r) => r.json());
-  await fetch(`${base}/v1/control/routes`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ alias: 'reject', inboundProtocol: 'Chat', outboundProtocol: 'Mes', upstreamId: upstreamRecord.id, modelId: 'claude-test' }) });
-  const key = await fetch(`${base}/v1/control/client-keys`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'reject-client' }) }).then((r) => r.json());
+  await fetch(`${base}/v1/control/routes`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ alias: 'structured', inboundProtocol: 'Res', outboundProtocol: 'Mes', upstreamId: upstreamRecord.id, modelId: 'claude-test' }) });
+  const key = await fetch(`${base}/v1/control/client-keys`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'structured-client' }) }).then((r) => r.json());
   const gateway = createGatewayServer({ store, vault });
   await listen(gateway);
   t.after(() => { gateway.close(); control.close(); });
-  const response = await fetch(`http://127.0.0.1:${gateway.address().port}/v1/chat/completions`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${key.key}` }, body: JSON.stringify({ model: 'reject', response_format: { type: 'json_schema' }, messages: [{ role: 'user', content: 'no structured output conversion' }] }) });
+  const response = await fetch(`http://127.0.0.1:${gateway.address().port}/v1/responses`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${key.key}` }, body: JSON.stringify({ model: 'structured', text: { format: { type: 'json_schema', name: 'result', schema: { type: 'object', properties: { ok: { type: 'boolean' } } } } }, input: 'return json' }) });
+  assert.equal(response.status, 200);
+  assert.equal(received.output_config.format.type, 'json_schema');
+  assert.deepEqual(received.output_config.format.schema, { type: 'object', properties: { ok: { type: 'boolean' } } });
+  assert.equal((await response.json()).output[0].content[0].text, '{"ok":true}');
+});
+
+test('gateway reports an unsupported request field and conversion direction safely', async (t) => {
+  const upstream = http.createServer(() => { throw new Error('must not be called'); });
+  const upstreamPort = await listen(upstream);
+  t.after(() => upstream.close());
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-field-error-'));
+  const store = new ConfigStore(path.join(dir, 'config.json'));
+  const vault = new SecretVault(path.join(dir, 'secrets.json'), 'test-master-key');
+  const clientKey = 'field-error-client';
+  await store.update((config) => ({ ...config,
+    upstreams: [{ id: 'field-upstream', name: 'Field', baseUrl: `http://127.0.0.1:${upstreamPort}`, protocol: 'Chat', trustedPrivateNetwork: true, enabled: true }],
+    routes: [{ id: 'field-route', alias: 'field', inboundProtocol: 'Res', outboundProtocol: 'Chat', upstreamId: 'field-upstream', modelId: 'field-model', enabled: true }],
+    clientKeys: [{ id: 'field-key', keyHash: crypto.createHash('sha256').update(clientKey).digest('hex'), createdAt: new Date().toISOString(), enabled: true, name: 'field' }],
+  }));
+  const gateway = createGatewayServer({ store, vault });
+  await listen(gateway);
+  t.after(() => gateway.close());
+  const response = await fetch(`http://127.0.0.1:${gateway.address().port}/v1/responses`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${clientKey}` }, body: JSON.stringify({ model: 'field', n: 2, input: 'hello' }) });
   assert.equal(response.status, 400);
-  assert.equal((await response.json()).error, 'unsupported_feature');
-  const logs = await fetch(`${base}/v1/control/logs?limit=10`).then((r) => r.json());
-  assert.equal(logs.logs.some((item) => item.status === 'rejected' && item.errorCode === 'unsupported_feature'), true);
+  assert.deepEqual(await response.json().then(({ error, field, direction }) => ({ error, field, direction })), { error: 'multiple_candidates_unsupported', field: 'n', direction: 'Res->Chat' });
 });
 
 test('gateway converts Responses input to Chat and returns Responses output', async (t) => {
@@ -479,7 +507,7 @@ test('gateway converts Messages input to Responses and returns Messages output',
   const upstream = http.createServer(async (req, res) => {
     const body = JSON.parse(await new Promise((resolve, reject) => { let data = ''; req.on('data', (chunk) => { data += chunk; }); req.on('end', () => resolve(data)); req.on('error', reject); }));
     assert.equal(req.url, '/v1/responses');
-    assert.equal(body.input[0].content, 'from messages');
+    assert.equal(body.input[0].content, 'from messages', JSON.stringify(body));
     res.setHeader('content-type', 'application/json');
     res.end(JSON.stringify({ id: 'response-1', output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'back to messages' }] }] }));
   });
@@ -522,7 +550,7 @@ test('gateway covers the remaining cross-protocol directions and native forwardi
   const clientKey = `cxrg_${crypto.randomBytes(18).toString('base64url')}`;
   const upstreamId = 'matrix-upstream';
   const routes = [
-    ['res-mes', 'Res', 'Mes'], ['mes-chat', 'Mes', 'Chat'], ['chat-res', 'Chat', 'Res'],
+    ['res-mes', 'Res', 'Mes'], ['res-chat', 'Res', 'Chat'], ['mes-res', 'Mes', 'Res'], ['mes-chat', 'Mes', 'Chat'], ['chat-res', 'Chat', 'Res'], ['chat-mes', 'Chat', 'Mes'],
     ['native-res', 'Res', 'Res'], ['native-mes', 'Mes', 'Mes'],
   ].map(([alias, inboundProtocol, outboundProtocol]) => ({ id: `route-${alias}`, alias, inboundProtocol, outboundProtocol, upstreamId, modelId: `model-${alias}`, enabled: true }));
   await store.update((config) => ({ ...config, upstreams: [{ id: upstreamId, name: 'Matrix', baseUrl: `http://127.0.0.1:${upstreamPort}`, protocol: 'Chat', trustedPrivateNetwork: true, enabled: true }], routes, clientKeys: [{ id: 'matrix-key', keyHash: crypto.createHash('sha256').update(clientKey).digest('hex'), createdAt: new Date().toISOString(), enabled: true, name: 'matrix' }] }));
@@ -533,11 +561,21 @@ test('gateway covers the remaining cross-protocol directions and native forwardi
   const call = async (pathName, body) => fetch(`${base}${pathName}`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${clientKey}` }, body: JSON.stringify(body) }).then(async (response) => ({ status: response.status, body: await response.json() }));
 
   const resMes = await call('/v1/responses', { model: 'res-mes', input: 'res to mes' });
+  const resChat = await call('/v1/responses', { model: 'res-chat', input: 'res to chat', tool_choice: { type: 'function', name: 'lookup' }, tools: [{ type: 'function', name: 'lookup', parameters: { type: 'object' } }], text: { format: { type: 'json_schema', name: 'answer', schema: { type: 'object' } } } });
+  const mesRes = await call('/v1/messages', { model: 'mes-res', messages: [{ role: 'user', content: 'mes to res' }] });
   const mesChat = await call('/v1/messages', { model: 'mes-chat', messages: [{ role: 'user', content: 'mes to chat' }] });
   const chatRes = await call('/v1/chat/completions', { model: 'chat-res', messages: [{ role: 'user', content: 'chat to res' }] });
+  const chatMes = await call('/v1/chat/completions', { model: 'chat-mes', messages: [{ role: 'user', content: 'chat to mes' }] });
   assert.equal(resMes.body.output[0].content[0].text, 'reply-mes');
+  assert.equal(resChat.body.output[0].content[0].text, 'reply-chat');
+  const codexPayload = received.find((item) => item.path === '/v1/chat/completions' && item.body.model === 'model-res-chat').body;
+  assert.deepEqual(codexPayload.tool_choice, { type: 'function', function: { name: 'lookup' } });
+  assert.equal(codexPayload.response_format.json_schema.name, 'answer');
+  assert.equal(codexPayload.tools[0].function.name, 'lookup');
+  assert.equal(mesRes.body.content[0].text, 'reply-res');
   assert.equal(mesChat.body.content[0].text, 'reply-chat');
   assert.equal(chatRes.body.choices[0].message.content, 'reply-res');
+  assert.equal(chatMes.body.choices[0].message.content, 'reply-mes');
 
   await call('/v1/responses', { model: 'native-res', input: 'native', metadata: { preserve: true } });
   await call('/v1/messages', { model: 'native-mes', messages: [{ role: 'user', content: 'native' }], metadata: { preserve: true }, tools: [{ name: 'lookup' }] });

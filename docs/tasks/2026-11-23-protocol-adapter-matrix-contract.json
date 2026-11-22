@@ -1,0 +1,112 @@
+{
+  "contract_version": 1,
+  "task_id": "CXRG-PROTOCOL-ADAPTER-MATRIX-2026-11-23",
+  "title": "Complete six-direction Res/Mes/Chat protocol adapters",
+  "project": "Cx-Routing Gateway",
+  "repository": "AiaiJei/Cx-Routing-Gateway",
+  "status": "active",
+  "stage": "ready-for-pr",
+  "base": "master",
+  "base_sha": "5c24c114deb09fb4602f5f98bda9ea48299d44cb",
+  "branch": "codex/protocol-adapter-matrix",
+  "worktree": ".worktree/protocol-adapter-matrix",
+  "authorization": {
+    "source": "2026-11-23 user approved the unified intermediate representation and six-direction adapters after correcting that Codex requests are not ordinary text requests. Follow-up 2026-11-23 user explicitly authorized bumping version 1.1.5 to 1.1.6, merging PR #20, fast-forwarding the primary master worktree, publishing GitHub v1.1.6 and delivering the verified Portable 1.1.6 to Desktop.",
+    "operations": [
+      "implement and verify the adapter matrix",
+      "commit and push the task branch",
+      "create one dedicated PR against master",
+      "bump package/product/build versions from 1.1.5 to 1.1.6",
+      "build and verify Windows x64 Setup, blockmap, Portable and manifest",
+      "merge PR #20 after local tests/build and required GitHub checks pass",
+      "fast-forward primary master worktree and verify merged result",
+      "publish GitHub Release v1.1.6 with verified assets and notes",
+      "copy the verified Portable 1.1.6 to Desktop without overwriting 1.1.5 and smoke-test the copy"
+    ],
+    "not_authorized": [
+      "make real provider requests",
+      "delete branches or worktrees",
+      "rewrite or delete existing releases/tags other than the explicitly authorized new v1.1.6 release/tag",
+      "delete the task branch or worktree",
+      "make real provider requests"
+    ]
+  },
+  "scope": {
+    "include": [
+      "Res/Mes/Chat six cross-protocol directions",
+      "Codex tools/tool_choice/structured-output handling",
+      "stream/tool/error contracts",
+      "tests, evidence and PR",
+      "version 1.1.6 metadata, verified Windows x64 artifacts, GitHub release, merge and Desktop Portable delivery"
+    ],
+    "exclude": [
+      "credentials",
+      "failover",
+      "timeouts",
+      "version or release changes",
+      "real provider calls"
+    ]
+  },
+  "acceptance": [
+    "six directions have symmetric request/response/tool fixtures",
+    "Codex tool_choice and supported structured-output fields no longer fail at the generic preflight",
+    "unsupported fields return stable field-specific errors without silent loss",
+    "streaming preserves order, indexes, terminal events and request IDs",
+    "Runtime/Desktop/build/diff checks pass",
+    "one dedicated PR targets master",
+    "package/product/build versions consistently report 1.1.6",
+    "PR #20 is merged and primary master is synchronized",
+    "GitHub v1.1.6 assets pass verifier and packaged/Portable smoke",
+    "Desktop Portable 1.1.6 matches verified hash and passes isolated health smoke while preserving 1.1.5"
+  ],
+  "rollback": "Before publishing v1.1.6, preserve v1.1.5 and stop publication if artifacts or smoke fail. After publishing v1.1.6, do not rewrite it; use a corrective patch release. Preserve prior releases, the task branch/worktree, and unrelated untracked files.",
+  "verification": {
+    "baseline_runtime": "PASS: 165/165 after Desktop dist build",
+    "baseline_desktop": "PASS: 158/158",
+    "adapter_unit": "PASS: 10/10",
+    "gateway": "PASS: 43/43",
+    "stream_focus": "PASS: 17/17",
+    "desktop_build": "PASS",
+    "syntax": "PASS",
+    "diff_check": "PASS",
+    "provider": "NOT_RUN",
+    "independent_review": "UNAVAILABLE: reviewer endpoint returned local a6api HTTP 404 for /v1/responses; author self-review no Critical/Important findings",
+    "pull_request": "PASS: PR #20 OPEN/MERGEABLE; Runtime/Desktop SUCCESS; package job SKIPPED by workflow condition"
+  },
+  "capability": {
+    "skills": [
+      "using-superpowers",
+      "awg-workspace-governance",
+      "brainstorming",
+      "systematic-debugging",
+      "test-driven-development",
+      "using-git-worktrees",
+      "writing-plans",
+      "executing-plans",
+      "verification-before-completion",
+      "requesting-code-review",
+      "finishing-a-development-branch"
+    ],
+    "repo_mcp": "UNAVAILABLE: no registered workspace_id; live source inspection used"
+  },
+  "pull_request": {
+    "number": 20,
+    "state": "OPEN",
+    "base": "master",
+    "branch": "codex/protocol-adapter-matrix",
+    "head_sha": "80577c5ce2162b6a70327b60ee31537ff21eaa71",
+    "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/20",
+    "checks": {
+      "runtime": "SUCCESS",
+      "desktop": "SUCCESS",
+      "package": "SKIPPED by workflow condition"
+    }
+  },
+  "revisions": [
+    {
+      "date": "2026-11-23",
+      "request": "版本号递增1，提交合并PR#，并发布Github版本。任务工作树合并到主工作树后更新最新版本到本地桌面",
+      "authorization": "Explicitly authorizes version 1.1.6, PR #20 merge, master fast-forward, GitHub v1.1.6 publication and Desktop Portable delivery; preserve 1.1.5 and the task worktree/branch."
+    }
+  ]
+}
