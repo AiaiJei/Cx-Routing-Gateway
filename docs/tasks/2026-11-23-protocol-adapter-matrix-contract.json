@@ -59,7 +59,7 @@
     "diff_check": "PASS",
     "provider": "NOT_RUN",
     "independent_review": "UNAVAILABLE: reviewer endpoint returned local a6api HTTP 404 for /v1/responses; author self-review no Critical/Important findings",
-    "pull_request": "PENDING"
+    "pull_request": "OPEN: PR #20 created; GitHub checks pending"
   },
   "capability": {
     "skills": [
@@ -76,5 +76,13 @@
       "finishing-a-development-branch"
     ],
     "repo_mcp": "UNAVAILABLE: no registered workspace_id; live source inspection used"
+  },
+  "pull_request": {
+    "number": 20,
+    "state": "OPEN",
+    "base": "master",
+    "branch": "codex/protocol-adapter-matrix",
+    "head_sha": "6fc7f8e",
+    "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/20"
   }
 }
