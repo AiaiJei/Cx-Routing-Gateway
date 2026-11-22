@@ -195,12 +195,12 @@ async function pipeStream(response, res, metrics, deadline, monotonicNow, maxByt
   } finally { await reader.cancel().catch(() => {}); }
 }
 
-async function pipeConvertedStream(response, res, outboundProtocol, inboundProtocol, requestId, metrics, deadline, monotonicNow, maxBytes = 4 * 1024 * 1024) {
+async function pipeConvertedStream(response, res, outboundProtocol, inboundProtocol, requestId, metrics, deadline, monotonicNow, toolContext = [], maxBytes = 4 * 1024 * 1024) {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
   let size = 0;
-  const streamState = { nextToolIndex: 0, toolIndexes: new Map() };
+  const streamState = { nextToolIndex: 0, toolIndexes: new Map(), toolContext };
   const writeFrame = (frame) => {
     const lines = frame.split(/\r?\n/);
     const eventName = lines.find((line) => line.startsWith('event:'))?.slice(6).trim() || '';
@@ -423,7 +423,7 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
         res.setHeader('content-type', upstreamResponse.headers.get('content-type') || 'text/event-stream');
         res.setHeader('x-request-id', requestId);
         if (route.outboundProtocol === inbound) await pipeStream(upstreamResponse, res, metrics, requestDeadline, monotonicNow);
-        else await pipeConvertedStream(upstreamResponse, res, route.outboundProtocol, inbound, requestId, metrics, requestDeadline, monotonicNow);
+        else await pipeConvertedStream(upstreamResponse, res, route.outboundProtocol, inbound, requestId, metrics, requestDeadline, monotonicNow, normalized?.tools || []);
         recordOutcome(false);
         await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Math.max(0, monotonicNow() - requestStartedMonotonic), ...metrics?.snapshot(), ...(reasoningEffort ? { reasoningEffort } : {}), httpStatus: upstreamResponse.status, inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, upstreamName: upstream.name, modelId: route.modelId, status: 'completed' });
         if (!credential.temporary) await store.update((value) => ({ ...value, clientKeys: value.clientKeys.map((item) => item.id === credential.id ? { ...item, lastUsedAt: new Date().toISOString() } : item) }));
@@ -435,7 +435,7 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
       await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Math.max(0, monotonicNow() - requestStartedMonotonic), ...metrics?.snapshot(), ...(reasoningEffort ? { reasoningEffort } : {}), httpStatus: upstreamResponse.status, inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, upstreamName: upstream.name, modelId: route.modelId, status: 'completed' });
       if (!credential.temporary) await store.update((value) => ({ ...value, clientKeys: value.clientKeys.map((item) => item.id === credential.id ? { ...item, lastUsedAt: new Date().toISOString() } : item) }));
       if (route.outboundProtocol === inbound) return send(res, 200, upstreamBody, requestId);
-      const normalizedResponse = parseAdapterResponse(route.outboundProtocol, upstreamBody);
+      const normalizedResponse = parseAdapterResponse(route.outboundProtocol, upstreamBody, normalized?.tools || []);
       return send(res, 200, serializeAdapterResponse(inbound, normalizedResponse, requestId), requestId);
     } catch (error) {
       error = normalizeUpstreamError(error);

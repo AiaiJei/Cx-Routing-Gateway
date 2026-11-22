@@ -33,12 +33,12 @@ async function createTimeoutFixture(t, upstream, gatewayOptions = {}) {
   return {
     store,
     gateway,
-    request(protocol, stream, content = 'hello') {
+    request(protocol, stream, content = 'hello', extras = {}) {
       const alias = protocol === 'Res' ? 'deadline-res' : 'deadline-chat';
       const endpoint = protocol === 'Res' ? 'responses' : 'chat/completions';
       const body = protocol === 'Res'
-        ? { model: alias, stream, input: content }
-        : { model: alias, stream, messages: [{ role: 'user', content }] };
+        ? { model: alias, stream, input: content, ...extras }
+        : { model: alias, stream, messages: [{ role: 'user', content }], ...extras };
       return fetch(`http://127.0.0.1:${gatewayPort}/v1/${endpoint}`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${clientKey}` }, body: JSON.stringify(body), signal: AbortSignal.timeout(2000) });
     },
   };
@@ -767,6 +767,57 @@ test('gateway converts one function tool definition and tool call from Chat to M
   const followUp = await fetch(`http://127.0.0.1:${gateway.address().port}/v1/chat/completions`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${clientKey}` }, body: JSON.stringify({ model: 'tool', messages: [{ role: 'user', content: 'find alpha' }, { role: 'assistant', content: null, tool_calls: [{ id: 'tool-1', type: 'function', function: { name: 'lookup', arguments: '{"key":"alpha"}' } }] }, { role: 'tool', tool_call_id: 'tool-1', content: 'value-from-client' }], tools: [{ type: 'function', function: { name: 'lookup', description: 'Find a value', parameters: { type: 'object', properties: { key: { type: 'string' } } } } }] }) });
   assert.equal(followUp.status, 200);
   assert.equal((await followUp.json()).choices[0].message.content, 'tool result accepted');
+});
+
+test('gateway restores a namespaced Responses tool call after a Chat upstream response', async (t) => {
+  const tools = [{ type: 'namespace', name: 'mcp__clock', tools: [{ type: 'function', name: 'get_time', parameters: { type: 'object' } }] }];
+  const upstream = http.createServer(async (req, res) => {
+    let data = '';
+    for await (const chunk of req) data += chunk;
+    const body = JSON.parse(data);
+    const targetName = body.tools[0].function.name;
+    assert.equal(body.tool_choice.function.name, targetName);
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify({ id: 'chat-namespaced', choices: [{ finish_reason: 'tool_calls', message: { tool_calls: [{ id: 'call-gateway-ns', type: 'function', function: { name: targetName, arguments: '{}' } }] } }] }));
+  });
+  const app = await createTimeoutFixture(t, upstream);
+  const response = await app.request('Res', false, 'What time is it?', {
+    tools,
+    tool_choice: { type: 'function', name: 'get_time', namespace: 'mcp__clock' },
+  });
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.output[0].type, 'function_call');
+  assert.equal(body.output[0].name, 'get_time');
+  assert.equal(body.output[0].namespace, 'mcp__clock');
+  assert.equal(body.output[0].call_id, 'call-gateway-ns');
+});
+
+test('gateway streams namespaced custom tools back as Responses custom input', async (t) => {
+  const patchText = '*** Begin Patch\n*** End Patch';
+  const tools = [{ type: 'namespace', name: 'mcp__patch', tools: [{ type: 'custom', name: 'apply_patch', format: { type: 'text' } }] }];
+  const upstream = http.createServer(async (req, res) => {
+    let data = '';
+    for await (const chunk of req) data += chunk;
+    const body = JSON.parse(data);
+    const targetName = body.tools[0].function.name;
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.write('data: ' + JSON.stringify({ choices: [{ delta: { tool_calls: [{ index: 0, id: 'call-gateway-custom', type: 'function', function: { name: targetName, arguments: JSON.stringify({ input: patchText }) } }] }, finish_reason: null }] }) + '\n\n');
+    res.write('data: ' + JSON.stringify({ choices: [{ delta: {}, finish_reason: 'tool_calls' }] }) + '\n\n');
+    res.end('data: [DONE]\n\n');
+  });
+  const app = await createTimeoutFixture(t, upstream);
+  const response = await app.request('Res', true, 'Apply this patch', { tools });
+  assert.equal(response.status, 200);
+  const body = await response.text();
+  assert.equal((body.match(/event: response.completed/g) || []).length, 1);
+  assert.match(body, /"type":"custom_tool_call"/);
+  assert.match(body, /"name":"apply_patch"/);
+  assert.match(body, /"namespace":"mcp__patch"/);
+  assert.match(body, /response.custom_tool_call_input.delta/);
+  const customDeltaFrame = body.split(/\r?\n\r?\n/).find((frame) => frame.includes('response.custom_tool_call_input.delta'));
+  const customDelta = JSON.parse(customDeltaFrame.split(/\r?\n/).find((line) => line.startsWith('data: ')).slice(6));
+  assert.equal(customDelta.delta, patchText);
 });
 
 test('gateway converts multiple function calls and result blocks in one turn', async (t) => {
