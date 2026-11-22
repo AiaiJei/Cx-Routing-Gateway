@@ -1,0 +1,128 @@
+{
+  "contract_version": 1,
+  "task_id": "CXRG-UPSTREAM-EDIT-FAILOVER-2026-11-22",
+  "title": "Edit existing upstreams and stabilize failover recovery",
+  "project": "Cx-Routing Gateway",
+  "repository": "AiaiJei/Cx-Routing-Gateway",
+  "status": "active",
+  "stage": "implementation",
+  "base": "master",
+  "base_sha": "75716847b8e308f53ae0a3284f74241373ea2aa4",
+  "branch": "codex/upstream-service-edit",
+  "worktree": ".worktree/upstream-service-edit",
+  "authorization": {
+    "source": "2026-11-22 user requested an exclusive PR for editing existing upstream services and added failover stability. The user selected a prefilled dialog, clarified that priority 1 can be healthy while routing unexpectedly tries priority 2, and replied 执行 to approve implementation.",
+    "operations": [
+      "implement the approved upstream editing and failover recovery changes",
+      "run focused and full runtime/Desktop tests and the Desktop production build",
+      "record evidence and independent review",
+      "commit and push the task branch",
+      "create one dedicated PR against master"
+    ],
+    "not_authorized": [
+      "merge the PR",
+      "publish or deploy a release",
+      "delete the task branch or worktree",
+      "change unrelated release tasks or existing worktrees",
+      "make real provider requests"
+    ],
+    "design_approval": "User selected the prefilled edit dialog and explicitly replied 执行 after reviewing the design."
+  },
+  "scope": {
+    "include": [
+      "add a prefilled Desktop dialog for editing an existing upstream",
+      "wire edits through the existing authenticated Local Control PATCH endpoint",
+      "preserve credentials when the replacement key is blank and keep the old key usable if a replacement or config write fails",
+      "preserve current private-network trust when an edit omits allowPrivateNetwork",
+      "heal target circuit state on a late same-target success and ignore older failures after recovery",
+      "refresh per-route target health when routing-relevant upstream configuration changes",
+      "add regression tests, task evidence, independent review, and a dedicated PR"
+    ],
+    "exclude": [
+      "change the configured failure threshold, status classes, 60-second cooldown, or current-request no-retry behavior",
+      "add a retry, probe, or manual circuit-reset feature",
+      "make real third-party provider calls",
+      "change product version, publish, deploy, or merge",
+      "delete branches, worktrees, or unrelated files"
+    ]
+  },
+  "authorized_paths": [
+    "services/gateway/src/server.mjs",
+    "services/local-control/src/server.mjs",
+    "tests/runtime/gateway-server.test.mjs",
+    "tests/runtime/control-server.test.mjs",
+    "apps/desktop/electron/main.cjs",
+    "apps/desktop/electron/preload.cjs",
+    "apps/desktop/electron/upstream-edit-ipc.cjs",
+    "apps/desktop/src/window.d.ts",
+    "apps/desktop/src/data/workspace-client.ts",
+    "apps/desktop/src/data/workspace-client.test.ts",
+    "tests/runtime/upstream-edit-ipc.test.mjs",
+    "apps/desktop/src/pages/UpstreamsPage.tsx",
+    "apps/desktop/src/pages/UpstreamsPage.test.tsx",
+    "docs/superpowers/specs/2026-11-22-upstream-service-edit-failover-stability-design.md",
+    "docs/superpowers/plans/2026-11-22-upstream-service-edit.md",
+    "docs/superpowers/plans/2026-11-22-gateway-failover-stability.md",
+    "docs/tasks/2026-11-22-upstream-edit-failover-contract.json",
+    "docs/tasks/2026-11-22-upstream-edit-failover.md",
+    "docs/tasks/evidence/upstream-service-edit-failover/**",
+    "docs/task-record.md"
+  ],
+  "acceptance": [
+    "Desktop offers a prefilled edit dialog with a blank optional API Key; blank preserves the existing credential",
+    "live edits use authenticated IPC and refresh workspace data; failed edits retain user input; fixture edits remain session-only",
+    "the update IPC rejects untrusted or malformed requests, encodes upstream IDs, and supplies the local control token",
+    "Base URL edits that omit allowPrivateNetwork retain existing trust and approved-address validation",
+    "failed key rotation or config persistence leaves the old credential reference and secret usable",
+    "a same-target success after concurrent failures closes the circuit and restores priority 1 for the next request",
+    "a failure from an older request after recovery cannot reopen the circuit",
+    "health remains isolated by route and target and resets only for routing-relevant upstream changes",
+    "configured threshold, status classes, 60-second cooldown, and no retry for the current failed request remain unchanged",
+    "focused regressions, full runtime suite, full Desktop suite, Desktop production build, independent review, and diff check pass",
+    "one dedicated PR is created against master; merge/release/deployment remain outside this contract"
+  ],
+  "rollback": "Revert only this task's PR commits. Preserve its branch, worktree, contract, and evidence so the work can be recovered or revised.",
+  "owner_acceptance": "pending",
+  "verification": {
+    "preflight_investigation": "Prior isolated investigation recorded Gateway 34/34 and UpstreamsPage 6/6; concurrent primary failures followed by a held late primary success reproduced backup selection. Rerun baselines and task tests in this worktree before completion.",
+    "runtime": "PASS: npm test, 143/143; focused concurrent late-success regression repeated 5/5",
+    "desktop": "PASS: apps/desktop npm test, 158/158",
+    "production_build": "PASS: apps/desktop npm run build (TypeScript and Vite)",
+    "independent_review": "PENDING",
+    "git_diff_check": "PASS: git diff --check; Electron main, preload and IPC module syntax checks; task contract JSON parse",
+    "visual_inspection": "NOT_RUN: local preview opened, but Computer Use stopped when URL safety verification could not authorize reading the page",
+    "provider": "NOT_RUN"
+  },
+  "pull_request": null,
+  "revisions": [
+    {
+      "date": "2026-11-22",
+      "request": "现状问题是在优先级1正常的情况下，会突然切入尝试优先级2",
+      "scope": "Keep the existing three-failure threshold and fix the confirmed concurrent late-success generation race that can leave a recovered preferred target on backup routing. The provided screenshot alone does not prove this was the only cause of that observed round."
+    },
+    {
+      "date": "2026-11-22",
+      "scope": "When editing Base URL without allowPrivateNetwork, reuse the current trustedPrivateNetwork setting for validation and persistence; an explicit value still updates the setting."
+    },
+    {
+      "date": "2026-11-22",
+      "scope": "Register the upstream edit IPC through an injected handler module, matching the repository's GitHub update IPC pattern so sender validation, encoded IDs, token forwarding, and key omission are directly testable."
+    }
+  ],
+  "capability": {
+    "skills": [
+      "awg-workspace-governance",
+      "brainstorming",
+      "writing-plans",
+      "using-git-worktrees",
+      "systematic-debugging",
+      "test-driven-development",
+      "executing-plans",
+      "design-taste-frontend",
+      "verification-before-completion",
+      "requesting-code-review"
+    ],
+    "repo_mcp": "NOT_RUN: repository entry points and current state were directly inspected; no registered workspace_id was available.",
+    "independent_reviewer": "PENDING"
+  }
+}

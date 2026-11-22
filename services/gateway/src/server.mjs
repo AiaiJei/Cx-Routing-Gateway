@@ -380,9 +380,16 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
     let hasFallback = false;
     let acquiredSlot = false;
     function recordOutcome(failed) {
-      if (!targetHealth || outcomeRecorded || targetHealth.generation !== requestGeneration) return;
+      if (!targetHealth || outcomeRecorded) return;
       outcomeRecorded = true;
-      if (!failed || !hasFallback) { targetHealth.failures = 0; return; }
+      if (!failed) {
+        targetHealth.failures = 0;
+        targetHealth.openUntil = 0;
+        targetHealth.generation += 1;
+        return;
+      }
+      if (targetHealth.generation !== requestGeneration) return;
+      if (!hasFallback) { targetHealth.failures = 0; return; }
       targetHealth.failures += 1;
       if (targetHealth.failures >= targetHealth.threshold) {
         targetHealth.failures = 0;
@@ -427,7 +434,21 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
       if (!availableTargets.length) return send(res, 502, { error: 'upstream_error', requestId }, requestId);
       hasFallback = availableTargets.length > 1;
       const policy = { failureThreshold: route.failover?.failureThreshold ?? 3, statusClasses: route.failover?.statusClasses ?? [4, 5], cooldownSeconds: route.failover?.cooldownSeconds ?? 60 };
-      const signature = JSON.stringify({ targets: route.targets ?? [{ upstreamId: route.upstreamId, modelId: route.modelId }], policy });
+      const healthTargets = (route.targets?.length ? route.targets : [{ upstreamId: route.upstreamId, modelId: route.modelId }]).map((target) => {
+        const configuredUpstream = config.upstreams.find((item) => item.id === target.upstreamId);
+        return {
+          ...target,
+          upstream: configuredUpstream ? {
+            baseUrl: configuredUpstream.baseUrl,
+            protocol: configuredUpstream.protocol,
+            credentialRef: configuredUpstream.credentialRef,
+            enabled: configuredUpstream.enabled === true,
+            approvedAddresses: configuredUpstream.approvedAddresses ?? [],
+            trustedPrivateNetwork: configuredUpstream.trustedPrivateNetwork === true,
+          } : null,
+        };
+      });
+      const signature = JSON.stringify({ targets: healthTargets, policy });
       let health = healthByRoute.get(route.id);
       if (!health || health.signature !== signature) { health = { signature, targets: new Map() }; healthByRoute.set(route.id, health); }
       const selected = availableTargets.find(item => {

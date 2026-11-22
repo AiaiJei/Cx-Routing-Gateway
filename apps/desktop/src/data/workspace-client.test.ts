@@ -64,6 +64,21 @@ it("forwards destructive commands and preserves structured upstream dependencies
   }
 });
 
+it("forwards an upstream edit through the Desktop bridge without exposing a credential read", async () => {
+  const previous = Object.getOwnPropertyDescriptor(window, "desktopControls");
+  const controls = { updateUpstream: vi.fn(async () => ({ updated: true })) };
+  Object.defineProperty(window, "desktopControls", { configurable: true, value: controls });
+  try {
+    const input = { name: "Renamed API", baseUrl: "https://new.example/v1" };
+    expect(await runtimeWorkspaceClient.updateUpstream!("up/id", input)).toEqual({ updated: true });
+    expect(controls.updateUpstream).toHaveBeenCalledWith("up/id", input);
+    expect(fixtureWorkspaceClient).not.toHaveProperty("updateUpstream");
+  } finally {
+    if (previous) Object.defineProperty(window, "desktopControls", previous);
+    else delete (window as Window & { desktopControls?: unknown }).desktopControls;
+  }
+});
+
 it("maps measured metrics while preserving missing, zero and invalid historical values", () => {
   const state = { settings: { gatewayHost: "127.0.0.1", gatewayPort: 4318 }, upstreams: [], routes: [], clientKeys: [], usage: [
     { requestId: "zero", createdAt: "2026-11-19T00:00:00.000Z", inboundProtocol: "Chat", outboundProtocol: "Res", status: "completed", stream: true, durationMs: 0, firstTokenMs: 0, tokens: { input: 0, output: 12, cacheRead: 0, total: 12, private: "secret" } },

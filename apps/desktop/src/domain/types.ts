@@ -10,6 +10,8 @@ export type Upstream = {
   models: string[];
 };
 
+export type UpstreamUpdateInput = Pick<Upstream, "name" | "baseUrl"> & { apiKey?: string };
+
 export type ModelRouteSelection = {
   inboundProtocol: Protocol;
   outboundProtocol: Protocol;

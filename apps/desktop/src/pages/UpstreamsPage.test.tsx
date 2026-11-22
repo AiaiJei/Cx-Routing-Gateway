@@ -150,4 +150,109 @@ describe("UpstreamsPage", () => {
       Object.assign(defaultWorkspaceClient, original);
     }
   });
+
+  it("prefills a live upstream, leaves its key blank, saves, and refreshes the list", async () => {
+    const original = { ...defaultWorkspaceClient };
+    const initialWorkspace = {
+      meta: { source: "runtime", live: true },
+      gateway: { state: "运行中", url: "http://127.0.0.1:4318", metrics: undefined },
+      upstreams: [{ id: "up-live", name: "Live API", baseUrl: "https://api.example/v1", credentialLabel: "已配置（已脱敏）", status: "待测试", models: [] }],
+      routes: [], logs: [], credentials: [], settings: [],
+    } as any;
+    const refreshedWorkspace = { ...initialWorkspace, upstreams: [{ ...initialWorkspace.upstreams[0], name: "Renamed API", baseUrl: "https://new.example/v1" }] };
+    const getWorkspace = vi.fn().mockResolvedValueOnce(initialWorkspace).mockResolvedValueOnce(refreshedWorkspace);
+    const updateUpstream = vi.fn(async () => ({ updated: true }));
+    Object.assign(defaultWorkspaceClient, { getWorkspace, updateUpstream });
+    try {
+      const user = userEvent.setup();
+      render(<UpstreamsPage />);
+      const row = await screen.findByRole("row", { name: /Live API/ });
+      await user.click(within(row).getByRole("button", { name: "编辑 Live API" }));
+      const dialog = screen.getByRole("dialog", { name: "编辑上游" });
+      expect(within(dialog).getByLabelText("服务名称")).toHaveValue("Live API");
+      expect(within(dialog).getByLabelText("Base URL")).toHaveValue("https://api.example/v1");
+      const keyInput = within(dialog).getByLabelText("上游 Key");
+      expect(keyInput).toHaveValue("");
+      expect(keyInput).not.toBeRequired();
+
+      await user.clear(within(dialog).getByLabelText("服务名称"));
+      await user.type(within(dialog).getByLabelText("服务名称"), "Renamed API");
+      await user.clear(within(dialog).getByLabelText("Base URL"));
+      await user.type(within(dialog).getByLabelText("Base URL"), "https://new.example/v1");
+      await user.click(within(dialog).getByRole("button", { name: "保存修改" }));
+
+      expect(updateUpstream).toHaveBeenCalledWith("up-live", { name: "Renamed API", baseUrl: "https://new.example/v1" });
+      expect(await screen.findByRole("row", { name: /Renamed API/ })).toBeVisible();
+      expect(await screen.findByRole("status")).toHaveTextContent("上游已更新");
+      expect(getWorkspace).toHaveBeenCalledTimes(2);
+      expect(screen.queryByRole("dialog", { name: "编辑上游" })).not.toBeInTheDocument();
+    } finally {
+      for (const key of Object.keys(defaultWorkspaceClient)) if (!(key in original)) delete (defaultWorkspaceClient as any)[key];
+      Object.assign(defaultWorkspaceClient, original);
+    }
+  });
+
+  it("retains live edit values and the existing row when an upstream update fails", async () => {
+    const original = { ...defaultWorkspaceClient };
+    const liveWorkspace = {
+      meta: { source: "runtime", live: true },
+      gateway: { state: "运行中", url: "http://127.0.0.1:4318", metrics: undefined },
+      upstreams: [{ id: "up-live", name: "Live API", baseUrl: "https://api.example/v1", credentialLabel: "已配置（已脱敏）", status: "待测试", models: [] }],
+      routes: [], logs: [], credentials: [], settings: [],
+    } as any;
+    const updateUpstream = vi.fn().mockRejectedValue(new Error("控制服务不可用"));
+    Object.assign(defaultWorkspaceClient, { getWorkspace: async () => liveWorkspace, updateUpstream });
+    try {
+      const user = userEvent.setup();
+      render(<UpstreamsPage />);
+      const row = await screen.findByRole("row", { name: /Live API/ });
+      await user.click(within(row).getByRole("button", { name: "编辑 Live API" }));
+      const dialog = screen.getByRole("dialog", { name: "编辑上游" });
+      await user.clear(within(dialog).getByLabelText("服务名称"));
+      await user.type(within(dialog).getByLabelText("服务名称"), "Pending Name");
+      await user.clear(within(dialog).getByLabelText("Base URL"));
+      await user.type(within(dialog).getByLabelText("Base URL"), "https://pending.example/v1");
+      await user.type(within(dialog).getByLabelText("上游 Key"), "replacement-key");
+      await user.click(within(dialog).getByRole("button", { name: "保存修改" }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent("更新上游失败：控制服务不可用");
+      expect(updateUpstream).toHaveBeenCalledWith("up-live", { name: "Pending Name", baseUrl: "https://pending.example/v1", apiKey: "replacement-key" });
+      expect(screen.getByRole("dialog", { name: "编辑上游" })).toBeVisible();
+      expect(within(dialog).getByLabelText("服务名称")).toHaveValue("Pending Name");
+      expect(within(dialog).getByLabelText("Base URL")).toHaveValue("https://pending.example/v1");
+      expect(within(dialog).getByLabelText("上游 Key")).toHaveValue("replacement-key");
+      expect(screen.getByRole("row", { name: /Live API/ })).toBeVisible();
+    } finally {
+      for (const key of Object.keys(defaultWorkspaceClient)) if (!(key in original)) delete (defaultWorkspaceClient as any)[key];
+      Object.assign(defaultWorkspaceClient, original);
+    }
+  });
+
+  it("edits fixture upstreams for this page session without making a runtime call", async () => {
+    const original = { ...defaultWorkspaceClient };
+    Object.assign(defaultWorkspaceClient, { updateUpstream: vi.fn() });
+    try {
+      const user = userEvent.setup();
+      render(<UpstreamsPage />);
+      const row = await screen.findByRole("row", { name: /Northstar AI/ });
+      const credentialLabel = within(row).getByText(/key|未配置/i).textContent;
+      await user.click(within(row).getByRole("button", { name: "编辑 Northstar AI" }));
+      const dialog = screen.getByRole("dialog", { name: "编辑上游示例" });
+      await user.clear(within(dialog).getByLabelText("服务名称"));
+      await user.type(within(dialog).getByLabelText("服务名称"), "Session Edit");
+      await user.clear(within(dialog).getByLabelText("Base URL"));
+      await user.type(within(dialog).getByLabelText("Base URL"), "https://session.example/v1");
+      await user.click(within(dialog).getByRole("button", { name: "保存示例修改" }));
+
+      const editedRow = await screen.findByRole("row", { name: /Session Edit/ });
+      expect(within(editedRow).getByText(credentialLabel!)).toBeVisible();
+      expect(await screen.findByRole("status")).toHaveTextContent("当前页面会话");
+      expect(screen.getByRole("status")).toHaveTextContent("不会发起网络连接");
+      expect(defaultWorkspaceClient.updateUpstream).not.toHaveBeenCalled();
+      expect(screen.queryByRole("row", { name: /Northstar AI/ })).not.toBeInTheDocument();
+    } finally {
+      for (const key of Object.keys(defaultWorkspaceClient)) if (!(key in original)) delete (defaultWorkspaceClient as any)[key];
+      Object.assign(defaultWorkspaceClient, original);
+    }
+  });
 });

@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld("desktopControls", {
   permanentlyDeleteClientKey: (id) => ipcRenderer.invoke("runtime:permanently-delete-client-key", id),
   clearRequestLogs: () => ipcRenderer.invoke("runtime:clear-request-logs"),
   createUpstream: (input) => ipcRenderer.invoke("runtime:create-upstream", input),
+  updateUpstream: (id, input) => ipcRenderer.invoke("runtime:update-upstream", id, input),
   deleteUpstream: (id) => ipcRenderer.invoke("runtime:delete-upstream", id),
   saveModelRoutes: selection => ipcRenderer.invoke("runtime:save-model-routes", selection),
   createRoute: (input) => ipcRenderer.invoke("runtime:create-route", input),

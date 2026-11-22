@@ -250,10 +250,19 @@ export function createControlServer({ store, vault, controlToken = process.env.C
         const next = { ...current, ...Object.fromEntries(['name', 'baseUrl', 'protocol', 'enabled'].filter((key) => input[key] !== undefined).map((key) => [key, input[key]])) };
         if (input.protocol) Object.assign(next, profileFor(input.protocol, input));
         else if (input.providerId !== undefined || input.apiProfile !== undefined) Object.assign(next, profileFor(current.protocol, { providerId: input.providerId ?? current.providerId, apiProfile: input.apiProfile ?? current.apiProfile }));
-        if (input.baseUrl) { const destination = await validateBaseUrl(input.baseUrl, input.allowPrivateNetwork === true, dnsLookup); next.baseUrl = input.baseUrl.replace(/\/$/, ''); next.approvedAddresses = destination.addresses; next.trustedPrivateNetwork = input.allowPrivateNetwork === true; }
+        const trustedPrivateNetwork = input.allowPrivateNetwork === undefined ? current.trustedPrivateNetwork === true : input.allowPrivateNetwork === true;
+        if (input.baseUrl) { const destination = await validateBaseUrl(input.baseUrl, trustedPrivateNetwork, dnsLookup); next.baseUrl = input.baseUrl.replace(/\/$/, ''); next.approvedAddresses = destination.addresses; next.trustedPrivateNetwork = trustedPrivateNetwork; }
         if (input.allowPrivateNetwork !== undefined) next.trustedPrivateNetwork = input.allowPrivateNetwork === true;
-        if (input.apiKey) { if (current.credentialRef) await vault.remove(current.credentialRef); next.credentialRef = await vault.put(input.apiKey); }
-        await store.update((value) => ({ ...value, upstreams: value.upstreams.map((item) => item.id === id ? next : item) }));
+        if (input.apiKey !== undefined && typeof input.apiKey !== 'string') throw Object.assign(new Error('Invalid upstream key'), { statusCode: 400 });
+        const replacementCredentialRef = input.apiKey ? await vault.put(input.apiKey) : undefined;
+        if (replacementCredentialRef) next.credentialRef = replacementCredentialRef;
+        try {
+          await store.update((value) => ({ ...value, upstreams: value.upstreams.map((item) => item.id === id ? next : item) }));
+        } catch (error) {
+          if (replacementCredentialRef) await vault.remove(replacementCredentialRef).catch(() => {});
+          throw error;
+        }
+        if (replacementCredentialRef && current.credentialRef) await vault.remove(current.credentialRef).catch(() => {});
         return send(res, 200, next);
       }
       if (req.method === 'PATCH' && parts[2] === 'routes' && parts[3]) {
