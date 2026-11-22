@@ -34,3 +34,5 @@ Branch: `codex/upstream-credential-routing-stability`
 - Follow-up reset parsing: local upstream reset regression PASS; Runtime 154/154; Desktop 158/158; Desktop build PASS. Raw internal connection codes are no longer exposed in the request-log status detail.
 - Merge/release: PR #19 merged as ce77ce4733967afc71e6f8973cc5d8bc13e90c08; primary master synchronized; v1.1.5 tag moved to that commit without changing the version; four GitHub assets were replaced and remote digests matched locally verified artifacts.
 - Release artifact verification: 11 artifact hashes generated; unpacked 1.1.5 smoke PASS; explicit absolute-path Portable smoke PASS for Local Control and Gateway health.
+
+- Desktop delivery: replaced the existing Desktop Portable 1.1.5 after confirming its old hash; source/target hash matched 6cb872606c45947876230fdfab710a6573e52ff13e75befacda3d2b415a2b2775f21be00, size 115022385 bytes, and Desktop-path Portable smoke passed both services.
