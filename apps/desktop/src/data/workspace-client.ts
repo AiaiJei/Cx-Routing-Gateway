@@ -2,7 +2,7 @@ import { finiteMetric, sanitizeTokens } from '../domain/request-log';
 import { workspaceFixtures } from "./fixtures";
 import type { RouteTestResult, UpstreamUpdateInput, WorkspaceFixtures } from "../domain/types";
 
-const gatewayErrors: Record<string, string> = { all_upstreams_unavailable: "所有上游当前均不可用", upstream_error: "上游请求失败，请检查上游状态和日志", upstream_timeout: "上游响应超时", unsupported_feature: "当前请求包含不支持的协议特性", route_not_found: "路由未匹配到此请求协议" };
+const gatewayErrors: Record<string, string> = { all_upstreams_unavailable: "所有上游当前均不可用", upstream_error: "上游请求失败，请检查上游状态和日志", upstream_connection_reset: "上游连接被重置，请检查上游服务或网络", upstream_timeout: "上游响应超时", unsupported_feature: "当前请求包含不支持的协议特性", route_not_found: "路由未匹配到此请求协议" };
 
 export type WorkspaceClient = {
   getWorkspace(): Promise<WorkspaceFixtures>;

@@ -31,3 +31,4 @@ Branch: `codex/upstream-credential-routing-stability`
 - Native packaged Electron quit/relaunch UI interaction is `NOT_RUN`; the supervisor integration covers the persisted runtime lifecycle and the same data directory/master key boundary.
 - `npm install` reported six moderate audit findings and pending install-script approvals; no dependency version changes were introduced.
 - Independent review: UNAVAILABLE. Two reviewer dispatches failed because the local a6api proxy returned HTTP 404 for `/v1/responses`; author self-review completed and found no Critical or Important findings.
+- Follow-up reset parsing: local upstream reset regression PASS; Runtime 154/154; Desktop 158/158; Desktop build PASS. Raw internal connection codes are no longer exposed in the request-log status detail.

@@ -1313,3 +1313,43 @@ test('gateway shares one in-flight preferred probe across concurrent post-cooldo
   assert.equal(probeCalls, 1);
   assert.equal(primaryRequests, 5);
 });
+
+test('gateway normalizes a reset upstream response into a readable sanitized error', async (t) => {
+  const upstream = http.createServer((_req, res) => { res.socket?.destroy(); });
+  const upstreamPort = await listen(upstream);
+  t.after(() => upstream.close());
+  const backup = http.createServer((_req, res) => {
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'backup' } }] }));
+  });
+  const backupPort = await listen(backup);
+  t.after(() => backup.close());
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-upstream-reset-'));
+  const store = new ConfigStore(path.join(dir, 'config.json'));
+  const vault = new SecretVault(path.join(dir, 'secrets.json'), 'test-master-key');
+  const clientKey = 'reset-client';
+  await store.update((config) => ({ ...config,
+    upstreams: [
+      { id: 'reset-upstream', name: 'Reset', baseUrl: `http://127.0.0.1:${upstreamPort}`, protocol: 'Chat', trustedPrivateNetwork: true, enabled: true },
+      { id: 'reset-backup', name: 'Backup', baseUrl: `http://127.0.0.1:${backupPort}`, protocol: 'Chat', trustedPrivateNetwork: true, enabled: true },
+    ],
+    routes: [{ id: 'reset-route', alias: 'reset', inboundProtocol: 'Chat', outboundProtocol: 'Chat', targets: [{ upstreamId: 'reset-upstream', modelId: 'reset-model' }, { upstreamId: 'reset-backup', modelId: 'backup-model' }], failover: { failureThreshold: 1, statusClasses: [5], cooldownSeconds: 60 }, enabled: true }],
+    clientKeys: [{ id: 'reset-key', keyHash: crypto.createHash('sha256').update(clientKey).digest('hex'), createdAt: new Date().toISOString(), enabled: true, name: 'reset' }],
+  }));
+  const gateway = createGatewayServer({ store, vault });
+  await listen(gateway);
+  t.after(() => gateway.close());
+  const response = await fetch(`http://127.0.0.1:${gateway.address().port}/v1/chat/completions`, {
+    method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${clientKey}` },
+    body: JSON.stringify({ model: 'reset', messages: [{ role: 'user', content: 'hello' }] }),
+  });
+  assert.equal(response.status, 502);
+  assert.equal((await response.json()).error, 'upstream_connection_reset');
+  assert.equal((await store.read()).usage.at(-1).errorCode, 'upstream_connection_reset');
+  const recovered = await fetch(`http://127.0.0.1:${gateway.address().port}/v1/chat/completions`, {
+    method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${clientKey}` },
+    body: JSON.stringify({ model: 'reset', messages: [{ role: 'user', content: 'hello again' }] }),
+  });
+  assert.equal(recovered.status, 200);
+  assert.equal((await recovered.json()).choices[0].message.content, 'backup');
+});

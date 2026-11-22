@@ -27,6 +27,20 @@ const upstreamStatusMap = new Map([
 export function classifyUpstreamStatus(status) {
   return upstreamStatusMap.get(status) || { clientStatus: 502, errorCode: 'upstream_error' };
 }
+
+const connectionErrorCodes = new Set(['ECONNRESET', 'EPIPE', 'UND_ERR_SOCKET', 'ECONNABORTED']);
+function normalizeUpstreamError(error) {
+  let current = error;
+  for (let depth = 0; current && depth < 3; depth += 1) {
+    if (connectionErrorCodes.has(current.code)) return Object.assign(new Error('Upstream connection reset'), { code: 'upstream_connection_reset', statusCode: 502 });
+    current = current.cause;
+  }
+  if (typeof error?.message === 'string' && /(?:socket hang up|fetch failed|terminated)/i.test(error.message) && connectionErrorCodes.has(error?.cause?.code)) {
+    return Object.assign(new Error('Upstream connection reset'), { code: 'upstream_connection_reset', statusCode: 502 });
+  }
+  if (error?.statusCode) return error;
+  return Object.assign(new Error('Upstream unavailable'), { code: 'upstream_error', statusCode: 502, cause: error });
+}
 function upstreamUrl(baseUrl, endpoint) {
   const base = baseUrl.replace(/\/$/, '');
   return base.endsWith('/v1') && endpoint.startsWith('/v1/') ? `${base}${endpoint.slice(3)}` : `${base}${endpoint}`;
@@ -218,7 +232,7 @@ async function fetchWithTimeout(url, options, addresses, headerTimeoutMs, reques
       cleanup();
       if (settled) return;
       settled = true;
-      reject(timedOut ? upstreamTimeoutError() : error.code === 'request_aborted' ? error : Object.assign(new Error('Upstream unavailable'), { code: 'upstream_error', statusCode: 502 }));
+      reject(timedOut ? upstreamTimeoutError() : error.code === 'request_aborted' ? error : normalizeUpstreamError(error));
     });
     if (signal?.aborted) abortRequest();
     else signal?.addEventListener('abort', abortRequest, { once: true });
@@ -551,8 +565,9 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
       if (!credential.temporary) await store.update((value) => ({ ...value, clientKeys: value.clientKeys.map((item) => item.id === credential.id ? { ...item, lastUsedAt: new Date().toISOString() } : item) }));
       return send(res, 200, route.outboundProtocol === inbound ? upstreamBody : inboundResponse(inbound, route.outboundProtocol, upstreamBody, requestId), requestId);
     } catch (error) {
+      error = normalizeUpstreamError(error);
       if (upstreamTimedOut) error = Object.assign(new Error('Upstream timeout'), { code: 'upstream_timeout', statusCode: 504 });
-      if (upstreamStarted && (error.code === 'upstream_error' || error.code === 'upstream_timeout' || !error.statusCode)) recordOutcome(true);
+      if (upstreamStarted && (error.code === 'upstream_error' || error.code === 'upstream_connection_reset' || error.code === 'upstream_timeout' || !error.statusCode)) recordOutcome(true);
       if (route && upstream) await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Math.max(0, monotonicNow() - requestStartedMonotonic), ...metrics?.snapshot(), ...(reasoningEffort ? { reasoningEffort } : {}), ...(error.statusCode ? { gatewayStatus: error.statusCode } : {}), inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, upstreamName: upstream.name, modelId: route.modelId, status: error.statusCode === 400 ? 'rejected' : 'failed', errorCode: error.code || 'gateway_error' });
       if (requestController.signal.aborted || res.destroyed) return;
       if (res.headersSent) return res.destroy();

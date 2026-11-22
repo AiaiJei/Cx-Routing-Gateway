@@ -30,3 +30,9 @@
 - Native packaged Desktop quit/relaunch UI interaction was not run; the runtime supervisor integration exercises the same data directory, master key and service lifecycle boundary.
 - GitHub CI and PR review are pending until the branch is pushed and the dedicated PR is created.
 - Independent reviewer dispatch was unavailable twice: the local a6api proxy returned HTTP 404 for /v1/responses. Author self-review found no Critical or Important findings; this is recorded as unavailable independent review, not as an independent pass.
+
+## Follow-up: reset error parsing
+
+- Normalized low-level upstream connection resets (ECONNRESET, EPIPE, UND_ERR_SOCKET, and related causes) to the stable sanitized code upstream_connection_reset with HTTP 502.
+- Desktop request-log mapping now renders 上游连接被重置，请检查上游服务或网络 instead of exposing a raw internal code such as ECONNRESET.
+- Runtime suite after this follow-up: 154/154. Desktop suite: 158/158. Desktop build: PASS.

@@ -134,12 +134,14 @@ it("maps HTTP, upstream, and gateway status details without raw provider text", 
     usage: [
       { requestId: "ok", status: "completed", httpStatus: 200 },
       { requestId: "upstream", status: "failed", upstreamStatus: 429, errorCode: "upstream_error" },
+      { requestId: "reset", status: "failed", gatewayStatus: 502, errorCode: "upstream_connection_reset" },
       { requestId: "gateway", status: "failed", gatewayStatus: 400, errorCode: "unsupported_feature", providerMessage: "secret provider detail" },
     ],
   });
   expect(workspace.logs.map(({ id, httpStatus, upstreamStatus, gatewayStatus, error }) => [id, httpStatus, upstreamStatus, gatewayStatus, error])).toEqual([
     ["ok", 200, undefined, undefined, undefined],
     ["upstream", undefined, 429, undefined, "上游请求失败，请检查上游状态和日志"],
+    ["reset", undefined, undefined, 502, "上游连接被重置，请检查上游服务或网络"],
     ["gateway", undefined, undefined, 400, "当前请求包含不支持的协议特性"],
   ]);
   expect(JSON.stringify(workspace.logs)).not.toContain("secret provider detail");
