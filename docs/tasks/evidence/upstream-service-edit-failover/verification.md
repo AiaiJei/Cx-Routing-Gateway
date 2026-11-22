@@ -26,6 +26,12 @@ The fresh full test runs and build completed on 2026-11-22 in the task worktree 
 
 Review found that an edit delayed in DNS validation could apply an old upstream snapshot after a concurrent key rotation, and then remove the newly active credential. The update now merges into the latest record inside the serialized store update and removes the credential reference captured from that exact latest record. The dedicated delayed-edit regression passed five consecutive runs. Review also identified empty Base URL acceptance and missing destination validation when revoking private-network trust; both now have focused regression coverage in the full runtime suite.
 
+## Independent Review
+
+- Reviewed range: `75716847b8e308f53ae0a3284f74241373ea2aa4..f7041b9`.
+- Result: PASS; the reviewer confirmed all prior findings resolved and reported no Critical, Important, or Minor findings.
+- The review was read-only and did not rerun tests. Test/build results above are from the fresh verification run in this worktree.
+
 ## Regression-Test Fixture Finding
 
 The first complete runtime run exposed a timeout in the new concurrent regression test. The test numbered upstream handlers by arrival order but waited on client request promises by creation order; network scheduling can make those orders differ, causing the held success to be awaited with the three failures. The test now gives each request a unique body marker and releases responders by that marker. Five consecutive focused runs and the complete runtime suite passed after this correction. This was test synchronization only; no production behavior was changed to mask the timeout.
