@@ -5,6 +5,18 @@ import { parseStreamEvent, serializeStreamEvent } from '../../services/gateway/s
 
 const profile = { direction: 'Res->Chat', supportsResponseFormat: true, supportsToolChoice: true };
 
+function assertToolSearchSchema(tool) {
+  assert.ok(tool, 'tool_search should be exposed as a Chat function');
+  assert.equal(tool.type, 'function');
+  const schema = tool.function.parameters;
+  assert.equal(schema.type, 'object');
+  assert.equal(schema.properties?.query?.type, 'string');
+  assert.equal(schema.properties?.limit?.type, 'integer');
+  assert.ok(Array.isArray(schema.required));
+  assert.ok(schema.required.includes('query'));
+  assert.equal(schema.required.includes('limit'), false);
+}
+
 test('normalizes Responses text, tools, tool choice and response format', () => {
   const normalized = parseRequest('Res', {
     model: 'codex-model',
@@ -209,15 +221,14 @@ test('accepts a Responses function tool with no parameters as an empty object sc
 test('converts Responses tool_search into a callable Chat schema', () => {
   const normalized = parseRequest('Res', { input: 'find a tool', tools: [{ type: 'tool_search' }] }, { direction: 'Res->Chat' });
   const chat = serializeRequest('Chat', normalized, 'chat-model');
-  assert.deepEqual(chat.tools, [{ type: 'function', function: {
-    name: 'tool_search',
-    parameters: { type: 'object', properties: { query: { type: 'string' }, limit: { type: 'integer' } }, required: ['query'], additionalProperties: false },
-  } }]);
+  assert.equal(chat.tools.length, 1);
+  assert.equal(chat.tools[0].function.name, 'tool_search');
+  assertToolSearchSchema(chat.tools[0]);
 });
 
 test('preserves tool_search call/output history and exposes returned definitions as Chat tools', () => {
   const returnedTools = [{ type: 'function', name: 'lookup', description: 'Find a value', parameters: { type: 'object', properties: { key: { type: 'string' } } } }];
-  const normalized = parseRequest('Res', { input: [
+  const normalized = parseRequest('Res', { tools: [{ type: 'tool_search' }], input: [
     { type: 'tool_search_call', call_id: 'search-1', execution: 'client', arguments: { query: 'lookup', limit: 2 } },
     { type: 'tool_search_output', call_id: 'search-1', execution: 'client', status: 'completed', tools: returnedTools },
   ] }, { direction: 'Res->Chat' });
@@ -226,40 +237,148 @@ test('preserves tool_search call/output history and exposes returned definitions
   assert.equal(chat.messages[1].role, 'tool');
   assert.equal(chat.messages[1].tool_call_id, 'search-1');
   assert.deepEqual(JSON.parse(chat.messages[1].content), { status: 'completed', tools: returnedTools });
-  assert.deepEqual(chat.tools, [
-    { type: 'function', function: { name: 'tool_search', parameters: { type: 'object', properties: { query: { type: 'string' }, limit: { type: 'integer' } }, required: ['query'], additionalProperties: false } } },
-    { type: 'function', function: { name: 'lookup', description: 'Find a value', parameters: { type: 'object', properties: { key: { type: 'string' } } } } },
-  ]);
+  assertToolSearchSchema(chat.tools.find((tool) => tool.function?.name === 'tool_search'));
+  const lookup = chat.tools.find((tool) => tool.function?.name === 'lookup');
+  assert.equal(lookup?.type, 'function');
+  assert.equal(lookup.function.parameters.type, 'object');
+  assert.equal(lookup.function.parameters.properties.key.type, 'string');
 });
 
-test('normalizes additional_tools structural carriers without emitting null system messages', () => {
-  const normalized = parseRequest('Res', { input: 'continue', additional_tools: { tools: [{ type: 'namespace', name: 'mcp__mixed', tools: [
-    { type: 'function', name: 'lookup', parameters: { type: 'object', properties: { key: { type: 'string' } } } },
-    { type: 'custom', name: 'apply_patch', format: { type: 'text' } },
-  ] }] } }, { direction: 'Res->Chat' });
+test('consumes additional_tools input carriers while preserving ordinary history and callable children', () => {
+  const normalized = parseRequest('Res', {
+    instructions: 'Use the available tools.',
+    input: [
+      { role: 'user', content: 'Find a value.' },
+      { type: 'additional_tools', tools: [{ type: 'namespace', name: 'mcp__mixed', tools: [
+        { type: 'function', name: 'lookup', parameters: { type: 'object', properties: { key: { type: 'string' } } } },
+        { type: 'custom', name: 'apply_patch', format: { type: 'text' } },
+      ] }] },
+      { role: 'assistant', content: 'Tools are ready.' },
+      { role: 'user', content: 'Continue.' },
+    ],
+  }, { direction: 'Res->Chat' });
+  const chat = serializeRequest('Chat', normalized, 'chat-model');
+  assert.deepEqual(chat.messages, [
+    { role: 'system', content: 'Use the available tools.' },
+    { role: 'user', content: 'Find a value.' },
+    { role: 'assistant', content: 'Tools are ready.' },
+    { role: 'user', content: 'Continue.' },
+  ]);
   assert.deepEqual(normalized.tools.map(({ name, namespace, kind }) => ({ name, namespace, kind })), [
     { name: 'lookup', namespace: 'mcp__mixed', kind: 'function' },
     { name: 'apply_patch', namespace: 'mcp__mixed', kind: 'custom' },
   ]);
-  const chat = serializeRequest('Chat', normalized, 'chat-model');
-  assert.ok(chat.tools.length === 2);
-  assert.ok(chat.messages.every((message) => !(['system', 'developer'].includes(message.role) && message.content === null)));
+  assert.equal(chat.tools.length, 2);
+  for (const descriptor of normalized.tools) {
+    const callable = chat.tools.find((tool) => tool.function?.name === (descriptor.targetName || descriptor.name));
+    assert.equal(callable?.type, 'function');
+    assert.equal(callable.function.parameters.type, 'object');
+    if (descriptor.kind === 'custom') {
+      assert.equal(callable.function.parameters.properties.input.type, 'string');
+      assert.ok(callable.function.parameters.required.includes('input'));
+    } else {
+      assert.equal(callable.function.parameters.properties.key.type, 'string');
+    }
+  }
 });
 
-test('restores tool_search function calls from Chat responses as client-executed Responses calls', () => {
-  const normalized = parseResponse('Chat', { id: 'chat-search', choices: [{ finish_reason: 'tool_calls', message: { tool_calls: [{ id: 'search-call', function: { name: 'tool_search', arguments: '{"query":"lookup","limit":2}' } }] } }] });
+test('restores declared tool_search calls from Chat responses without confusing a colliding function', () => {
+  const request = parseRequest('Res', { tools: [
+    { type: 'function', name: 'tool_search', parameters: { type: 'object', properties: { topic: { type: 'string' } } } },
+    { type: 'tool_search' },
+  ] }, { direction: 'Res->Chat' });
+  const search = request.tools.find((tool) => tool.kind === 'tool_search');
+  const ordinary = request.tools.find((tool) => tool.name === 'tool_search' && tool.kind !== 'tool_search');
+  assert.ok(search, 'the search proxy needs its own descriptor');
+  assert.ok(ordinary, 'the ordinary function must keep its descriptor');
+  const searchName = search.targetName || search.name;
+  const ordinaryName = ordinary.targetName || ordinary.name;
+  assert.notEqual(searchName, ordinaryName);
+  const chat = serializeRequest('Chat', request, 'chat-model');
+  assertToolSearchSchema(chat.tools.find((tool) => tool.function?.name === searchName));
+  assert.ok(chat.tools.some((tool) => tool.function?.name === ordinaryName));
+  const normalized = parseResponse('Chat', { id: 'chat-search', choices: [{ finish_reason: 'tool_calls', message: { tool_calls: [
+    { id: 'search-call', type: 'function', function: { name: searchName, arguments: '{"query":"lookup","limit":2}' } },
+    { id: 'ordinary-call', type: 'function', function: { name: ordinaryName, arguments: '{"topic":"local catalogue"}' } },
+  ] } }] }, request.tools);
   const response = serializeResponse('Res', normalized, 'req-search');
-  assert.deepEqual(response.output[0], { type: 'tool_search_call', call_id: 'search-call', execution: 'client', arguments: { query: 'lookup', limit: 2 } });
+  assert.equal(response.output.length, 2);
+  const searchCall = response.output.find((item) => item.call_id === 'search-call');
+  assert.equal(searchCall.type, 'tool_search_call');
+  assert.equal(searchCall.execution, 'client');
+  assert.deepEqual(searchCall.arguments, { query: 'lookup', limit: 2 });
+  const ordinaryCall = response.output.find((item) => item.call_id === 'ordinary-call');
+  assert.equal(ordinaryCall.type, 'function_call');
+  assert.equal(ordinaryCall.name, 'tool_search');
+  assert.deepEqual(JSON.parse(ordinaryCall.arguments), { topic: 'local catalogue' });
 });
 
-test('restores streamed Chat tool_search calls as client-executed Responses calls', () => {
-  const state = { nextToolIndex: 0, toolIndexes: new Map(), toolContext: [] };
-  const delta = parseStreamEvent('Chat', '', { choices: [{ delta: { tool_calls: [{ index: 0, id: 'stream-search', function: { name: 'tool_search', arguments: '{"query":"lookup"}' } }] } }] }, state);
-  const wire = serializeStreamEvent('Res', delta, 'req-search-stream', state);
-  assert.match(wire, /"type":"tool_search_call"/);
-  assert.match(wire, /"call_id":"stream-search"/);
-  assert.match(wire, /"execution":"client"/);
-  assert.match(wire, /"arguments":\{"query":"lookup"\}/);
+test('completes fragmented Chat tool_search calls using descriptors without confusing a colliding function', () => {
+  const request = parseRequest('Res', { tools: [
+    { type: 'function', name: 'tool_search', parameters: { type: 'object', properties: { topic: { type: 'string' } } } },
+    { type: 'tool_search' },
+  ] }, { direction: 'Res->Chat' });
+  const search = request.tools.find((tool) => tool.kind === 'tool_search');
+  const ordinary = request.tools.find((tool) => tool.name === 'tool_search' && tool.kind !== 'tool_search');
+  assert.ok(search, 'the search proxy needs its own descriptor');
+  assert.ok(ordinary, 'the ordinary function must keep its descriptor');
+  const searchName = search.targetName || search.name;
+  const ordinaryName = ordinary.targetName || ordinary.name;
+  assert.notEqual(searchName, ordinaryName);
+  const chat = serializeRequest('Chat', request, 'chat-model');
+  assertToolSearchSchema(chat.tools.find((tool) => tool.function?.name === searchName));
+  assert.ok(chat.tools.some((tool) => tool.function?.name === ordinaryName));
+  const state = { nextToolIndex: 0, toolIndexes: new Map(), toolContext: request.tools };
+  const chunks = [
+    { choices: [{ delta: { tool_calls: [
+      { index: 0, id: 'stream-search', type: 'function', function: { name: searchName, arguments: '' } },
+      { index: 1, id: 'stream-ordinary', type: 'function', function: { name: ordinaryName, arguments: '' } },
+    ] } }] },
+    { choices: [{ delta: { tool_calls: [
+      { index: 0, function: { arguments: '{"query":"look' } },
+      { index: 1, function: { arguments: '{"topic":' } },
+    ] } }] },
+    { choices: [{ delta: { tool_calls: [
+      { index: 0, function: { arguments: 'up","limit":2}' } },
+      { index: 1, function: { arguments: '"local catalogue"}' } },
+    ] } }] },
+    { choices: [{ delta: {}, finish_reason: 'tool_calls' }] },
+    '[DONE]',
+  ];
+  const wire = chunks.map((chunk) => serializeStreamEvent('Res', parseStreamEvent('Chat', '', chunk, state), 'req-search-stream', state)).join('');
+  const events = wire.split(/\r?\n\r?\n/).filter((frame) => frame.trim()).map((frame) => {
+    const data = frame.split(/\r?\n/).find((line) => line.startsWith('data: '));
+    assert.ok(data, 'each Responses frame must have a JSON payload');
+    return JSON.parse(data.slice(6));
+  });
+  const completedSearchCalls = events.filter((event) => event.type === 'response.output_item.done' && event.item?.type === 'tool_search_call');
+  assert.equal(completedSearchCalls.length, 1);
+  const searchCall = completedSearchCalls[0].item;
+  assert.equal(typeof searchCall.id, 'string');
+  assert.ok(searchCall.id.length > 0);
+  assert.equal(searchCall.call_id, 'stream-search');
+  assert.equal(searchCall.execution, 'client');
+  assert.deepEqual(searchCall.arguments, { query: 'lookup', limit: 2 });
+  const ordinaryCalls = events.filter((event) => event.type === 'response.output_item.added' && event.item?.call_id === 'stream-ordinary');
+  assert.equal(ordinaryCalls.length, 1);
+  assert.equal(ordinaryCalls[0].item.type, 'function_call');
+  assert.equal(ordinaryCalls[0].item.name, 'tool_search');
+  const ordinaryArguments = events.filter((event) => event.type === 'response.function_call_arguments.delta' && event.output_index === ordinaryCalls[0].output_index).map((event) => event.delta).join('');
+  assert.deepEqual(JSON.parse(ordinaryArguments), { topic: 'local catalogue' });
+  assert.equal(events.filter((event) => event.type === 'response.completed').length, 1);
+});
+
+test('keeps a declared ordinary tool_search function as a Responses function call', () => {
+  const request = parseRequest('Res', { tools: [{ type: 'function', name: 'tool_search', parameters: { type: 'object', properties: { topic: { type: 'string' } } } }] }, { direction: 'Res->Chat' });
+  const chat = serializeRequest('Chat', request, 'chat-model');
+  const normalized = parseResponse('Chat', { choices: [{ finish_reason: 'tool_calls', message: { tool_calls: [
+    { id: 'ordinary-only', type: 'function', function: { name: chat.tools[0].function.name, arguments: '{"topic":"local catalogue"}' } },
+  ] } }] }, request.tools);
+  const response = serializeResponse('Res', normalized, 'req-ordinary');
+  assert.equal(response.output[0].type, 'function_call');
+  assert.equal(response.output[0].name, 'tool_search');
+  assert.equal(response.output[0].call_id, 'ordinary-only');
+  assert.deepEqual(JSON.parse(response.output[0].arguments), { topic: 'local catalogue' });
 });
 
 test('rejects server-executed built-ins with diagnostics that omit submitted tool data', () => {
