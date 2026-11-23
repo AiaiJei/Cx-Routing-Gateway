@@ -94,7 +94,7 @@
     "task2_probe": "PASS: 4/4 focused failback tests; refused TCP, HTTP-free recovery, deduplication, and timeout",
     "implementation": "PASS: Tasks 1 and 2 complete; fresh Runtime 178/178, Desktop 158/158, Desktop build, adapter 20/20, probe 4/4, syntax, and diff checks passed",
     "independent_review": "PASS: initial reviewer found two Important adapter validation gaps; both were fixed with RED/GREEN tests; read-only follow-up found no Critical or Important issues",
-    "pull_request": "OPEN: PR #21 targets master; Runtime and Desktop CI jobs SUCCESS; package jobs SKIPPED by workflow condition",
+    "pull_request": "OPEN: PR #21 targets master; version commit 2cf218b414572019f7e060856627ef13582ea492 has Runtime and Desktop SUCCESS; package jobs SKIPPED by workflow condition; final evidence-commit checks remain the merge gate",
     "version_release_authorization": "AUTHORIZED: user requested increment by one, merge PR #21, publish latest GitHub version, and sync task worktree to primary master and Desktop",
     "version_release_local_checks": "PASS: 1.1.7 metadata aligned; focused release 2/2, SettingsPage 13/13, Runtime 178/178, Desktop 158/158, Desktop build, syntax, JSON, and CRLF-aware diff checks",
     "release_v1_1_7": "NOT_RUN",
