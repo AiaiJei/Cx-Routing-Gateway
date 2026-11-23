@@ -1,3 +1,5 @@
+import crypto from 'node:crypto';
+
 function featureError(field, direction, code = 'unsupported_feature') {
   const error = Object.assign(new Error('Unsupported protocol feature'), { code, statusCode: 400 });
   error.field = field;
@@ -11,13 +13,45 @@ function textParts(value) {
   return value.filter((part) => ['text', 'input_text', 'output_text'].includes(part?.type)).map((part) => part.text || part.input_text || part.output_text || '').join('');
 }
 
-function normalizeToolChoice(protocol, value, direction) {
+function targetToolName(tool) {
+  return tool.targetName || tool.name;
+}
+
+function makeTargetToolName(namespace, name, usedNames) {
+  const sourceName = namespace ? namespace + '__' + name : name;
+  let base = sourceName.replace(/[^A-Za-z0-9_-]/g, '_');
+  if (!base) base = 'tool';
+  if (base.length <= 64 && !usedNames.has(base)) {
+    usedNames.add(base);
+    return base;
+  }
+  const seed = (namespace || '') + '\0' + name;
+  let suffix = crypto.createHash('sha256').update(seed).digest('hex').slice(0, 10);
+  let candidate = base.slice(0, 52) + '__' + suffix;
+  let attempt = 0;
+  while (usedNames.has(candidate)) {
+    attempt += 1;
+    suffix = crypto.createHash('sha256').update(seed + '\0' + attempt).digest('hex').slice(0, 10);
+    candidate = base.slice(0, 52) + '__' + suffix;
+  }
+  usedNames.add(candidate);
+  return candidate;
+}
+
+function normalizeToolChoice(protocol, value, direction, tools = []) {
   if (value === undefined || value === null) return undefined;
   if (value === 'auto' || value === 'none' || value === 'required') return { mode: value };
   if (protocol === 'Mes' && value.type === 'auto') return { mode: 'auto' };
   if (protocol === 'Mes' && value.type === 'any') return { mode: 'required' };
-  if (typeof value === 'object' && value.type === 'function' && typeof value.function?.name === 'string') return { mode: 'function', name: value.function.name };
-  if (typeof value === 'object' && value.type === 'function' && typeof value.name === 'string') return { mode: 'function', name: value.name };
+  if (typeof value === 'object' && value.type === 'function' && typeof (value.function?.name || value.name) === 'string') {
+    const name = value.function?.name || value.name;
+    if (protocol === 'Res') {
+      const matches = tools.filter((tool) => tool.name === name && (value.namespace ? tool.namespace === value.namespace : !tool.namespace));
+      if (matches.length !== 1) throw featureError('tool_choice', direction);
+      return { mode: 'function', name: targetToolName(matches[0]) };
+    }
+    return { mode: 'function', name };
+  }
   if (typeof value === 'object' && value.type === 'tool' && typeof value.name === 'string') return { mode: 'function', name: value.name };
   throw featureError('tool_choice', direction);
 }
@@ -38,23 +72,98 @@ function normalizeResponseFormat(value, direction) {
 function normalizeTools(protocol, tools, direction) {
   if (!tools) return [];
   if (!Array.isArray(tools)) throw featureError('tools', direction);
-  return tools.map((tool) => {
+  if (protocol !== 'Res') {
+    return tools.map((tool) => {
     if (protocol === 'Chat') return { name: tool.function?.name, description: tool.function?.description, parameters: tool.function?.parameters };
     if (protocol === 'Mes') return { name: tool.name, description: tool.description, parameters: tool.input_schema };
-    return { name: tool.name, description: tool.description, parameters: tool.parameters };
-  }).map((tool) => {
-    if (!tool.name || !tool.parameters) throw featureError('tools', direction);
-    return tool;
-  });
+    }).map((tool) => {
+      if (!tool.name || !tool.parameters) throw featureError('tools', direction);
+      return tool;
+    });
+  }
+
+  const normalized = [];
+  const usedNames = new Set();
+  const addTool = (source, namespace, namespaceDescription) => {
+    if (!source || typeof source.name !== 'string' || !source.name) throw featureError('tools.name', direction);
+    const kind = source.type === 'custom' ? 'custom' : 'function';
+    const targetName = makeTargetToolName(namespace, source.name, usedNames);
+    const descriptions = [namespaceDescription, source.description].filter((value) => typeof value === 'string' && value.trim());
+    let parameters;
+    let format;
+    if (kind === 'custom') {
+      format = source.format === undefined ? { type: 'text' } : source.format;
+      if (!format || typeof format !== 'object' || Array.isArray(format)) throw featureError('tools.format', direction);
+      if (format.type === 'grammar') {
+        if (!['lark', 'regex'].includes(format.syntax) || typeof format.definition !== 'string' || !format.definition.trim()) {
+          throw featureError('tools.format', direction);
+        }
+      } else if (format.type !== 'text') {
+        throw featureError('tools.format', direction);
+      }
+      descriptions.push('Original custom input format: ' + JSON.stringify(format));
+      parameters = {
+        type: 'object',
+        properties: { input: { type: 'string' } },
+        required: ['input'],
+        additionalProperties: false,
+      };
+    } else {
+      parameters = source.parameters === undefined ? { type: 'object', properties: {} } : source.parameters;
+      if (!parameters || typeof parameters !== 'object' || Array.isArray(parameters)) throw featureError('tools.parameters', direction);
+    }
+    const description = descriptions.join('\n\n') || undefined;
+    const tool = { name: source.name, description, parameters };
+    if (namespace || kind === 'custom' || targetName !== source.name) {
+      tool.targetName = targetName;
+      tool.kind = kind;
+      if (namespace) tool.namespace = namespace;
+    }
+    if (kind === 'custom') tool.format = format;
+    if (source.strict !== undefined) tool.strict = source.strict;
+    normalized.push(tool);
+  };
+
+  for (const tool of tools) {
+    if (tool?.type === 'namespace') {
+      if (typeof tool.name !== 'string' || !tool.name || !Array.isArray(tool.tools)) throw featureError('tools.namespace', direction);
+      for (const member of tool.tools) {
+        if (member?.type !== 'function' && member?.type !== 'custom') throw featureError('tools.type', direction);
+        addTool(member, tool.name, tool.description);
+      }
+    } else if (tool?.type === 'function' || (!tool?.type && typeof tool?.name === 'string')) {
+      addTool(tool, undefined, undefined);
+    } else if (tool?.type === 'custom') {
+      addTool(tool, undefined, undefined);
+    } else {
+      throw featureError('tools.type', direction);
+    }
+  }
+  return normalized;
 }
 
-function normalizeMessages(protocol, body, direction) {
+function toolForResponsesCall(tools, name, namespace) {
+  return tools.find((tool) => tool.name === name && (namespace ? tool.namespace === namespace : !tool.namespace));
+}
+
+function normalizeMessages(protocol, body, direction, tools = []) {
   const messages = [];
   if (protocol === 'Res') {
     const raw = typeof body.input === 'string' ? [{ role: 'user', content: body.input }] : (body.input || []);
     for (const item of raw) {
-      if (item.type === 'function_call_output') messages.push({ role: 'tool', id: item.call_id, content: textParts(item.output) });
-      else if (item.type === 'function_call') messages.push({ role: 'assistant', toolCalls: [{ id: item.call_id || item.id, name: item.name, arguments: item.arguments || '{}', index: 0 }] });
+      if (item.type === 'function_call_output' || item.type === 'custom_tool_call_output') messages.push({ role: 'tool', id: item.call_id, content: textParts(item.output) });
+      else if (item.type === 'function_call' || item.type === 'custom_tool_call') {
+        const tool = toolForResponsesCall(tools, item.name, item.namespace);
+        const kind = item.type === 'custom_tool_call' ? 'custom' : (tool?.kind || 'function');
+        const input = typeof item.input === 'string' ? item.input : JSON.stringify(item.input ?? '');
+        messages.push({ role: 'assistant', toolCalls: [{
+          id: item.call_id || item.id,
+          name: tool ? targetToolName(tool) : item.name,
+          ...(item.namespace ? { namespace: item.namespace } : {}),
+          ...(kind === 'custom' ? { kind, input, arguments: JSON.stringify({ input }) } : { arguments: item.arguments || '{}' }),
+          index: 0,
+        }] });
+      }
       else {
         if (Array.isArray(item.content) && item.content.some((part) => !['input_text', 'output_text', 'text'].includes(part?.type))) throw featureError('input.content', direction);
         messages.push({ role: item.role || 'user', content: textParts(item.content || item) });
@@ -91,16 +200,17 @@ export function parseRequest(protocol, body, profile = {}) {
   if (candidateCount !== 1) throw featureError('n', direction, 'multiple_candidates_unsupported');
   if (body.logprobs) throw featureError('logprobs', direction);
   if (body.modalities) throw featureError('modalities', direction);
-  const parsed = normalizeMessages(protocol, body, direction);
+  const tools = normalizeTools(protocol, body.tools, direction);
+  const parsed = normalizeMessages(protocol, body, direction, tools);
   const responseFormat = protocol === 'Res' ? normalizeResponseFormat(body.text?.format, direction) : normalizeResponseFormat(body.response_format, direction);
-  return { messages: parsed.messages, instructions: parsed.instructions, tools: normalizeTools(protocol, body.tools, direction), toolChoice: normalizeToolChoice(protocol, body.tool_choice, direction), responseFormat, maxTokens: protocol === 'Res' ? body.max_output_tokens : protocol === 'Mes' ? body.max_tokens : (body.max_completion_tokens ?? body.max_tokens), stream: body.stream === true, candidateCount };
+  return { messages: parsed.messages, instructions: parsed.instructions, tools, toolChoice: normalizeToolChoice(protocol, body.tool_choice, direction, tools), responseFormat, maxTokens: protocol === 'Res' ? body.max_output_tokens : protocol === 'Mes' ? body.max_tokens : (body.max_completion_tokens ?? body.max_tokens), stream: body.stream === true, candidateCount };
 }
 
 function serializeTools(protocol, tools) {
   if (!tools?.length) return undefined;
-  if (protocol === 'Chat') return tools.map((tool) => ({ type: 'function', function: tool }));
-  if (protocol === 'Mes') return tools.map((tool) => ({ name: tool.name, description: tool.description, input_schema: tool.parameters }));
-  return tools.map((tool) => ({ type: 'function', name: tool.name, description: tool.description, parameters: tool.parameters }));
+  if (protocol === 'Chat') return tools.map((tool) => ({ type: 'function', function: { name: targetToolName(tool), ...(tool.description ? { description: tool.description } : {}), parameters: tool.parameters, ...(tool.strict === undefined ? {} : { strict: tool.strict }) } }));
+  if (protocol === 'Mes') return tools.map((tool) => ({ name: targetToolName(tool), ...(tool.description ? { description: tool.description } : {}), input_schema: tool.parameters }));
+  return tools.map((tool) => ({ type: 'function', name: targetToolName(tool), ...(tool.description ? { description: tool.description } : {}), parameters: tool.parameters }));
 }
 
 function serializeChoice(protocol, choice) {
@@ -153,19 +263,43 @@ export function serializeRequest(protocol, normalized, model) {
   return payload;
 }
 
-export function parseResponse(protocol, body) {
+function customInputFromArguments(argumentsText) {
+  if (typeof argumentsText !== 'string') return JSON.stringify(argumentsText ?? '');
+  try {
+    const parsed = JSON.parse(argumentsText);
+    if (typeof parsed?.input === 'string') return parsed.input;
+  } catch {}
+  return argumentsText;
+}
+
+function restoreToolCall(call, toolContext) {
+  const tool = toolContext.find((item) => targetToolName(item) === call.name);
+  if (!tool) return call;
+  const restored = { ...call, name: tool.name, targetName: targetToolName(tool), kind: tool.kind || 'function' };
+  if (tool.namespace) restored.namespace = tool.namespace;
+  if (tool.kind === 'custom') restored.input = customInputFromArguments(call.arguments);
+  return restored;
+}
+
+function parseResponseToolCalls(calls, toolContext) {
+  return calls.map((call) => restoreToolCall(call, toolContext));
+}
+
+export function parseResponse(protocol, body, toolContext = []) {
   if (protocol === 'Chat') {
     const message = body.choices?.[0]?.message || {};
-    return { id: body.id, text: textParts(message.content) || (typeof message.refusal === 'string' ? message.refusal : ''), finishReason: body.choices?.[0]?.finish_reason, toolCalls: (message.tool_calls || []).map((call, index) => ({ id: call.id, name: call.function?.name, arguments: call.function?.arguments || '{}', index })), usage: body.usage };
+    return { id: body.id, text: textParts(message.content) || (typeof message.refusal === 'string' ? message.refusal : ''), finishReason: body.choices?.[0]?.finish_reason, toolCalls: parseResponseToolCalls((message.tool_calls || []).map((call, index) => ({ id: call.id, name: call.function?.name, arguments: call.function?.arguments || '{}', index })), toolContext), usage: body.usage };
   }
-  if (protocol === 'Mes') return { id: body.id, text: textParts(body.content), finishReason: body.stop_reason, toolCalls: (body.content || []).filter((item) => item.type === 'tool_use').map((call, index) => ({ id: call.id, name: call.name, arguments: JSON.stringify(call.input || {}), index })), usage: body.usage };
-  return { id: body.id, text: textParts(body.output?.find((item) => item.type === 'message')?.content), finishReason: body.status, toolCalls: (body.output || []).filter((item) => item.type === 'function_call').map((call, index) => ({ id: call.call_id, name: call.name, arguments: call.arguments || '{}', index })), usage: body.usage };
+  if (protocol === 'Mes') return { id: body.id, text: textParts(body.content), finishReason: body.stop_reason, toolCalls: parseResponseToolCalls((body.content || []).filter((item) => item.type === 'tool_use').map((call, index) => ({ id: call.id, name: call.name, arguments: JSON.stringify(call.input || {}), index })), toolContext), usage: body.usage };
+  return { id: body.id, text: textParts(body.output?.find((item) => item.type === 'message')?.content), finishReason: body.status, toolCalls: parseResponseToolCalls((body.output || []).filter((item) => item.type === 'function_call' || item.type === 'custom_tool_call').map((call, index) => ({ id: call.call_id, name: call.name, namespace: call.namespace, kind: call.type === 'custom_tool_call' ? 'custom' : 'function', arguments: call.arguments || '{}', input: call.input, index })), toolContext), usage: body.usage };
 }
 
 export function serializeResponse(protocol, normalized, requestId) {
-  if (protocol === 'Chat') return { id: normalized.id || 'chatcmpl_' + requestId, object: 'chat.completion', choices: [{ index: 0, message: normalized.toolCalls?.length ? { role: 'assistant', content: null, tool_calls: normalized.toolCalls.map((call) => ({ id: call.id, type: 'function', function: { name: call.name, arguments: call.arguments } })) } : { role: 'assistant', content: normalized.text }, finish_reason: normalized.toolCalls?.length ? 'tool_calls' : 'stop' }], usage: normalized.usage };
-  if (protocol === 'Mes') return { id: normalized.id || 'msg_' + requestId, type: 'message', role: 'assistant', content: normalized.toolCalls?.length ? normalized.toolCalls.map((call) => ({ type: 'tool_use', id: call.id, name: call.name, input: JSON.parse(call.arguments || '{}') })) : [{ type: 'text', text: normalized.text }], stop_reason: normalized.toolCalls?.length ? 'tool_use' : 'end_turn', usage: normalized.usage };
-  return { id: normalized.id || 'resp_' + requestId, object: 'response', output: normalized.toolCalls?.length ? normalized.toolCalls.map((call) => ({ type: 'function_call', call_id: call.id, name: call.name, arguments: call.arguments })) : [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: normalized.text }] }], status: 'completed', usage: normalized.usage };
+  if (protocol === 'Chat') return { id: normalized.id || 'chatcmpl_' + requestId, object: 'chat.completion', choices: [{ index: 0, message: normalized.toolCalls?.length ? { role: 'assistant', content: null, tool_calls: normalized.toolCalls.map((call) => ({ id: call.id, type: 'function', function: { name: targetToolName(call), arguments: call.kind === 'custom' ? JSON.stringify({ input: call.input ?? customInputFromArguments(call.arguments) }) : call.arguments } })) } : { role: 'assistant', content: normalized.text }, finish_reason: normalized.toolCalls?.length ? 'tool_calls' : 'stop' }], usage: normalized.usage };
+  if (protocol === 'Mes') return { id: normalized.id || 'msg_' + requestId, type: 'message', role: 'assistant', content: normalized.toolCalls?.length ? normalized.toolCalls.map((call) => ({ type: 'tool_use', id: call.id, name: targetToolName(call), input: call.kind === 'custom' ? { input: call.input ?? customInputFromArguments(call.arguments) } : JSON.parse(call.arguments || '{}') })) : [{ type: 'text', text: normalized.text }], stop_reason: normalized.toolCalls?.length ? 'tool_use' : 'end_turn', usage: normalized.usage };
+  return { id: normalized.id || 'resp_' + requestId, object: 'response', output: normalized.toolCalls?.length ? normalized.toolCalls.map((call) => call.kind === 'custom'
+    ? { type: 'custom_tool_call', call_id: call.id, name: call.name, ...(call.namespace ? { namespace: call.namespace } : {}), input: call.input ?? customInputFromArguments(call.arguments) }
+    : { type: 'function_call', call_id: call.id, name: call.name, ...(call.namespace ? { namespace: call.namespace } : {}), arguments: call.arguments }) : [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: normalized.text }] }], status: 'completed', usage: normalized.usage };
 }
 
 export function parseStreamEvent(protocol, eventName, payload, state = {}) {
@@ -206,7 +340,22 @@ export function parseStreamEvent(protocol, eventName, payload, state = {}) {
   return { type: 'ignore' };
 }
 
-export function serializeStreamEvent(protocol, event, requestId) {
+function responseFrame(eventName, payload) {
+  return 'event: ' + eventName + '\ndata: ' + JSON.stringify(payload) + '\n\n';
+}
+
+function customCallFrames(call, requestId) {
+  const input = customInputFromArguments(call.arguments);
+  const callId = call.id || 'call_' + requestId + '_' + call.index;
+  const itemId = 'ctc_' + requestId + '_' + call.index;
+  const item = { type: 'custom_tool_call', id: itemId, call_id: callId, name: call.tool.name, ...(call.tool.namespace ? { namespace: call.tool.namespace } : {}) };
+  return responseFrame('response.output_item.added', { type: 'response.output_item.added', output_index: call.index, item: { ...item, input: '' } })
+    + responseFrame('response.custom_tool_call_input.delta', { type: 'response.custom_tool_call_input.delta', item_id: itemId, output_index: call.index, delta: input })
+    + responseFrame('response.custom_tool_call_input.done', { type: 'response.custom_tool_call_input.done', item_id: itemId, output_index: call.index, input })
+    + responseFrame('response.output_item.done', { type: 'response.output_item.done', output_index: call.index, item: { ...item, input } });
+}
+
+export function serializeStreamEvent(protocol, event, requestId, state = {}) {
   if (protocol === 'Chat') {
     if (event.type === 'done') return 'data: ' + JSON.stringify({ id: 'chatcmpl_' + requestId, object: 'chat.completion.chunk', choices: [{ index: 0, delta: {}, finish_reason: event.finishReason === 'end_turn' ? 'stop' : event.finishReason === 'tool_use' || event.finishReason === 'tool_calls' ? 'tool_calls' : event.finishReason || 'stop' }] }) + '\n\ndata: [DONE]\n\n';
     if (event.type === 'text') return 'data: ' + JSON.stringify({ id: 'chatcmpl_' + requestId, object: 'chat.completion.chunk', choices: [{ index: 0, delta: { content: event.text }, finish_reason: null }] }) + '\n\n';
@@ -219,9 +368,40 @@ export function serializeStreamEvent(protocol, event, requestId) {
     if (event.type === 'tools') return event.tools.map((tool) => (tool.id || tool.name ? 'event: content_block_start\ndata: ' + JSON.stringify({ type: 'content_block_start', index: tool.index, content_block: { type: 'tool_use', id: tool.id || 'tool_' + requestId + '_' + tool.index, name: tool.name || '', input: {} } }) + '\n\n' : '') + (tool.arguments ? 'event: content_block_delta\ndata: ' + JSON.stringify({ type: 'content_block_delta', index: tool.index, delta: { type: 'input_json_delta', partial_json: tool.arguments } }) + '\n\n' : '')).join('');
     return '';
   }
-  if (event.type === 'done') return 'event: response.completed\ndata: ' + JSON.stringify({ type: 'response.completed', response: { id: 'resp_' + requestId, status: 'completed' } }) + '\n\n';
+  if (event.type === 'done') {
+    if (state.responseCompleted) return '';
+    state.responseCompleted = true;
+    const pending = [...(state.customToolCalls?.values() || [])].sort((left, right) => left.index - right.index);
+    state.customToolCalls?.clear();
+    return pending.map((call) => customCallFrames(call, requestId)).join('')
+      + 'event: response.completed\ndata: ' + JSON.stringify({ type: 'response.completed', response: { id: 'resp_' + requestId, status: 'completed' } }) + '\n\n';
+  }
   if (event.type === 'text') return 'event: response.output_text.delta\ndata: ' + JSON.stringify({ type: 'response.output_text.delta', delta: event.text }) + '\n\n';
-  if (event.type === 'tools') return event.tools.map((tool) => (tool.id || tool.name ? 'event: response.output_item.added\ndata: ' + JSON.stringify({ type: 'response.output_item.added', output_index: tool.index, item: { type: 'function_call', id: tool.id || 'fc_' + requestId + '_' + tool.index, call_id: tool.id || 'call_' + requestId + '_' + tool.index, name: tool.name || '', arguments: '' } }) + '\n\n' : '') + (tool.arguments ? 'event: response.function_call_arguments.delta\ndata: ' + JSON.stringify({ type: 'response.function_call_arguments.delta', output_index: tool.index, delta: tool.arguments }) + '\n\n' : '')).join('');
+  if (event.type === 'tools') {
+    const output = [];
+    for (const tool of event.tools) {
+      const index = Number.isInteger(tool.index) ? tool.index : 0;
+      const existingCustom = state.customToolCalls?.get(index);
+      const descriptor = state.toolContext?.find((item) => targetToolName(item) === tool.name) || existingCustom?.tool;
+      if (descriptor?.kind === 'custom') {
+        state.customToolCalls ||= new Map();
+        const call = state.customToolCalls.get(index) || { index, id: undefined, tool: descriptor, arguments: '' };
+        if (tool.id) call.id = tool.id;
+        call.arguments += tool.arguments || '';
+        state.customToolCalls.set(index, call);
+        continue;
+      }
+      const name = descriptor?.name || tool.name;
+      const namespace = descriptor?.namespace;
+      const hasIdentity = Boolean(tool.id || tool.name);
+      if (hasIdentity) {
+        const item = { type: 'function_call', id: tool.id || 'fc_' + requestId + '_' + index, call_id: tool.id || 'call_' + requestId + '_' + index, name: name || '', ...(namespace ? { namespace } : {}), arguments: '' };
+        output.push(responseFrame('response.output_item.added', { type: 'response.output_item.added', output_index: index, item }));
+      }
+      if (tool.arguments) output.push(responseFrame('response.function_call_arguments.delta', { type: 'response.function_call_arguments.delta', output_index: index, delta: tool.arguments }));
+    }
+    return output.join('');
+  }
   return '';
 }
 
