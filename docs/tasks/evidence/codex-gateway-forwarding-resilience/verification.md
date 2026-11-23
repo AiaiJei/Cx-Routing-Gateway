@@ -60,4 +60,4 @@ Local Vite production preview only at 127.0.0.1:5196; no real Gateway configurat
 
 ## Delivery
 
-Dedicated PR #22: OPEN against `master`, head `codex/codex-routing-forwarding`. GitHub CI was IN_PROGRESS at the last check; do not merge or release.
+Dedicated PR #22: OPEN against `master`, head `codex/codex-routing-forwarding`. GitHub runtime and Desktop checks passed for commit `f23098f`; the package job was skipped by workflow rules. Do not merge or release.
