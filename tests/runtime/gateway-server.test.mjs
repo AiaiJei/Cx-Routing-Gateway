@@ -798,6 +798,26 @@ test('gateway restores a namespaced Responses tool call after a Chat upstream re
   assert.equal(body.output[0].call_id, 'call-gateway-ns');
 });
 
+test('gateway safely rejects server-executed built-ins without echoing submitted tool data', async (t) => {
+  const upstream = http.createServer((_req, res) => {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'unexpected upstream call' } }] }));
+  });
+  const app = await createTimeoutFixture(t, upstream);
+  const privateName = 'private-search-backend';
+  const privateSchema = { type: 'object', properties: { privateField: { type: 'string', description: 'secret schema detail' } } };
+  const privateArgument = 'sensitive query phrase';
+  const response = await app.request('Res', false, 'find something', {
+    tools: [{ type: 'web_search_preview', name: privateName, execution: 'server', parameters: privateSchema, arguments: privateArgument }],
+  });
+  assert.equal(response.status, 400);
+  const payload = await response.json();
+  assert.equal(payload.error, 'unsupported_feature');
+  assert.equal(payload.field, 'tools.type');
+  const diagnostics = JSON.stringify(payload);
+  assert.doesNotMatch(diagnostics, /private-search-backend|secret schema detail|sensitive query phrase/);
+});
+
 test('gateway streams namespaced custom tools back as Responses custom input', async (t) => {
   const patchText = '*** Begin Patch\n*** End Patch';
   const tools = [{ type: 'namespace', name: 'mcp__patch', tools: [{ type: 'custom', name: 'apply_patch', format: { type: 'text' } }] }];

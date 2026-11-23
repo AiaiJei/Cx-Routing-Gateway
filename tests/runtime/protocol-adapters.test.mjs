@@ -206,6 +206,76 @@ test('accepts a Responses function tool with no parameters as an empty object sc
   assert.deepEqual(normalized.tools[0].parameters, { type: 'object', properties: {} });
 });
 
+test('converts Responses tool_search into a callable Chat schema', () => {
+  const normalized = parseRequest('Res', { input: 'find a tool', tools: [{ type: 'tool_search' }] }, { direction: 'Res->Chat' });
+  const chat = serializeRequest('Chat', normalized, 'chat-model');
+  assert.deepEqual(chat.tools, [{ type: 'function', function: {
+    name: 'tool_search',
+    parameters: { type: 'object', properties: { query: { type: 'string' }, limit: { type: 'integer' } }, required: ['query'], additionalProperties: false },
+  } }]);
+});
+
+test('preserves tool_search call/output history and exposes returned definitions as Chat tools', () => {
+  const returnedTools = [{ type: 'function', name: 'lookup', description: 'Find a value', parameters: { type: 'object', properties: { key: { type: 'string' } } } }];
+  const normalized = parseRequest('Res', { input: [
+    { type: 'tool_search_call', call_id: 'search-1', execution: 'client', arguments: { query: 'lookup', limit: 2 } },
+    { type: 'tool_search_output', call_id: 'search-1', execution: 'client', status: 'completed', tools: returnedTools },
+  ] }, { direction: 'Res->Chat' });
+  const chat = serializeRequest('Chat', normalized, 'chat-model');
+  assert.deepEqual(chat.messages[0].tool_calls, [{ id: 'search-1', type: 'function', function: { name: 'tool_search', arguments: JSON.stringify({ query: 'lookup', limit: 2 }) } }]);
+  assert.equal(chat.messages[1].role, 'tool');
+  assert.equal(chat.messages[1].tool_call_id, 'search-1');
+  assert.deepEqual(JSON.parse(chat.messages[1].content), { status: 'completed', tools: returnedTools });
+  assert.deepEqual(chat.tools, [
+    { type: 'function', function: { name: 'tool_search', parameters: { type: 'object', properties: { query: { type: 'string' }, limit: { type: 'integer' } }, required: ['query'], additionalProperties: false } } },
+    { type: 'function', function: { name: 'lookup', description: 'Find a value', parameters: { type: 'object', properties: { key: { type: 'string' } } } } },
+  ]);
+});
+
+test('normalizes additional_tools structural carriers without emitting null system messages', () => {
+  const normalized = parseRequest('Res', { input: 'continue', additional_tools: { tools: [{ type: 'namespace', name: 'mcp__mixed', tools: [
+    { type: 'function', name: 'lookup', parameters: { type: 'object', properties: { key: { type: 'string' } } } },
+    { type: 'custom', name: 'apply_patch', format: { type: 'text' } },
+  ] }] } }, { direction: 'Res->Chat' });
+  assert.deepEqual(normalized.tools.map(({ name, namespace, kind }) => ({ name, namespace, kind })), [
+    { name: 'lookup', namespace: 'mcp__mixed', kind: 'function' },
+    { name: 'apply_patch', namespace: 'mcp__mixed', kind: 'custom' },
+  ]);
+  const chat = serializeRequest('Chat', normalized, 'chat-model');
+  assert.ok(chat.tools.length === 2);
+  assert.ok(chat.messages.every((message) => !(['system', 'developer'].includes(message.role) && message.content === null)));
+});
+
+test('restores tool_search function calls from Chat responses as client-executed Responses calls', () => {
+  const normalized = parseResponse('Chat', { id: 'chat-search', choices: [{ finish_reason: 'tool_calls', message: { tool_calls: [{ id: 'search-call', function: { name: 'tool_search', arguments: '{"query":"lookup","limit":2}' } }] } }] });
+  const response = serializeResponse('Res', normalized, 'req-search');
+  assert.deepEqual(response.output[0], { type: 'tool_search_call', call_id: 'search-call', execution: 'client', arguments: { query: 'lookup', limit: 2 } });
+});
+
+test('restores streamed Chat tool_search calls as client-executed Responses calls', () => {
+  const state = { nextToolIndex: 0, toolIndexes: new Map(), toolContext: [] };
+  const delta = parseStreamEvent('Chat', '', { choices: [{ delta: { tool_calls: [{ index: 0, id: 'stream-search', function: { name: 'tool_search', arguments: '{"query":"lookup"}' } }] } }] }, state);
+  const wire = serializeStreamEvent('Res', delta, 'req-search-stream', state);
+  assert.match(wire, /"type":"tool_search_call"/);
+  assert.match(wire, /"call_id":"stream-search"/);
+  assert.match(wire, /"execution":"client"/);
+  assert.match(wire, /"arguments":\{"query":"lookup"\}/);
+});
+
+test('rejects server-executed built-ins with diagnostics that omit submitted tool data', () => {
+  const secretToolName = 'private-search-backend';
+  const secretArgument = 'sensitive query phrase';
+  assert.throws(() => parseRequest('Res', { tools: [{ type: 'web_search_preview', name: secretToolName, execution: 'server', parameters: { secret: secretArgument } }] }, { direction: 'Res->Chat' }), (error) => {
+    assert.equal(error.code, 'unsupported_feature');
+    assert.equal(error.field, 'tools.type');
+    assert.equal(error.direction, 'Res->Chat');
+    assert.equal(error.message, 'Unsupported protocol feature');
+    assert.equal(JSON.stringify({ message: error.message, field: error.field, direction: error.direction }).includes(secretToolName), false);
+    assert.equal(JSON.stringify({ message: error.message, field: error.field, direction: error.direction }).includes(secretArgument), false);
+    return true;
+  });
+});
+
 test('rejects malformed Responses custom tool formats with a field-specific error', () => {
   const formats = [
     null,
