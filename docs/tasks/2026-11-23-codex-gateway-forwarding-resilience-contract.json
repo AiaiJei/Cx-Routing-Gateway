@@ -1,0 +1,99 @@
+{
+  "contract_version": 1,
+  "task_id": "CXRG-CODEX-GATEWAY-FORWARDING-RESILIENCE-2026-11-23",
+  "title": "Codex tool-search forwarding, streaming reset handling, and management placeholder",
+  "project": "Cx-Routing Gateway",
+  "repository": "AiaiJei/Cx-Routing-Gateway",
+  "status": "active",
+  "stage": "spec-review",
+  "base": "master",
+  "base_sha": "451d40f3f621a635afc093bc50070feb2a58fa59",
+  "branch": "codex/codex-routing-forwarding",
+  "worktree": ".worktree/codex-codex-routing-forwarding",
+  "contract": "docs/tasks/2026-11-23-codex-gateway-forwarding-resilience-contract.json",
+  "authorization": {
+    "source": "The user approved proceeding with the combined forwarding repair, execution plan/self-check acceptance checklist, initial Codex CLI/Desktop frontend placeholder, and one dedicated PR. The user added request b0c5a487-4dec-4841-85e0-c3f48c82d3a1 as a recurring streaming connection-reset case.",
+    "operations": [
+      "bind this isolated worktree to this task and preserve the previous task archive",
+      "write and review the task design, implementation plan, and acceptance/evidence checklist",
+      "implement Codex tool_search forwarding and protocol-safe stream failure handling in the named paths",
+      "implement a clearly labeled Codex management frontend placeholder that reuses existing route/upstream/credential pages",
+      "run local fixture tests, Runtime tests, Desktop tests/build, syntax and diff checks, and independent review",
+      "commit and push this task branch and create one dedicated PR against master; leave it open"
+    ],
+    "not_authorized": [
+      "real third-party provider/model requests",
+      "automatic retries after an upstream request may have been sent or output has begun",
+      "writing Codex CLI/Desktop configuration or authentication files",
+      "creating a second credential store or duplicating upstream credentials",
+      "version changes, PR merge, GitHub release, or Desktop binary replacement",
+      "deleting branches, worktrees, releases, or unrelated files"
+    ]
+  },
+  "scope": {
+    "include": [
+      "Responses tool_search definitions, history, responses, and streaming conversion to/from Chat",
+      "safe bounded tool-type diagnostics for unsupported tool definitions",
+      "accurate Responses stream-reset termination and upstream/downstream status/failure-phase logging",
+      "desktop request-log presentation of interrupted streams and actual response statuses",
+      "Codex CLI/Desktop navigation and non-operational management placeholder",
+      "task plan, self-check checklist, local evidence, independent review, and one dedicated PR"
+    ],
+    "exclude": [
+      "implementation of server-side web search or other tools that Chat cannot execute equivalently",
+      "provider/network behavior outside the Gateway process",
+      "blind or ambiguous model-request retries",
+      "Codex config-file synchronization, auth-file access, or credential persistence changes",
+      "version bump, merge, release, or Desktop program update",
+      "real third-party provider requests"
+    ]
+  },
+  "authorized_paths": [
+    ".codex/awg-task.json",
+    "services/gateway/src/protocol-adapters.mjs",
+    "services/gateway/src/server.mjs",
+    "services/gateway/src/request-metrics.mjs",
+    "tests/runtime/protocol-adapters.test.mjs",
+    "tests/runtime/gateway-server.test.mjs",
+    "apps/desktop/src/App.tsx",
+    "apps/desktop/src/components/navigation.ts",
+    "apps/desktop/src/components/NavigationIcon.tsx",
+    "apps/desktop/src/components/AppShell.test.tsx",
+    "apps/desktop/src/pages/CodexPage.tsx",
+    "apps/desktop/src/pages/CodexPage.test.tsx",
+    "apps/desktop/src/pages/LogsPage.tsx",
+    "apps/desktop/src/pages/LogsPage.test.tsx",
+    "apps/desktop/src/domain/types.ts",
+    "apps/desktop/src/data/workspace-client.ts",
+    "apps/desktop/src/data/workspace-client.test.ts",
+    "apps/desktop/src/styles/app.css",
+    "docs/superpowers/specs/2026-11-23-codex-gateway-forwarding-resilience-design.md",
+    "docs/superpowers/plans/2026-11-23-codex-gateway-forwarding-resilience.md",
+    "docs/tasks/2026-11-23-codex-gateway-forwarding-resilience-contract.json",
+    "docs/tasks/2026-11-23-codex-gateway-forwarding-resilience.md",
+    "docs/tasks/evidence/codex-gateway-forwarding-resilience/**"
+  ],
+  "acceptance": [
+    "Codex tool_search requests, history, calls, and stream events round-trip across Responses and Chat without dropping IDs or client-execution semantics",
+    "Unsupported server-side tools remain explicit safe field/direction errors; future unsupported tools expose only a bounded type discriminator in logs",
+    "A local upstream fixture that emits a Responses output event and then resets yields a protocol-level terminal error event with monotonic sequence_number, a failed request log, the actual upstream/downstream statuses, and a bounded failure phase",
+    "A reset before downstream headers remains a sanitized HTTP 502; a post-header stream reset is not mislabeled as a new wire-level 502",
+    "No automatic retry is made after ambiguous request transmission or partial output; logs never retain prompts, bodies, schemas, tool arguments, or credentials",
+    "The Codex placeholder clearly states what is and is not implemented and links to existing route/upstream/credential management without writing Codex config files",
+    "Full Runtime tests, Desktop tests, Desktop build, syntax/diff checks, and independent review pass with evidence",
+    "One dedicated PR targets master and remains open; merge/release/provider validation remain NOT_RUN"
+  ],
+  "rollback": "Revert only this task's PR commits. Preserve PR #21 and release v1.1.7, primary master state, all existing worktrees, and unrelated user files.",
+  "owner_acceptance": "NOT_RUN: the user authorized implementation and a dedicated PR; final in-product acceptance, merge, release, and real-provider validation are not implied.",
+  "verification": {
+    "worktree": "PASS: existing isolated worktree at master 451d40f3f621a635afc093bc50070feb2a58fa59; clean before task writes; remote master matched",
+    "repo_mcp": "UNAVAILABLE: no .codex/awg-project.json or registered workspace; live source and GitHub state inspection used",
+    "runtime_baseline": "PASS: 178/178 after building the Desktop dist required by a runtime fixture",
+    "desktop_baseline": "PASS: 158/158",
+    "desktop_build_baseline": "PASS",
+    "implementation": "NOT_RUN",
+    "independent_review": "NOT_RUN",
+    "pull_request": "NOT_RUN",
+    "provider": "NOT_RUN: real upstream calls are not authorized"
+  }
+}
