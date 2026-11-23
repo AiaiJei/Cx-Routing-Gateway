@@ -26,4 +26,4 @@ See [verification evidence](evidence/codex-tools-connectivity-probe/verification
 
 ## Delivery
 
-PR #21 targets `master`. At PR creation, Runtime and Desktop CI jobs were pending and packaging jobs were skipped by the workflow; the observed checks later passed on that original head. Revision 1 now authorizes merging after checks pass on the updated head, publishing v1.1.7, synchronizing the primary `master` worktree, and delivering the verified Portable to Desktop. Branch/worktree deletion and real provider calls remain unauthorized.
+PR #21 was merged into `master` as `5455e0bd4c8b6397f1381ff2e31995d29e9e925e` after Runtime and Desktop checks passed; the package job was skipped by workflow condition. Revision 1 authorized version 1.1.7, GitHub publication, primary `master` synchronization, and verified Desktop delivery. Release v1.1.7 is published with Setup, blockmap, Portable, and manifest; the Desktop Portable smoke passed. The task branch/worktree remain preserved, and no real provider request was made.

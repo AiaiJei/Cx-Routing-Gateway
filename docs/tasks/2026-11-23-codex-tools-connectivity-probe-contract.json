@@ -4,8 +4,8 @@
   "title": "Support Codex namespaced tools and transport-only failback probes",
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
-  "status": "active",
-  "stage": "pull-request",
+  "status": "complete",
+  "stage": "complete",
   "base": "master",
   "base_sha": "f58341f5224224bea9ae7abf03818d9cadb4df47",
   "branch": "codex/tool-definition-probe",
@@ -65,7 +65,9 @@
     "apps/desktop/electron-builder.yml",
     "apps/desktop/src/pages/SettingsPage.test.tsx",
     "tests/runtime/release-manifest.test.mjs",
-    "scripts/verify-release.mjs"
+    "scripts/verify-release.mjs",
+    "apps/desktop/release/1.1.7-final-reviewed/**",
+    "C:\\Users\\20142\\Desktop\\Cx-Routing Gateway Portable 1.1.7.exe"
   ],
   "acceptance": [
     "Responses namespace function tools become valid Chat and Messages function definitions with a reversible target-name mapping",
@@ -83,7 +85,7 @@
     "no real provider request is made; provider-level acceptance remains NOT_RUN"
   ],
   "rollback": "Before publishing v1.1.7, preserve v1.1.6 and stop publication if build, manifest, packaged smoke, or Desktop-copy smoke fails. After publishing v1.1.7, do not rewrite it; use a corrective patch release. Preserve the task branch/worktree and unrelated files.",
-  "owner_acceptance": "Repository merge and release explicitly authorized by the user. Real provider behavior remains NOT_RUN because no third-party model calls are authorized.",
+  "owner_acceptance": "NOT_RUN: authorized merge/release/Desktop delivery is complete and locally verified; no actual upstream provider call or user-observed Codex repair acceptance was run.",
   "verification": {
     "existing_worktree": "PASS: clean at base f58341f5224224bea9ae7abf03818d9cadb4df47",
     "adapter_baseline": "PASS: 10/10",
@@ -94,11 +96,14 @@
     "task2_probe": "PASS: 4/4 focused failback tests; refused TCP, HTTP-free recovery, deduplication, and timeout",
     "implementation": "PASS: Tasks 1 and 2 complete; fresh Runtime 178/178, Desktop 158/158, Desktop build, adapter 20/20, probe 4/4, syntax, and diff checks passed",
     "independent_review": "PASS: initial reviewer found two Important adapter validation gaps; both were fixed with RED/GREEN tests; read-only follow-up found no Critical or Important issues",
-    "pull_request": "OPEN: PR #21 targets master; version commit 2cf218b414572019f7e060856627ef13582ea492 has Runtime and Desktop SUCCESS; package jobs SKIPPED by workflow condition; final evidence-commit checks remain the merge gate",
+    "pull_request": "PASS: PR #21 MERGED into master; head 9da930586a8575a97ca8809e2dec79fede3b18dd; Runtime and Desktop SUCCESS; package jobs SKIPPED by workflow condition",
     "version_release_authorization": "AUTHORIZED: user requested increment by one, merge PR #21, publish latest GitHub version, and sync task worktree to primary master and Desktop",
     "version_release_local_checks": "PASS: 1.1.7 metadata aligned; focused release 2/2, SettingsPage 13/13, Runtime 178/178, Desktop 158/158, Desktop build, syntax, JSON, and CRLF-aware diff checks",
-    "release_v1_1_7": "NOT_RUN",
-    "desktop_v1_1_7": "NOT_RUN"
+    "primary_master": "PASS: fast-forwarded to PR #21 merge commit 5455e0bd4c8b6397f1381ff2e31995d29e9e925e; unrelated untracked directories preserved",
+    "windows_x64_build": "PASS: Setup, blockmap, Portable, and verified manifest built in apps/desktop/release/1.1.7-final-reviewed; packaged smoke reports version 1.1.7; Portable isolated Local Control and Gateway health checks both pass",
+    "release_v1_1_7": "PASS: GitHub Release v1.1.7 published 2026-11-23; tag targets 5455e0bd4c8b6397f1381ff2e31995d29e9e925e; four remote assets match local SHA-256 digests; unsigned because no signing certificate is configured",
+    "desktop_v1_1_7": "PASS: C:\\Users\\20142\\Desktop\\Cx-Routing Gateway Portable 1.1.7.exe; 115026279 bytes; SHA-256 73cab66224659675791271533bd1ba788861a7466f0fa3c3be994fa5a8128386; matches build and GitHub; copied-file isolated health smoke passed; 1.1.6 preserved",
+    "provider": "NOT_RUN: no real third-party provider/model request was made"
   },
   "capability": {
     "skills": [
@@ -117,6 +122,31 @@
     ],
     "repo_mcp": "UNAVAILABLE: no registered workspace_id; live source inspection used",
     "subagent_review": "AVAILABLE: one read-only reviewer completed initial and follow-up reviews; follow-up found no Critical or Important issues"
+  },
+  "pull_request": {
+    "number": 21,
+    "state": "MERGED",
+    "base": "master",
+    "branch": "codex/tool-definition-probe",
+    "head_sha": "9da930586a8575a97ca8809e2dec79fede3b18dd",
+    "merge_commit": "5455e0bd4c8b6397f1381ff2e31995d29e9e925e",
+    "checks": {
+      "runtime": "SUCCESS",
+      "desktop": "SUCCESS",
+      "package": "SKIPPED by workflow condition"
+    }
+  },
+  "release": {
+    "tag": "v1.1.7",
+    "target": "5455e0bd4c8b6397f1381ff2e31995d29e9e925e",
+    "published_at": "2026-11-23T10:35:22Z",
+    "assets": [
+      {"name": "Cx-Routing.Gateway.Setup.1.1.7.exe", "bytes": 126507930, "sha256": "e44e3bc616b4c7b999287925f4c5bf7890f98674e0801caefc5f9d466b968723"},
+      {"name": "Cx-Routing.Gateway.Setup.1.1.7.exe.blockmap", "bytes": 133177, "sha256": "2dedfa29a3f13bdc01dfe99cbfb25b0699c1be037227adb6fcdb60f1d06dbdb8"},
+      {"name": "Cx-Routing.Gateway.Portable.1.1.7.exe", "bytes": 115026279, "sha256": "73cab66224659675791271533bd1ba788861a7466f0fa3c3be994fa5a8128386"},
+      {"name": "manifest.json", "bytes": 2275, "sha256": "968fb548fc4cc3cd599f85c943255491568343686d9346204de9c8703702eeeb"}
+    ],
+    "signed": false
   },
   "revisions": [
     {

@@ -102,9 +102,9 @@
 
 - [x] Record this explicit authorization revision and release acceptance/rollback gates before code or release writes.
 - [x] Change all current product-version metadata and assertions from 1.1.6 to 1.1.7; run focused release tests, full Runtime and Desktop suites, Desktop build, syntax, and diff checks.
-- [ ] Commit and push the version change to PR #21; merge only after checks on the new head succeed.
-- [ ] Fast-forward and verify the primary `master` worktree while preserving unrelated untracked directories and all other worktrees.
-- [ ] Build Windows x64 artifacts in a confirmed-new output directory; verify manifest, packaged smoke, Portable smoke, and SHA-256.
-- [ ] Publish GitHub v1.1.7 only after all local gates pass; verify tag and uploaded asset digests.
-- [ ] Copy Portable to the confirmed-new Desktop path and verify its digest and isolated health smoke.
-- [ ] Record exact final commit, PR checks, artifact hashes, release asset state, Desktop path, and provider `NOT_RUN` state.
+- [x] Commit and push the version change to PR #21; merge only after checks on the new head succeed.
+- [x] Fast-forward and verify the primary `master` worktree while preserving unrelated untracked directories and all other worktrees.
+- [x] Build Windows x64 artifacts in a confirmed-new output directory; verify manifest, packaged smoke, Portable smoke, and SHA-256.
+- [x] Publish GitHub v1.1.7 only after all local gates pass; verify tag and uploaded asset digests.
+- [x] Copy Portable to the confirmed-new Desktop path and verify its digest and isolated health smoke.
+- [x] Record exact final commit, PR checks, artifact hashes, release asset state, Desktop path, and provider `NOT_RUN` state.
