@@ -60,4 +60,4 @@ Local Vite production preview only at 127.0.0.1:5196; no real Gateway configurat
 
 ## Delivery
 
-Dedicated open PR against master: PENDING until the verified task branch is pushed. Do not merge or release.
+Dedicated PR #22: OPEN against `master`, head `codex/codex-routing-forwarding`. GitHub CI was IN_PROGRESS at the last check; do not merge or release.

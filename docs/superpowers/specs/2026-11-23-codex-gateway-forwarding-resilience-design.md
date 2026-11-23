@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-23
 **Task:** `CXRG-CODEX-GATEWAY-FORWARDING-RESILIENCE-2026-11-23`
-**Status:** In implementation under the user-authorized task scope; provider validation remains out of scope
+**Status:** Implemented and submitted in open PR #22; provider validation remains out of scope
 
 ## Context and verified evidence
 

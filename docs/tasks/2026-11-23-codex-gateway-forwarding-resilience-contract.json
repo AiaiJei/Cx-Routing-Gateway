@@ -5,7 +5,7 @@
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
   "status": "active",
-  "stage": "verification_and_delivery",
+  "stage": "pr_review",
   "base": "master",
   "base_sha": "451d40f3f621a635afc093bc50070feb2a58fa59",
   "branch": "codex/codex-routing-forwarding",
@@ -118,7 +118,7 @@
     "desktop_build_baseline": "PASS",
     "implementation": "PASS: Gateway server suite 68/68; focused reset/address-fallback regressions 6/6; full Runtime 218/218; Desktop 196/196; Desktop production build; Node syntax checks, contract JSON parsing, and git diff --check passed. Local fixtures verify fallback only before connection readiness and no retry after an accepted request reset.",
     "independent_review": "PASS: adapter/history, Desktop request-log/placeholder, and final backend fix-snapshot reviews reported no remaining blocking findings. The final backend reviewer found no Critical/Important regressions and explicitly did not claim live-provider behavior. Two failed review dispatches are not counted as approvals.",
-    "pull_request": "PENDING: create one open PR against master after review; do not merge or release.",
+    "pull_request": "OPEN: PR #22 targets master from codex/codex-routing-forwarding. CI was in progress at last check; do not merge or release.",
     "provider": "NOT_RUN: real upstream calls are not authorized"
   }
 }
