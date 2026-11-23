@@ -121,46 +121,105 @@ async function readBeforeDeadline(reader, deadline, monotonicNow) {
 
 async function fetchWithTimeout(url, options, addresses, headerTimeoutMs, requestDeadline, signal, onTimeout, monotonicNow) {
   const target = new URL(url);
-  const address = addresses[0];
+  const transport = target.protocol === 'https:' ? https : http;
   return new Promise((resolve, reject) => {
     let timedOut = false;
     let settled = false;
     let timer;
+    let addressIndex = 0;
+    let activeRequest;
+    let lastConnectionError;
     const cleanup = () => {
       clearTimeout(timer);
       signal?.removeEventListener('abort', abortRequest);
     };
-    const abortRequest = () => request.destroy(Object.assign(new Error('Gateway request was cancelled'), { code: 'request_aborted', statusCode: 499 }));
-    const request = (target.protocol === 'https:' ? https : http).request(target, {
-      method: options.method,
-      headers: options.headers,
-      lookup: (_hostname, lookupOptions, callback) => {
-        const record = { address, family: net.isIP(address) };
-        if (lookupOptions.all) callback(null, [record]);
-        else callback(null, record.address, record.family);
-      },
-    }, (response) => {
-      clearTimeout(timer);
-      const status = response.statusCode || 502;
-      const headers = new Headers();
-      for (let index = 0; index < response.rawHeaders.length; index += 2) headers.append(response.rawHeaders[index], response.rawHeaders[index + 1]);
-      response.once('end', cleanup);
-      response.once('close', cleanup);
-      if ([204, 205, 304].includes(status)) { settled = true; response.resume(); return resolve(new Response(null, { status, headers })); }
-      settled = true;
-      resolve(new Response(Readable.toWeb(response), { status, headers }));
-    });
+    const abortRequest = () => activeRequest?.destroy(Object.assign(new Error('Gateway request was cancelled'), { code: 'request_aborted', statusCode: 499 }));
     const remaining = Math.max(0, requestDeadline - monotonicNow());
-    timer = setTimeout(() => { timedOut = true; onTimeout?.(); request.destroy(upstreamTimeoutError()); }, Math.min(headerTimeoutMs, remaining));
-    request.on('error', (error) => {
-      cleanup();
+    if (remaining <= 0) return reject(upstreamTimeoutError());
+    timer = setTimeout(() => {
+      timedOut = true;
+      onTimeout?.();
+      activeRequest?.destroy(upstreamTimeoutError());
+    }, Math.min(headerTimeoutMs, remaining));
+    const attemptAddress = () => {
       if (settled) return;
-      settled = true;
-      reject(timedOut ? upstreamTimeoutError() : error.code === 'request_aborted' ? error : normalizeUpstreamError(error));
-    });
+      if (signal?.aborted) {
+        settled = true;
+        cleanup();
+        return reject(Object.assign(new Error('Gateway request was cancelled'), { code: 'request_aborted', statusCode: 499 }));
+      }
+      if (timedOut) {
+        settled = true;
+        cleanup();
+        return reject(upstreamTimeoutError());
+      }
+      const address = addresses[addressIndex++];
+      if (!address) {
+        settled = true;
+        cleanup();
+        return reject(lastConnectionError || Object.assign(new Error('Upstream address unavailable'), { code: 'upstream_error', statusCode: 502 }));
+      }
+      let connectionReady = false;
+      const request = transport.request(target, {
+        method: options.method,
+        headers: options.headers,
+        agent: false,
+        lookup: (_hostname, lookupOptions, callback) => {
+          const record = { address, family: net.isIP(address) };
+          if (lookupOptions.all) callback(null, [record]);
+          else callback(null, record.address, record.family);
+        },
+      }, (response) => {
+        if (settled) { response.destroy(); return; }
+        try {
+          const status = response.statusCode;
+          if (!Number.isInteger(status) || status < 200 || status > 599) throw new Error('Invalid upstream status');
+          const headers = new Headers();
+          for (let index = 0; index < response.rawHeaders.length; index += 2) headers.append(response.rawHeaders[index], response.rawHeaders[index + 1]);
+          const noBody = [204, 205, 304].includes(status);
+          const result = new Response(noBody ? null : Readable.toWeb(response), { status, headers });
+          settled = true;
+          clearTimeout(timer);
+          response.once('end', cleanup);
+          response.once('close', cleanup);
+          if (noBody) response.resume();
+          resolve(result);
+        } catch {
+          settled = true;
+          cleanup();
+          response.destroy();
+          reject(Object.assign(new Error('Invalid upstream response'), { code: 'upstream_error', statusCode: 502 }));
+        }
+      });
+      activeRequest = request;
+      request.once('socket', (socket) => {
+        const sendRequest = () => {
+          if (settled || connectionReady) return;
+          connectionReady = true;
+          request.end(options.body);
+        };
+        if (target.protocol === 'https:') {
+          const secureConnectionReady = () => { if (socket.authorized !== false) sendRequest(); };
+          if (socket.encrypted && socket.secureConnecting === false) secureConnectionReady();
+          else socket.once('secureConnect', secureConnectionReady);
+        } else if (!socket.connecting) sendRequest();
+        else socket.once('connect', sendRequest);
+      });
+      request.on('error', (error) => {
+        if (settled) return;
+        if (!connectionReady && !signal?.aborted && !timedOut && addressIndex < addresses.length) {
+          lastConnectionError = error;
+          attemptAddress();
+          return;
+        }
+        settled = true;
+        cleanup();
+        reject(timedOut ? upstreamTimeoutError() : error.code === 'request_aborted' ? error : normalizeUpstreamError(error));
+      });
+    };
     if (signal?.aborted) abortRequest();
     else signal?.addEventListener('abort', abortRequest, { once: true });
-    request.end(options.body);
+    attemptAddress();
   });
 }
 
@@ -240,7 +299,64 @@ async function readJson(response, deadline, monotonicNow, maxBytes = 4 * 1024 * 
   try { return JSON.parse(data); } catch { throw Object.assign(new Error('Invalid upstream response'), { code: 'upstream_error', statusCode: 502 }); }
 }
 
-async function pipeStream(response, res, metrics, deadline, monotonicNow, maxBytes = 4 * 1024 * 1024) {
+function createResponsesStreamRelay(res) {
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let lastSequence = -1;
+  let finished = false;
+  let terminalWire;
+  const streamError = () => Object.assign(new Error('Invalid or incomplete upstream stream'), { code: 'upstream_error', statusCode: 502 });
+  const forwardFrame = (frame, delimiter = '') => {
+    const data = frame.split(/\r?\n/).filter(line => line.startsWith('data:')).map(line => line.slice(5).trimStart()).join('\n');
+    const wire = frame + delimiter;
+    if (!data || data === '[DONE]') {
+      if (terminalWire !== undefined) terminalWire += wire;
+      else if (data !== '[DONE]') res.write(wire);
+      return;
+    }
+    let payload;
+    try { payload = JSON.parse(data); } catch { throw streamError(); }
+    if (!payload || typeof payload !== 'object') throw streamError();
+    const sequence = payload.sequence_number;
+    if (sequence !== undefined && (!Number.isSafeInteger(sequence) || sequence < 0 || sequence >= Number.MAX_SAFE_INTEGER || sequence <= lastSequence)) throw streamError();
+    const type = frame.split(/\r?\n/).find(line => line.startsWith('event:'))?.slice(6).trim() || payload.type;
+    if (terminalWire !== undefined || ['error', 'response.failed', 'response.incomplete'].includes(type)) throw streamError();
+    if (sequence !== undefined) lastSequence = sequence;
+    if (type === 'response.completed' || type === 'response.done') terminalWire = wire;
+    else res.write(wire);
+  };
+  const consume = (text) => {
+    buffer += text;
+    let delimiter;
+    while ((delimiter = /\r?\n\r?\n/.exec(buffer))) {
+      const frame = buffer.slice(0, delimiter.index);
+      buffer = buffer.slice(delimiter.index + delimiter[0].length);
+      forwardFrame(frame, delimiter[0]);
+    }
+  };
+  return {
+    push(chunk) {
+      if (finished) return;
+      try { consume(decoder.decode(chunk, { stream: true })); }
+      catch (error) { finished = true; buffer = ''; throw error; }
+    },
+    finish(cleanEnd) {
+      if (finished) return;
+      finished = true;
+      consume(decoder.decode());
+      const tail = buffer;
+      buffer = '';
+      if (tail.trim()) forwardFrame(tail);
+      if (cleanEnd) {
+        if (terminalWire === undefined) throw streamError();
+        res.write(terminalWire);
+      }
+    },
+    nextSequence() { return lastSequence + 1; },
+  };
+}
+
+async function pipeStream(response, res, metrics, deadline, monotonicNow, sequenceTracker, maxBytes = 4 * 1024 * 1024) {
   const reader = response.body.getReader();
   let size = 0;
   try {
@@ -250,19 +366,40 @@ async function pipeStream(response, res, metrics, deadline, monotonicNow, maxByt
       size += result.value.byteLength;
       if (size > maxBytes) throw Object.assign(new Error('Upstream stream too large'), { code: 'upstream_error', statusCode: 502 });
       metrics.push(result.value);
-      res.write(Buffer.from(result.value));
+      if (sequenceTracker) sequenceTracker.push(result.value);
+      else res.write(Buffer.from(result.value));
     }
+    sequenceTracker?.finish(true);
     metrics.finish();
     res.end();
+  } catch (error) {
+    try { sequenceTracker?.finish(false); } catch { /* Preserve the original failure. */ }
+    throw error;
   } finally { await reader.cancel().catch(() => {}); }
 }
 
-async function pipeConvertedStream(response, res, outboundProtocol, inboundProtocol, requestId, metrics, deadline, monotonicNow, toolContext = [], maxBytes = 4 * 1024 * 1024) {
+function sequenceResponsesFrames(wire, responseState) {
+  return wire.split(/\r?\n\r?\n/).filter(frame => frame.trim()).map(frame => {
+    const lines = frame.split(/\r?\n/);
+    const eventName = lines.find(line => line.startsWith('event:'))?.slice(6).trim();
+    const payload = JSON.parse(lines.filter(line => line.startsWith('data:')).map(line => line.slice(5).trimStart()).join('\n'));
+    payload.sequence_number = responseState.nextSequence++;
+    return `event: ${eventName || payload.type}\ndata: ${JSON.stringify(payload)}\n\n`;
+  }).join('');
+}
+
+async function pipeConvertedStream(response, res, outboundProtocol, inboundProtocol, requestId, metrics, deadline, monotonicNow, toolContext = [], responseState = { nextSequence: 0 }, maxBytes = 4 * 1024 * 1024) {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
   let size = 0;
+  let terminalEvent;
   const streamState = { nextToolIndex: 0, toolIndexes: new Map(), toolContext };
+  const writeEvent = (event) => {
+    if (event.type === 'ignore' || event.type === 'done') return;
+    const wire = serializeAdapterStreamEvent(inboundProtocol, event, requestId, streamState);
+    if (wire) res.write(inboundProtocol === 'Res' ? sequenceResponsesFrames(wire, responseState) : wire);
+  };
   const writeFrame = (frame) => {
     const lines = frame.split(/\r?\n/);
     const eventName = lines.find((line) => line.startsWith('event:'))?.slice(6).trim() || '';
@@ -270,7 +407,8 @@ async function pipeConvertedStream(response, res, outboundProtocol, inboundProto
     if (!data) return;
     const payload = data === '[DONE]' ? '[DONE]' : JSON.parse(data);
     const event = parseAdapterStreamEvent(outboundProtocol, eventName, payload, streamState);
-    if (event.type !== 'ignore') res.write(serializeAdapterStreamEvent(inboundProtocol, event, requestId, streamState));
+    if (event.type === 'done') terminalEvent = event;
+    else writeEvent(event);
   };
   try {
     while (true) {
@@ -286,6 +424,9 @@ async function pipeConvertedStream(response, res, outboundProtocol, inboundProto
     }
     if (buffer.trim()) writeFrame(buffer);
     metrics.finish();
+    if (!terminalEvent) throw Object.assign(new Error('Upstream stream ended before completion'), { code: 'upstream_error', statusCode: 502 });
+    const terminalWire = serializeAdapterStreamEvent(inboundProtocol, terminalEvent, requestId, streamState);
+    if (terminalWire) res.write(inboundProtocol === 'Res' ? sequenceResponsesFrames(terminalWire, responseState) : terminalWire);
     res.end();
   } finally { await reader.cancel().catch(() => {}); }
 }
@@ -298,6 +439,16 @@ async function appendUsage(store, record) {
       return { ...value, usage: [...(value.usage || []), record].slice(-retention) };
     });
   } catch {}
+}
+
+async function markCredentialUsed(store, credential) {
+  if (credential.temporary) return false;
+  try {
+    await store.update((value) => ({ ...value, clientKeys: value.clientKeys.map((item) => item.id === credential.id ? { ...item, lastUsedAt: new Date().toISOString() } : item) }));
+    return false;
+  } catch {
+    return true;
+  }
 }
 
 export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, maxConcurrentRequests = 32, upstreamHeaderTimeoutMs = 300_000, upstreamHealthProbeTimeoutMs = 5000, maxRequestDurationMs = 600_000, routeTestTimeoutMs = 610_000, dnsLookup = dns.lookup, connectivityCheck = checkTransportConnectivity, now = Date.now, monotonicNow = () => performance.now() } = {}) {
@@ -357,6 +508,10 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
     let requestGeneration;
     let reasoningEffort;
     let upstreamStarted = false;
+    let upstreamStatus;
+    let streamRequested = false;
+    let responseSequenceTracker;
+    const responseState = { nextSequence: 0 };
     let outcomeRecorded = false;
     let hasFallback = false;
     let acquiredSlot = false;
@@ -406,6 +561,7 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
       if (recent.length >= rateLimitPerMinute) return send(res, 429, { error: 'rate_limited', requestId }, requestId);
       recent.push(timestamp); rateBuckets.set(keyHash, recent);
       const input = await bodyOf(req);
+      streamRequested = input.stream === true;
       reasoningEffort = reasoningEffortOf(input);
       route = config.routes.find((item) => item.enabled && item.alias === input.model && item.inboundProtocol === inbound);
       if (!route) return send(res, 404, { error: 'route_not_found', requestId }, requestId);
@@ -451,6 +607,7 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
       upstream = selectedTarget.upstream;
       route = { ...route, upstreamId: selectedTarget.target.upstreamId, modelId: selectedTarget.target.modelId };
       metrics = createRequestMetrics({ protocol: route.outboundProtocol, stream: input.stream === true, startedAt: requestStartedMonotonic, clock: monotonicNow });
+      responseSequenceTracker = inbound === 'Res' && route.outboundProtocol === 'Res' ? createResponsesStreamRelay(res) : undefined;
       const normalized = route.outboundProtocol === inbound ? null : parseAdapterRequest(inbound, input, { direction: inbound + '->' + route.outboundProtocol });
       upstreamStarted = true;
       const addresses = await validateDestination(upstream.baseUrl, upstream.trustedPrivateNetwork === true, upstream.approvedAddresses || [], dnsLookup);
@@ -467,6 +624,7 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
       const serializedPayload = JSON.stringify(payload);
       headers['content-length'] = String(Buffer.byteLength(serializedPayload, 'utf8'));
       const upstreamResponse = await fetchWithTimeout(upstreamUrl(upstream.baseUrl, outboundPath), { method: 'POST', headers, body: serializedPayload }, addresses, upstreamHeaderTimeoutMs, requestDeadline, requestController.signal, () => { upstreamTimedOut = true; }, monotonicNow);
+      upstreamStatus = upstreamResponse.status;
       if (upstreamResponse.status >= 300) {
         await upstreamResponse.body?.cancel().catch(() => {});
         recordOutcome(policy.statusClasses.includes(Math.floor(upstreamResponse.status / 100)));
@@ -478,28 +636,50 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
         res.statusCode = upstreamResponse.status;
         res.setHeader('content-type', upstreamResponse.headers.get('content-type') || 'text/event-stream');
         res.setHeader('x-request-id', requestId);
-        if (route.outboundProtocol === inbound) await pipeStream(upstreamResponse, res, metrics, requestDeadline, monotonicNow);
-        else await pipeConvertedStream(upstreamResponse, res, route.outboundProtocol, inbound, requestId, metrics, requestDeadline, monotonicNow, normalized?.tools || []);
+        if (route.outboundProtocol === inbound) await pipeStream(upstreamResponse, res, metrics, requestDeadline, monotonicNow, responseSequenceTracker);
+        else await pipeConvertedStream(upstreamResponse, res, route.outboundProtocol, inbound, requestId, metrics, requestDeadline, monotonicNow, normalized?.tools || [], responseState);
         recordOutcome(false);
-        await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Math.max(0, monotonicNow() - requestStartedMonotonic), ...metrics?.snapshot(), ...(reasoningEffort ? { reasoningEffort } : {}), httpStatus: upstreamResponse.status, inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, upstreamName: upstream.name, modelId: route.modelId, status: 'completed' });
-        if (!credential.temporary) await store.update((value) => ({ ...value, clientKeys: value.clientKeys.map((item) => item.id === credential.id ? { ...item, lastUsedAt: new Date().toISOString() } : item) }));
+        const credentialUsageUpdateFailed = await markCredentialUsed(store, credential);
+        await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Math.max(0, monotonicNow() - requestStartedMonotonic), ...metrics?.snapshot(), ...(reasoningEffort ? { reasoningEffort } : {}), httpStatus: upstreamResponse.status, inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, upstreamName: upstream.name, modelId: route.modelId, status: 'completed', ...(credentialUsageUpdateFailed ? { credentialUsageUpdateFailed: true } : {}) });
         return;
       }
       const upstreamBody = await readJson(upstreamResponse, requestDeadline, monotonicNow);
       metrics.observeJson(upstreamBody);
+      let clientBody = upstreamBody;
+      if (route.outboundProtocol !== inbound) {
+        try {
+          const normalizedResponse = parseAdapterResponse(route.outboundProtocol, upstreamBody, normalized?.tools || []);
+          clientBody = serializeAdapterResponse(inbound, normalizedResponse, requestId);
+        } catch {
+          throw Object.assign(new Error('Invalid upstream response'), { code: 'upstream_error', statusCode: 502 });
+        }
+      }
       recordOutcome(false);
-      await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Math.max(0, monotonicNow() - requestStartedMonotonic), ...metrics?.snapshot(), ...(reasoningEffort ? { reasoningEffort } : {}), httpStatus: upstreamResponse.status, inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, upstreamName: upstream.name, modelId: route.modelId, status: 'completed' });
-      if (!credential.temporary) await store.update((value) => ({ ...value, clientKeys: value.clientKeys.map((item) => item.id === credential.id ? { ...item, lastUsedAt: new Date().toISOString() } : item) }));
-      if (route.outboundProtocol === inbound) return send(res, 200, upstreamBody, requestId);
-      const normalizedResponse = parseAdapterResponse(route.outboundProtocol, upstreamBody, normalized?.tools || []);
-      return send(res, 200, serializeAdapterResponse(inbound, normalizedResponse, requestId), requestId);
+      const credentialUsageUpdateFailed = await markCredentialUsed(store, credential);
+      await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Math.max(0, monotonicNow() - requestStartedMonotonic), ...metrics?.snapshot(), ...(reasoningEffort ? { reasoningEffort } : {}), httpStatus: upstreamResponse.status, inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, upstreamName: upstream.name, modelId: route.modelId, status: 'completed', ...(credentialUsageUpdateFailed ? { credentialUsageUpdateFailed: true } : {}) });
+      return send(res, 200, clientBody, requestId);
     } catch (error) {
-      error = normalizeUpstreamError(error);
-      if (upstreamTimedOut) error = Object.assign(new Error('Upstream timeout'), { code: 'upstream_timeout', statusCode: 504 });
-      if (upstreamStarted && (error.code === 'upstream_error' || error.code === 'upstream_connection_reset' || error.code === 'upstream_timeout' || !error.statusCode)) recordOutcome(true);
-      if (route && upstream) await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Math.max(0, monotonicNow() - requestStartedMonotonic), ...metrics?.snapshot(), ...(reasoningEffort ? { reasoningEffort } : {}), ...(error.statusCode ? { gatewayStatus: error.statusCode } : {}), inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, upstreamName: upstream.name, modelId: route.modelId, status: error.statusCode === 400 ? 'rejected' : 'failed', errorCode: error.code || 'gateway_error', ...(error.field ? { errorField: error.field } : {}), ...(error.direction ? { errorDirection: error.direction } : {}) });
-      if (requestController.signal.aborted || res.destroyed) return;
-      if (res.headersSent) return res.destroy();
+      const downstreamAborted = requestController.signal.aborted || res.destroyed;
+      if (downstreamAborted) error = Object.assign(new Error('Downstream disconnected'), { code: 'request_aborted' });
+      else {
+        error = normalizeUpstreamError(error);
+        if (upstreamTimedOut) error = Object.assign(new Error('Upstream timeout'), { code: 'upstream_timeout', statusCode: 504 });
+      }
+      const gatewayStatus = res.headersSent ? res.statusCode : downstreamAborted ? undefined : (error.statusCode || 500);
+      const streamFailurePhase = streamRequested && upstreamStarted
+        ? (downstreamAborted ? 'downstream_closed' : upstreamStatus === undefined ? 'upstream_headers' : 'upstream_body')
+        : undefined;
+      if (!downstreamAborted && upstreamStarted && (error.code === 'upstream_error' || error.code === 'upstream_connection_reset' || error.code === 'upstream_timeout' || !error.statusCode)) recordOutcome(true);
+      if (route && upstream) await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Math.max(0, monotonicNow() - requestStartedMonotonic), ...metrics?.snapshot(), ...(reasoningEffort ? { reasoningEffort } : {}), ...(gatewayStatus === undefined ? {} : { gatewayStatus }), ...(upstreamStatus === undefined ? {} : { upstreamStatus }), ...(streamFailurePhase ? { streamFailurePhase } : {}), inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, upstreamName: upstream.name, modelId: route.modelId, status: error.statusCode === 400 ? 'rejected' : 'failed', errorCode: error.code || 'gateway_error', ...(error.field ? { errorField: error.field } : {}), ...(error.direction ? { errorDirection: error.direction } : {}), ...(error.toolType ? { errorToolType: error.toolType } : {}) });
+      if (downstreamAborted) return;
+      if (res.headersSent) {
+        if (streamRequested && inbound === 'Res' && !res.writableEnded) {
+          const sequence = route.outboundProtocol === 'Res' ? (responseSequenceTracker?.nextSequence() ?? 0) : responseState.nextSequence++;
+          res.end(`\n\nevent: error\ndata: ${JSON.stringify({ type: 'error', code: error.code || 'upstream_error', message: 'Upstream stream interrupted', param: null, sequence_number: sequence })}\n\n`);
+          return;
+        }
+        return res.destroy();
+      }
       return send(res, error.statusCode || 500, { error: error.code || 'internal_error', message: error.statusCode ? error.message : undefined, ...(error.field ? { field: error.field } : {}), ...(error.direction ? { direction: error.direction } : {}), requestId }, requestId);
     } finally {
       if (acquiredSlot) inFlight -= 1;

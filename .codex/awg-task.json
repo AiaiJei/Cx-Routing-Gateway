@@ -1,18 +1,18 @@
 {
   "contract_version": 1,
   "task_id": "CXRG-CODEX-GATEWAY-FORWARDING-RESILIENCE-2026-11-23",
-  "title": "Codex tool-search forwarding, stream reset handling, and frontend placeholder",
+  "title": "Codex forwarding, safe upstream address selection, stream reset handling, and frontend placeholder",
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
   "status": "active",
-  "stage": "spec-review",
+  "stage": "delivery",
   "base": "master",
   "base_sha": "451d40f3f621a635afc093bc50070feb2a58fa59",
   "branch": "codex/codex-routing-forwarding",
   "worktree": ".worktree/codex-codex-routing-forwarding",
   "contract": "docs/tasks/2026-11-23-codex-gateway-forwarding-resilience-contract.json",
   "authorization": {
-    "operations": ["write plan and acceptance checklist", "implement authorized gateway and desktop paths", "run local-only verification and independent review", "commit, push, and create one open PR against master"],
+    "operations": ["write plan and acceptance checklist", "implement authorized gateway and desktop paths", "use another validated address only for a connection failure proven to occur before HTTP request bytes can be sent", "run local-only verification and independent review", "commit, push, and create one open PR against master"],
     "not_authorized": ["real provider calls", "ambiguous retries", "Codex config/auth file writes", "version bump", "merge", "release", "deletion of worktrees/branches/unrelated files"]
   },
   "owner_acceptance": "NOT_RUN"

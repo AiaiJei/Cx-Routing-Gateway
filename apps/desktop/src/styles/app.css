@@ -287,3 +287,12 @@ td.row-actions-cell { white-space: nowrap; }
 .upstreams-table td:first-child { width: 34%; min-width: 260px; }
 .upstreams-table td:nth-child(2) { min-width: 140px; }
 .upstreams-table td:nth-child(3) { min-width: 110px; }
+
+.codex-placeholder { display: grid; gap: 14px; max-width: 760px; padding: 20px; border-radius: var(--radius-card); background: var(--raised); }
+.codex-placeholder-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.codex-placeholder > p { max-width: 72ch; margin: 0; color: var(--text); font-size: 14px; line-height: 1.6; }
+.codex-management-links { display: flex; flex-wrap: wrap; gap: 10px 20px; padding-top: 4px; }
+.codex-management-links a { display: inline-flex; align-items: center; min-height: 40px; padding: 6px 2px; color: var(--accent); font-size: 14px; font-weight: 500; text-decoration: none; }
+.codex-management-links a:hover { text-decoration: underline; }
+.codex-management-links a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+@media (max-width: 600px) { .codex-placeholder { padding: 16px; } .codex-management-links { display: grid; justify-items: start; gap: 4px; } }

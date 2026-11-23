@@ -2,10 +2,9 @@ import { WorkspaceState } from "../components/WorkspaceState";
 import { useState } from "react";
 import { EmptyResult, FixtureNotice, PageHeader, SearchField } from "../components/PageHeader";
 import { Button } from "../components/Button";
-import { Tooltip } from "../components/Tooltip";
 import { SegmentedControl } from "../components/SegmentedControl";
 import { Modal } from "../components/Modal";
-import { RequestDuration, RequestProtocol, RequestTime, RequestTokenSummary, TokenDetails } from "../components/RequestLogCells";
+import { RequestDuration, RequestProtocol, RequestStatus, RequestTime, RequestTokenSummary, TokenDetails, requestStatusDetails, requestStatusLabel } from "../components/RequestLogCells";
 import { formatDuration, formatRequestTime, requestType } from "../domain/request-log";
 import { requestLogDateRanges, selectRequestLogs, type RequestLogDateRange } from "../domain/request-log-filter";
 import { useWorkspace } from "../data/use-workspace";
@@ -48,13 +47,6 @@ export function LogsPage() {
       setClearingLogs(false);
     }
   }
-  const statusDetails = (log: CallLog) => [
-    log.httpStatus !== undefined ? `HTTP ${log.httpStatus}` : undefined,
-    log.upstreamStatus !== undefined ? `上游 HTTP ${log.upstreamStatus}` : undefined,
-    log.gatewayStatus !== undefined ? `网关 HTTP ${log.gatewayStatus}` : undefined,
-    log.error,
-  ].filter(Boolean).join(' · ') || '—';
-
   if (loading) return <WorkspaceState title="请求日志" loading={loading} error={error} />;
   if (error) return <div className="page-content">
     <PageHeader title="请求日志" description="查看请求摘要、Token 用量与响应耗时。" action={headerActions} />
@@ -86,7 +78,7 @@ export function LogsPage() {
             <td><RequestProtocol log={log} /></td>
             <td className="log-type">{requestType(log)}</td>
             <td className="numeric"><RequestTokenSummary log={log} /></td>
-            <td className="log-status"><Tooltip label={`状态 ${log.status}，${statusDetails(log)}`} content={<><span className="tooltip-heading">状态详情</span><p className="helper-text">{statusDetails(log)}</p></>}><span className={`status-badge ${log.status.startsWith("成功") ? "status-positive" : "status-negative"}`}>{log.status}</span></Tooltip></td>
+            <td className="log-status"><RequestStatus log={log} /></td>
             <td className="numeric"><RequestDuration log={log} /></td>
             <td><Button variant="tertiary" size="small" aria-label={`查看 ${log.id}`} onClick={() => setSelectedLog(log)}>详情</Button></td>
           </tr>
@@ -98,11 +90,11 @@ export function LogsPage() {
           <div><dt>协议方向</dt><dd>{selectedLog.direction}</dd></div>
           <div><dt>入口凭证</dt><dd>{selectedLog.credential}</dd></div>
           <div><dt>推理</dt><dd>{selectedLog.reasoning ?? "-"}</dd></div>
-          <div><dt>状态</dt><dd>{selectedLog.status}</dd></div>
+          <div><dt>状态</dt><dd>{requestStatusLabel(selectedLog)}</dd></div>
           <div><dt>类型</dt><dd>{requestType(selectedLog)}</dd></div>
           <div><dt>首字</dt><dd>{formatDuration(selectedLog.stream ? selectedLog.firstTokenMs : undefined)}</dd></div>
           <div><dt>总耗时</dt><dd>{formatDuration(selectedLog.durationMs)}</dd></div>
-          <div><dt>错误信息</dt><dd>{statusDetails(selectedLog)}</dd></div>
+          <div><dt>错误信息</dt><dd>{requestStatusDetails(selectedLog)}</dd></div>
         </dl>
         <section className="log-detail-tokens" aria-label="Token 用量"><h3 className="tooltip-heading">Token 用量</h3><TokenDetails tokens={selectedLog.tokens} /></section>
         <p className="action-feedback">请求和响应正文未记录；日志字段已脱敏。</p>

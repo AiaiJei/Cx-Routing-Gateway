@@ -28,6 +28,10 @@ async function setup(t, respond, outbound = 'Chat', gatewayOptions = {}) {
   const controlPort = await listen(control);
   t.after(async () => { await Promise.all([close(gateway), close(control), close(upstream)]); await store.writeQueue; });
   return {
+    async persistedLogs() {
+      await store.writeQueue;
+      return (await new ConfigStore(store.filePath).read()).usage;
+    },
     async request(protocol, stream, reasoning) {
       const endpoint = { Chat: 'chat/completions', Res: 'responses', Mes: 'messages' }[protocol];
       return fetch(`http://127.0.0.1:${port}/v1/${endpoint}`, { method: 'POST', headers: { authorization: 'Bearer test-key', 'content-type': 'application/json' }, body: JSON.stringify({ model: protocol, stream, input: 'private-prompt', messages: [{ role: 'user', content: 'private-prompt' }], ...(reasoning === undefined ? {} : reasoning) }) });
@@ -173,4 +177,32 @@ test('request logs capture gateway status for sanitized gateway failures', async
   await response.text();
   const [log] = await app.logs(1);
   assert.equal(log.httpStatus, 200);
+});
+
+test('interrupted Responses stream persists actual statuses and bounded failure phase without payloads', async t => {
+  let requests = 0;
+  const app = await setup(t, async (req, res) => {
+    requests++;
+    for await (const _chunk of req) { /* Drain the local fixture request. */ }
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.write(event({ type: 'response.output_text.delta', sequence_number: 4, delta: 'private-response' }));
+    const timer = setTimeout(() => res.destroy(), 50);
+    res.on('close', () => clearTimeout(timer));
+  }, 'Res');
+  const response = await app.request('Res', true);
+  assert.equal(response.status, 200);
+  // Consume both the legacy abrupt-close path and Task 3's terminal error path.
+  try { await response.text(); } catch (error) { assert.equal(error.message, 'terminated'); }
+  const [log] = await app.logs(1);
+  assert.equal(log.status, 'failed');
+  assert.equal(log.errorCode, 'upstream_connection_reset');
+  assert.equal(log.upstreamStatus, 200);
+  assert.equal(log.gatewayStatus, 200);
+  assert.equal(log.streamFailurePhase, 'upstream_body');
+  assert.equal(log.stream, true);
+  assert.ok(Number.isFinite(log.firstTokenMs));
+  assert.equal(requests, 1);
+  const [persisted] = await app.persistedLogs();
+  assert.deepEqual(persisted, log);
+  assert.doesNotMatch(JSON.stringify(persisted), /private-prompt|private-response|test-key|authorization|responseBody|requestBody/);
 });

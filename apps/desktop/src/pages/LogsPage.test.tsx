@@ -2,10 +2,69 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { LogsPage } from "./LogsPage";
-import { defaultWorkspaceClient } from "../data/workspace-client";
+import { defaultWorkspaceClient, mapRuntimeState } from "../data/workspace-client";
 import { workspaceFixtures } from "../data/fixtures";
 import type { WorkspaceFixtures } from "../domain/types";
 import "../styles/app.css";
+
+it.each([200, 201])("keeps a partially delivered HTTP %s stream failed and explains its interruption in the row and detail", async (gatewayStatus) => {
+  const snapshot = mapRuntimeState({
+    settings: { gatewayHost: "127.0.0.1", gatewayPort: 4318 }, upstreams: [], routes: [], clientKeys: [],
+    usage: [{ requestId: "partial", createdAt: "2026-11-23T10:00:00.000Z", inboundProtocol: "Res", outboundProtocol: "Res", status: "failed", stream: true, upstreamStatus: 200, gatewayStatus, streamFailurePhase: "upstream_body", firstTokenMs: 25, durationMs: 100, errorCode: "upstream_connection_reset", providerMessage: "private-provider-error", responseBody: "private-body" }],
+  });
+  const getWorkspace = vi.spyOn(defaultWorkspaceClient, "getWorkspace").mockResolvedValue(snapshot);
+  try {
+    const user = userEvent.setup();
+    render(<LogsPage />);
+    const detail = await screen.findByRole("button", { name: "查看 partial" });
+    const row = detail.closest("tr")!;
+    expect(within(row).getByText(/流已中断/)).toHaveClass("status-negative");
+    expect(row).not.toHaveTextContent("成功");
+    await user.click(within(row).getByRole("button", { name: /状态.*流已中断/ }));
+    const tooltip = screen.getByRole("tooltip");
+    expect(tooltip).toHaveTextContent("上游 HTTP 200");
+    expect(tooltip).toHaveTextContent(`下游 HTTP ${gatewayStatus}`);
+    expect(tooltip).toHaveTextContent("读取上游响应体时");
+    expect(tooltip).toHaveTextContent(`HTTP ${gatewayStatus} 不代表流完整完成`);
+    if (gatewayStatus === 201) expect(tooltip).not.toHaveTextContent("HTTP 200 不代表流完整完成");
+    expect(tooltip).not.toHaveTextContent("502");
+    await user.keyboard("{Escape}");
+    await user.click(detail);
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent("失败 · 流已中断");
+    expect(dialog).toHaveTextContent("上游 HTTP 200");
+    expect(dialog).toHaveTextContent(`下游 HTTP ${gatewayStatus}`);
+    expect(dialog).toHaveTextContent(`HTTP ${gatewayStatus} 不代表流完整完成`);
+    expect(dialog).toHaveTextContent("读取上游响应体时");
+    expect(dialog).not.toHaveTextContent("502");
+    expect(document.body).not.toHaveTextContent(/private-provider-error|private-body/);
+  } finally {
+    getWorkspace.mockRestore();
+  }
+});
+
+it("shows a wire 502 after upstream headers as failure without claiming a partial downstream 200", async () => {
+  const snapshot = mapRuntimeState({
+    settings: { gatewayHost: "127.0.0.1", gatewayPort: 4318 }, upstreams: [], routes: [], clientKeys: [],
+    usage: [{ requestId: "before-downstream", createdAt: "2026-11-23T10:00:00.000Z", inboundProtocol: "Res", outboundProtocol: "Res", status: "failed", stream: true, upstreamStatus: 200, gatewayStatus: 502, streamFailurePhase: "upstream_body", errorCode: "upstream_connection_reset" }],
+  });
+  const getWorkspace = vi.spyOn(defaultWorkspaceClient, "getWorkspace").mockResolvedValue(snapshot);
+  try {
+    const user = userEvent.setup();
+    render(<LogsPage />);
+    const detail = await screen.findByRole("button", { name: "查看 before-downstream" });
+    const row = detail.closest("tr")!;
+    expect(within(row).getByRole("button", { name: /状态/ })).toHaveTextContent(/^失败$/);
+    await user.click(detail);
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent("上游 HTTP 200");
+    expect(dialog).toHaveTextContent("下游 HTTP 502");
+    expect(dialog).toHaveTextContent("读取上游响应体时");
+    expect(dialog).not.toHaveTextContent(/流已中断|下游 HTTP 200|HTTP 200 不代表流完整完成/);
+  } finally {
+    getWorkspace.mockRestore();
+  }
+});
 
 describe("LogsPage", () => {
   it("filters sample logs and resets the filter", async () => {

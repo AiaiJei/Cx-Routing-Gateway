@@ -148,3 +148,47 @@ it("maps HTTP, upstream, and gateway status details without raw provider text", 
   ]);
   expect(JSON.stringify(workspace.logs)).not.toContain("secret provider detail");
 });
+
+it("preserves actual partial-stream statuses and only the three supported failure phases", () => {
+  const { logs } = mapRuntimeState({
+    settings: { gatewayHost: "127.0.0.1", gatewayPort: 4318 }, upstreams: [], routes: [], clientKeys: [],
+    usage: [
+      { status: "failed", stream: true, upstreamStatus: 200, gatewayStatus: 200, streamFailurePhase: "upstream_body", errorCode: "upstream_connection_reset", providerMessage: "private-provider-error", responseBody: "private-body" },
+      { status: "failed", stream: true, gatewayStatus: 502, streamFailurePhase: "upstream_headers" },
+      { status: "failed", stream: true, upstreamStatus: 200, gatewayStatus: 200, streamFailurePhase: "downstream_closed" },
+      { status: "failed", gatewayStatus: 502 },
+    ],
+  });
+  expect(logs[0]).toMatchObject({ status: "失败", stream: true, upstreamStatus: 200, gatewayStatus: 200, streamFailurePhase: "upstream_body" });
+  expect(logs[1]).toMatchObject({ gatewayStatus: 502, streamFailurePhase: "upstream_headers" });
+  expect(logs[2]).toMatchObject({ streamFailurePhase: "downstream_closed" });
+  expect(logs[3].gatewayStatus).toBe(502);
+  expect(logs[3]).not.toHaveProperty("streamFailurePhase");
+  expect(JSON.stringify(logs)).not.toMatch(/private-provider-error|private-body|providerMessage|responseBody/);
+});
+
+it.each([100, 200, 502, 599])("accepts valid integer HTTP status %s at each log boundary", (code) => {
+  const { logs } = mapRuntimeState({
+    settings: { gatewayHost: "127.0.0.1", gatewayPort: 4318 }, upstreams: [], routes: [], clientKeys: [],
+    usage: [{ httpStatus: code, upstreamStatus: code, gatewayStatus: code }],
+  });
+  expect(logs[0]).toMatchObject({ httpStatus: code, upstreamStatus: code, gatewayStatus: code });
+});
+
+it.each([0, 99, 600, -1, 200.5, NaN, Infinity, "200", null, {}, true, undefined])("omits invalid HTTP status %s instead of coercing it", (code) => {
+  const { logs } = mapRuntimeState({
+    settings: { gatewayHost: "127.0.0.1", gatewayPort: 4318 }, upstreams: [], routes: [], clientKeys: [],
+    usage: [{ httpStatus: code, upstreamStatus: code, gatewayStatus: code }],
+  });
+  expect(logs[0].httpStatus).toBeUndefined();
+  expect(logs[0].upstreamStatus).toBeUndefined();
+  expect(logs[0].gatewayStatus).toBeUndefined();
+});
+
+it.each(["unknown", "UPSTREAM_BODY", "__proto__", "private-provider-error", "", null, 1, {}, undefined])("omits unknown failure phase %s", (phase) => {
+  const { logs } = mapRuntimeState({
+    settings: { gatewayHost: "127.0.0.1", gatewayPort: 4318 }, upstreams: [], routes: [], clientKeys: [],
+    usage: [{ status: "failed", streamFailurePhase: phase }],
+  });
+  expect(logs[0]).not.toHaveProperty("streamFailurePhase");
+});

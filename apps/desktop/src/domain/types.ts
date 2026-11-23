@@ -32,6 +32,8 @@ export type ModelRoute = {
 
 export type RequestTokens = Partial<Record<'input' | 'output' | 'cacheRead' | 'cacheWrite' | 'total' | 'reasoning' | 'inputAudio' | 'outputAudio' | 'cacheWrite5m' | 'cacheWrite1h', number>>;
 
+export type StreamFailurePhase = "upstream_headers" | "upstream_body" | "downstream_closed";
+
 export type CallLog = {
   id: string;
   time: string;
@@ -42,6 +44,7 @@ export type CallLog = {
   httpStatus?: number;
   upstreamStatus?: number;
   gatewayStatus?: number;
+  streamFailurePhase?: StreamFailurePhase;
   direction: string;
   status: "成功（模拟）" | "失败（模拟）" | "成功" | "失败";
   durationMs: number | null;

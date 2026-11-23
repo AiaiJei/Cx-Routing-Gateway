@@ -7,6 +7,13 @@ function featureError(field, direction, code = 'unsupported_feature') {
   return error;
 }
 
+function unsupportedToolType(type, direction) {
+  const error = featureError('tools.type', direction);
+  if (!['function', 'custom', 'namespace', 'tool_search'].includes(type)
+    && typeof type === 'string' && /^[A-Za-z0-9_-]{1,48}$/.test(type)) error.toolType = type;
+  return error;
+}
+
 function textParts(value) {
   if (typeof value === 'string') return value;
   if (!Array.isArray(value)) return '';
@@ -17,7 +24,7 @@ function targetToolName(tool) {
   return tool.targetName || tool.name;
 }
 
-function makeTargetToolName(namespace, name, usedNames) {
+function makeTargetToolName(kind, namespace, name, usedNames) {
   const sourceName = namespace ? namespace + '__' + name : name;
   let base = sourceName.replace(/[^A-Za-z0-9_-]/g, '_');
   if (!base) base = 'tool';
@@ -25,7 +32,7 @@ function makeTargetToolName(namespace, name, usedNames) {
     usedNames.add(base);
     return base;
   }
-  const seed = (namespace || '') + '\0' + name;
+  const seed = JSON.stringify([kind, namespace || '', name]);
   let suffix = crypto.createHash('sha256').update(seed).digest('hex').slice(0, 10);
   let candidate = base.slice(0, 52) + '__' + suffix;
   let attempt = 0;
@@ -43,10 +50,15 @@ function normalizeToolChoice(protocol, value, direction, tools = []) {
   if (value === 'auto' || value === 'none' || value === 'required') return { mode: value };
   if (protocol === 'Mes' && value.type === 'auto') return { mode: 'auto' };
   if (protocol === 'Mes' && value.type === 'any') return { mode: 'required' };
+  if (protocol === 'Res' && value.type === 'tool_search') {
+    const matches = tools.filter((tool) => tool.kind === 'tool_search');
+    if (matches.length !== 1) throw featureError('tool_choice', direction);
+    return { mode: 'function', name: targetToolName(matches[0]) };
+  }
   if (typeof value === 'object' && value.type === 'function' && typeof (value.function?.name || value.name) === 'string') {
     const name = value.function?.name || value.name;
     if (protocol === 'Res') {
-      const matches = tools.filter((tool) => tool.name === name && (value.namespace ? tool.namespace === value.namespace : !tool.namespace));
+      const matches = tools.filter((tool) => tool.kind !== 'tool_search' && tool.name === name && (value.namespace ? tool.namespace === value.namespace : !tool.namespace));
       if (matches.length !== 1) throw featureError('tool_choice', direction);
       return { mode: 'function', name: targetToolName(matches[0]) };
     }
@@ -69,6 +81,23 @@ function normalizeResponseFormat(value, direction) {
   throw featureError('response_format', direction);
 }
 
+function collectResponsesTools(body, direction) {
+  const tools = [];
+  const collect = (definitions) => {
+    if (definitions === undefined) return;
+    if (!Array.isArray(definitions)) throw featureError('tools', direction);
+    tools.push(...definitions);
+  };
+  collect(body.tools);
+  collect(body.additional_tools?.tools);
+  if (Array.isArray(body.input)) {
+    for (const item of body.input) {
+      if (item?.type === 'additional_tools' || item?.type === 'tool_search_output') collect(item.tools);
+    }
+  }
+  return tools;
+}
+
 function normalizeTools(protocol, tools, direction) {
   if (!tools) return [];
   if (!Array.isArray(tools)) throw featureError('tools', direction);
@@ -84,14 +113,23 @@ function normalizeTools(protocol, tools, direction) {
 
   const normalized = [];
   const usedNames = new Set();
+  const identities = new Set();
   const addTool = (source, namespace, namespaceDescription) => {
-    if (!source || typeof source.name !== 'string' || !source.name) throw featureError('tools.name', direction);
-    const kind = source.type === 'custom' ? 'custom' : 'function';
-    const targetName = makeTargetToolName(namespace, source.name, usedNames);
+    const kind = source.type === 'tool_search' ? 'tool_search' : source.type === 'custom' ? 'custom' : 'function';
+    const name = kind === 'tool_search' ? 'tool_search' : source.name;
+    if (typeof name !== 'string' || !name) throw featureError('tools.name', direction);
     const descriptions = [namespaceDescription, source.description].filter((value) => typeof value === 'string' && value.trim());
     let parameters;
     let format;
-    if (kind === 'custom') {
+    if (kind === 'tool_search') {
+      if (source.execution !== undefined && source.execution !== 'client') throw featureError('tools.execution', direction);
+      parameters = {
+        type: 'object',
+        properties: { query: { type: 'string' }, limit: { type: 'integer' } },
+        required: ['query'],
+        additionalProperties: false,
+      };
+    } else if (kind === 'custom') {
       format = source.format === undefined ? { type: 'text' } : source.format;
       if (!format || typeof format !== 'object' || Array.isArray(format)) throw featureError('tools.format', direction);
       if (format.type === 'grammar') {
@@ -112,9 +150,13 @@ function normalizeTools(protocol, tools, direction) {
       parameters = source.parameters === undefined ? { type: 'object', properties: {} } : source.parameters;
       if (!parameters || typeof parameters !== 'object' || Array.isArray(parameters)) throw featureError('tools.parameters', direction);
     }
+    const identity = JSON.stringify([kind, namespace || '', name]);
+    if (identities.has(identity)) return;
+    identities.add(identity);
+    const targetName = makeTargetToolName(kind, namespace, name, usedNames);
     const description = descriptions.join('\n\n') || undefined;
-    const tool = { name: source.name, description, parameters };
-    if (namespace || kind === 'custom' || targetName !== source.name) {
+    const tool = { name, description, parameters };
+    if (namespace || kind !== 'function' || targetName !== name) {
       tool.targetName = targetName;
       tool.kind = kind;
       if (namespace) tool.namespace = namespace;
@@ -128,22 +170,44 @@ function normalizeTools(protocol, tools, direction) {
     if (tool?.type === 'namespace') {
       if (typeof tool.name !== 'string' || !tool.name || !Array.isArray(tool.tools)) throw featureError('tools.namespace', direction);
       for (const member of tool.tools) {
-        if (member?.type !== 'function' && member?.type !== 'custom') throw featureError('tools.type', direction);
+        if (member?.type !== 'function' && member?.type !== 'custom') throw unsupportedToolType(member?.type, direction);
         addTool(member, tool.name, tool.description);
       }
-    } else if (tool?.type === 'function' || (!tool?.type && typeof tool?.name === 'string')) {
+    } else if (tool?.type === 'function' || (tool?.type === undefined && typeof tool?.name === 'string')) {
       addTool(tool, undefined, undefined);
-    } else if (tool?.type === 'custom') {
+    } else if (tool?.type === 'custom' || tool?.type === 'tool_search') {
       addTool(tool, undefined, undefined);
     } else {
-      throw featureError('tools.type', direction);
+      throw unsupportedToolType(tool?.type, direction);
     }
   }
   return normalized;
 }
 
-function toolForResponsesCall(tools, name, namespace) {
-  return tools.find((tool) => tool.name === name && (namespace ? tool.namespace === namespace : !tool.namespace));
+function toolForResponsesCall(tools, name, namespace, kind) {
+  return tools.find((tool) => (tool.kind || 'function') === kind && tool.name === name && (namespace ? tool.namespace === namespace : !tool.namespace));
+}
+
+function serializedToolValue(value) {
+  return typeof value === 'string' ? value : JSON.stringify(value ?? {});
+}
+
+function toolResultContent(value) {
+  if (Array.isArray(value) && value.every((part) => ['text', 'input_text', 'output_text'].includes(part?.type))) return textParts(value);
+  return serializedToolValue(value);
+}
+
+function searchArguments(value, direction) {
+  const invalid = () => direction === 'Chat->Res'
+    ? Object.assign(new Error('Invalid upstream response'), { code: 'upstream_error', statusCode: 502 })
+    : featureError('tool_search.arguments', direction);
+  let parsed = value;
+  if (typeof value === 'string') {
+    try { parsed = JSON.parse(value); } catch { throw invalid(); }
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || typeof parsed.query !== 'string'
+    || (parsed.limit !== undefined && !Number.isInteger(parsed.limit))) throw invalid();
+  return parsed;
 }
 
 function normalizeMessages(protocol, body, direction, tools = []) {
@@ -151,16 +215,23 @@ function normalizeMessages(protocol, body, direction, tools = []) {
   if (protocol === 'Res') {
     const raw = typeof body.input === 'string' ? [{ role: 'user', content: body.input }] : (body.input || []);
     for (const item of raw) {
-      if (item.type === 'function_call_output' || item.type === 'custom_tool_call_output') messages.push({ role: 'tool', id: item.call_id, content: textParts(item.output) });
-      else if (item.type === 'function_call' || item.type === 'custom_tool_call') {
-        const tool = toolForResponsesCall(tools, item.name, item.namespace);
-        const kind = item.type === 'custom_tool_call' ? 'custom' : (tool?.kind || 'function');
+      if (item.type === 'additional_tools') continue;
+      if (item.type === 'tool_search_output') {
+        messages.push({ role: 'tool', id: item.call_id, content: JSON.stringify({ status: item.status || 'completed', tools: item.tools || [] }) });
+      }
+      else if (item.type === 'function_call_output' || item.type === 'custom_tool_call_output') messages.push({ role: 'tool', id: item.call_id, content: toolResultContent(item.output) });
+      else if (['function_call', 'custom_tool_call', 'tool_search_call'].includes(item.type)) {
+        const kind = item.type === 'tool_search_call' ? 'tool_search' : item.type === 'custom_tool_call' ? 'custom' : 'function';
+        const name = kind === 'tool_search' ? 'tool_search' : item.name;
+        const tool = toolForResponsesCall(tools, name, item.namespace, kind);
+        if (kind === 'tool_search' && !tool) throw featureError('input.tool_search_call', direction);
+        if (kind === 'tool_search' && item.execution !== undefined && item.execution !== 'client') throw featureError('input.execution', direction);
         const input = typeof item.input === 'string' ? item.input : JSON.stringify(item.input ?? '');
         messages.push({ role: 'assistant', toolCalls: [{
           id: item.call_id || item.id,
           name: tool ? targetToolName(tool) : item.name,
           ...(item.namespace ? { namespace: item.namespace } : {}),
-          ...(kind === 'custom' ? { kind, input, arguments: JSON.stringify({ input }) } : { arguments: item.arguments || '{}' }),
+          ...(kind === 'custom' ? { kind, input, arguments: JSON.stringify({ input }) } : { arguments: serializedToolValue(kind === 'tool_search' ? searchArguments(item.arguments, direction) : item.arguments) }),
           index: 0,
         }] });
       }
@@ -200,7 +271,7 @@ export function parseRequest(protocol, body, profile = {}) {
   if (candidateCount !== 1) throw featureError('n', direction, 'multiple_candidates_unsupported');
   if (body.logprobs) throw featureError('logprobs', direction);
   if (body.modalities) throw featureError('modalities', direction);
-  const tools = normalizeTools(protocol, body.tools, direction);
+  const tools = normalizeTools(protocol, protocol === 'Res' ? collectResponsesTools(body, direction) : body.tools, direction);
   const parsed = normalizeMessages(protocol, body, direction, tools);
   const responseFormat = protocol === 'Res' ? normalizeResponseFormat(body.text?.format, direction) : normalizeResponseFormat(body.response_format, direction);
   return { messages: parsed.messages, instructions: parsed.instructions, tools, toolChoice: normalizeToolChoice(protocol, body.tool_choice, direction, tools), responseFormat, maxTokens: protocol === 'Res' ? body.max_output_tokens : protocol === 'Mes' ? body.max_tokens : (body.max_completion_tokens ?? body.max_tokens), stream: body.stream === true, candidateCount };
@@ -297,7 +368,9 @@ export function parseResponse(protocol, body, toolContext = []) {
 export function serializeResponse(protocol, normalized, requestId) {
   if (protocol === 'Chat') return { id: normalized.id || 'chatcmpl_' + requestId, object: 'chat.completion', choices: [{ index: 0, message: normalized.toolCalls?.length ? { role: 'assistant', content: null, tool_calls: normalized.toolCalls.map((call) => ({ id: call.id, type: 'function', function: { name: targetToolName(call), arguments: call.kind === 'custom' ? JSON.stringify({ input: call.input ?? customInputFromArguments(call.arguments) }) : call.arguments } })) } : { role: 'assistant', content: normalized.text }, finish_reason: normalized.toolCalls?.length ? 'tool_calls' : 'stop' }], usage: normalized.usage };
   if (protocol === 'Mes') return { id: normalized.id || 'msg_' + requestId, type: 'message', role: 'assistant', content: normalized.toolCalls?.length ? normalized.toolCalls.map((call) => ({ type: 'tool_use', id: call.id, name: targetToolName(call), input: call.kind === 'custom' ? { input: call.input ?? customInputFromArguments(call.arguments) } : JSON.parse(call.arguments || '{}') })) : [{ type: 'text', text: normalized.text }], stop_reason: normalized.toolCalls?.length ? 'tool_use' : 'end_turn', usage: normalized.usage };
-  return { id: normalized.id || 'resp_' + requestId, object: 'response', output: normalized.toolCalls?.length ? normalized.toolCalls.map((call) => call.kind === 'custom'
+  return { id: normalized.id || 'resp_' + requestId, object: 'response', output: normalized.toolCalls?.length ? normalized.toolCalls.map((call) => call.kind === 'tool_search'
+    ? { type: 'tool_search_call', id: call.id || 'tsc_' + requestId + '_' + call.index, call_id: call.id || 'call_' + requestId + '_' + call.index, status: 'completed', execution: 'client', arguments: searchArguments(call.arguments, 'Chat->Res') }
+    : call.kind === 'custom'
     ? { type: 'custom_tool_call', call_id: call.id, name: call.name, ...(call.namespace ? { namespace: call.namespace } : {}), input: call.input ?? customInputFromArguments(call.arguments) }
     : { type: 'function_call', call_id: call.id, name: call.name, ...(call.namespace ? { namespace: call.namespace } : {}), arguments: call.arguments }) : [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: normalized.text }] }], status: 'completed', usage: normalized.usage };
 }
@@ -355,6 +428,16 @@ function customCallFrames(call, requestId) {
     + responseFrame('response.output_item.done', { type: 'response.output_item.done', output_index: call.index, item: { ...item, input } });
 }
 
+function searchCallFrames(call, requestId) {
+  const item = {
+    type: 'tool_search_call', id: call.id || 'tsc_' + requestId + '_' + call.index,
+    call_id: call.id || 'call_' + requestId + '_' + call.index,
+    execution: 'client', arguments: searchArguments(call.arguments, 'Chat->Res'),
+  };
+  return responseFrame('response.output_item.added', { type: 'response.output_item.added', output_index: call.index, item: { ...item, status: 'in_progress' } })
+    + responseFrame('response.output_item.done', { type: 'response.output_item.done', output_index: call.index, item: { ...item, status: 'completed' } });
+}
+
 export function serializeStreamEvent(protocol, event, requestId, state = {}) {
   if (protocol === 'Chat') {
     if (event.type === 'done') return 'data: ' + JSON.stringify({ id: 'chatcmpl_' + requestId, object: 'chat.completion.chunk', choices: [{ index: 0, delta: {}, finish_reason: event.finishReason === 'end_turn' ? 'stop' : event.finishReason === 'tool_use' || event.finishReason === 'tool_calls' ? 'tool_calls' : event.finishReason || 'stop' }] }) + '\n\ndata: [DONE]\n\n';
@@ -371,9 +454,10 @@ export function serializeStreamEvent(protocol, event, requestId, state = {}) {
   if (event.type === 'done') {
     if (state.responseCompleted) return '';
     state.responseCompleted = true;
-    const pending = [...(state.customToolCalls?.values() || [])].sort((left, right) => left.index - right.index);
+    const pending = [...(state.customToolCalls?.values() || []), ...(state.searchToolCalls?.values() || [])].sort((left, right) => left.index - right.index);
     state.customToolCalls?.clear();
-    return pending.map((call) => customCallFrames(call, requestId)).join('')
+    state.searchToolCalls?.clear();
+    return pending.map((call) => call.tool.kind === 'tool_search' ? searchCallFrames(call, requestId) : customCallFrames(call, requestId)).join('')
       + 'event: response.completed\ndata: ' + JSON.stringify({ type: 'response.completed', response: { id: 'resp_' + requestId, status: 'completed' } }) + '\n\n';
   }
   if (event.type === 'text') return 'event: response.output_text.delta\ndata: ' + JSON.stringify({ type: 'response.output_text.delta', delta: event.text }) + '\n\n';
@@ -381,14 +465,14 @@ export function serializeStreamEvent(protocol, event, requestId, state = {}) {
     const output = [];
     for (const tool of event.tools) {
       const index = Number.isInteger(tool.index) ? tool.index : 0;
-      const existingCustom = state.customToolCalls?.get(index);
-      const descriptor = state.toolContext?.find((item) => targetToolName(item) === tool.name) || existingCustom?.tool;
-      if (descriptor?.kind === 'custom') {
-        state.customToolCalls ||= new Map();
-        const call = state.customToolCalls.get(index) || { index, id: undefined, tool: descriptor, arguments: '' };
+      const existing = state.customToolCalls?.get(index) || state.searchToolCalls?.get(index);
+      const descriptor = state.toolContext?.find((item) => targetToolName(item) === tool.name) || existing?.tool;
+      if (descriptor?.kind === 'custom' || descriptor?.kind === 'tool_search') {
+        const calls = descriptor.kind === 'custom' ? (state.customToolCalls ||= new Map()) : (state.searchToolCalls ||= new Map());
+        const call = calls.get(index) || { index, id: undefined, tool: descriptor, arguments: '' };
         if (tool.id) call.id = tool.id;
         call.arguments += tool.arguments || '';
-        state.customToolCalls.set(index, call);
+        calls.set(index, call);
         continue;
       }
       const name = descriptor?.name || tool.name;

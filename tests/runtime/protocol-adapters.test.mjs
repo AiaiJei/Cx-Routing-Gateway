@@ -381,6 +381,177 @@ test('keeps a declared ordinary tool_search function as a Responses function cal
   assert.deepEqual(JSON.parse(response.output[0].arguments), { topic: 'local catalogue' });
 });
 
+test('deduplicates loaded definitions by kind and namespace while keeping colliding calls reversible', () => {
+  const members = [
+    { type: 'function', name: 'run', parameters: { type: 'object' } },
+    { type: 'custom', name: 'run', format: { type: 'text' } },
+  ];
+  const group = { type: 'namespace', name: 'mcp__loaded', tools: members };
+  const request = parseRequest('Res', {
+    tools: [{ type: 'tool_search' }, group],
+    additional_tools: { tools: [group] },
+    input: [
+      { type: 'additional_tools', tools: [group, { type: 'tool_search' }] },
+      { type: 'tool_search_call', call_id: 's', arguments: { query: 'run' } },
+      { type: 'tool_search_output', call_id: 's', status: 'completed', tools: [group] },
+      { type: 'function_call', namespace: 'mcp__loaded', name: 'run', call_id: 'f', arguments: { key: 'x' } },
+      { type: 'custom_tool_call', namespace: 'mcp__loaded', name: 'run', call_id: 'c', input: 'raw input' },
+    ],
+  }, profile);
+  const chat = serializeRequest('Chat', request, 'chat-model');
+  assert.equal(chat.tools.length, 3);
+  assert.equal(new Set(chat.tools.map((tool) => tool.function.name)).size, 3);
+  const func = request.tools.find((tool) => tool.kind === 'function');
+  const custom = request.tools.find((tool) => tool.kind === 'custom');
+  assert.equal(chat.messages[2].tool_calls[0].function.name, func.targetName);
+  assert.equal(chat.messages[2].tool_calls[0].function.arguments, '{"key":"x"}');
+  assert.equal(chat.messages[3].tool_calls[0].function.name, custom.targetName);
+  const restored = serializeResponse('Res', parseResponse('Chat', { choices: [{ message: { tool_calls: [
+    { id: 'f', function: { name: func.targetName, arguments: '{}' } },
+    { id: 'c', function: { name: custom.targetName, arguments: '{"input":"raw input"}' } },
+  ] } }] }, request.tools), 'loaded');
+  assert.equal(restored.output[0].type, 'function_call');
+  assert.equal(restored.output[1].type, 'custom_tool_call');
+  assert.equal(restored.output[1].input, 'raw input');
+});
+
+test('selects an ordinary tool_search function by kind even when the search proxy is declared first', () => {
+  const request = parseRequest('Res', {
+    tools: [{ type: 'tool_search' }, { type: 'function', name: 'tool_search' }],
+    tool_choice: { type: 'function', name: 'tool_search' },
+    input: [{ type: 'function_call', name: 'tool_search', call_id: 'ordinary', arguments: { topic: 'catalogue' } }],
+  }, profile);
+  const chat = serializeRequest('Chat', request, 'chat-model');
+  const ordinary = request.tools.find((tool) => tool.kind !== 'tool_search');
+  assert.deepEqual(chat.tool_choice, { type: 'function', function: { name: ordinary.targetName } });
+  assert.equal(chat.messages[0].tool_calls[0].function.name, ordinary.targetName);
+  assert.equal(chat.messages[0].tool_calls[0].function.arguments, '{"topic":"catalogue"}');
+});
+
+test('serializes structured function and custom results without losing object data', () => {
+  const chat = serializeRequest('Chat', parseRequest('Res', { input: [
+    { type: 'function_call_output', call_id: 'f', output: { found: ['one'] } },
+    { type: 'custom_tool_call_output', call_id: 'c', output: { applied: true } },
+    { type: 'function_call_output', call_id: 'array', output: [{ found: true }] },
+    { type: 'custom_tool_call_output', call_id: 'text', output: [{ type: 'text', text: 'done' }] },
+  ] }, profile), 'chat-model');
+  assert.deepEqual(chat.messages, [
+    { role: 'tool', tool_call_id: 'f', content: '{"found":["one"]}' },
+    { role: 'tool', tool_call_id: 'c', content: '{"applied":true}' },
+    { role: 'tool', tool_call_id: 'array', content: '[{"found":true}]' },
+    { role: 'tool', tool_call_id: 'text', content: 'done' },
+  ]);
+});
+
+test('preserves forced function choices for a sole custom proxy', () => {
+  const request = parseRequest('Res', {
+    tools: [{ type: 'custom', name: 'patch' }], tool_choice: { type: 'function', name: 'patch' },
+  }, profile);
+  const chat = serializeRequest('Chat', request, 'chat-model');
+  assert.deepEqual(chat.tool_choice, { type: 'function', function: { name: chat.tools[0].function.name } });
+});
+
+test('collects top-level additional_tools and rejects malformed structural tool lists safely', () => {
+  const chat = serializeRequest('Chat', parseRequest('Res', {
+    additional_tools: { tools: [{ type: 'function', name: 'extra' }] }, input: 'hello',
+  }, profile), 'chat-model');
+  assert.ok(chat.tools, 'structural tools must reach the Chat request');
+  assert.equal(chat.tools[0].function.name, 'extra');
+  for (const body of [
+    { tools: {} },
+    { input: [{ type: 'additional_tools', tools: {} }] },
+    { input: [{ type: 'tool_search_output', call_id: 's', tools: {} }] },
+  ]) assert.throws(() => parseRequest('Res', body, profile), (error) => error.code === 'unsupported_feature' && error.field === 'tools');
+});
+
+test('restored search calls have completed object arguments and stable IDs for resumed history', () => {
+  const request = parseRequest('Res', { tools: [{ type: 'tool_search' }] }, profile);
+  const response = serializeResponse('Res', parseResponse('Chat', { choices: [{ message: { tool_calls: [
+    { id: 'search-id', function: { name: 'tool_search', arguments: '{"query":"find"}' } },
+  ] } }] }, request.tools), 'request-id');
+  assert.equal(response.output[0].id, 'search-id');
+  assert.equal(response.output[0].status, 'completed');
+  const resumed = serializeRequest('Chat', parseRequest('Res', {
+    tools: [{ type: 'tool_search' }], input: [response.output[0], { type: 'tool_search_output', call_id: 'search-id', status: 'completed', tools: [] }],
+  }, profile), 'chat-model');
+  assert.equal(resumed.messages[0].tool_calls[0].id, 'search-id');
+  assert.deepEqual(JSON.parse(resumed.messages[0].tool_calls[0].function.arguments), { query: 'find' });
+  assert.deepEqual(JSON.parse(resumed.messages[1].content), { status: 'completed', tools: [] });
+});
+
+test('maps a Responses tool_search tool choice to its distinct Chat proxy name', () => {
+  const request = parseRequest('Res', {
+    tools: [{ type: 'function', name: 'tool_search' }, { type: 'tool_search' }],
+    tool_choice: { type: 'tool_search' },
+  }, profile);
+  const search = request.tools.find((tool) => tool.kind === 'tool_search');
+  const chat = serializeRequest('Chat', request, 'chat-model');
+  assert.ok(search);
+  assert.deepEqual(chat.tool_choice, { type: 'function', function: { name: search.targetName } });
+});
+
+test('classifies malformed Chat search arguments as an upstream response error', () => {
+  const request = parseRequest('Res', { tools: [{ type: 'tool_search' }] }, profile);
+  const upstreamResponse = { choices: [{ message: { tool_calls: [
+    { id: 's', function: { name: 'tool_search', arguments: '{"query":false}' } },
+  ] } }] };
+  assert.throws(() => serializeResponse('Res', parseResponse('Chat', upstreamResponse, request.tools), 'response'), (error) => {
+    assert.equal(error.code, 'upstream_error');
+    assert.equal(error.statusCode, 502);
+    assert.equal(error.field, undefined);
+    return true;
+  });
+  assert.throws(() => parseRequest('Res', {
+    tools: [{ type: 'tool_search' }], input: [{ type: 'tool_search_call', call_id: 'bad', arguments: { query: false } }],
+  }, profile), (error) => {
+    assert.equal(error.code, 'unsupported_feature');
+    assert.equal(error.statusCode, 400);
+    return true;
+  });
+});
+
+test('rejects malformed search argument objects and server search execution without exposing values', () => {
+  const request = parseRequest('Res', { tools: [{ type: 'tool_search' }] }, profile);
+  for (const args of ['{private', '[]', 'null', '{}', '{"query":42}', '{"query":"private","limit":1.5}']) {
+    assert.throws(() => serializeResponse('Res', parseResponse('Chat', { choices: [{ message: { tool_calls: [
+      { id: 's', function: { name: 'tool_search', arguments: args } },
+    ] } }] }, request.tools), 'invalid'), (error) => {
+      assert.equal(error.code, 'upstream_error');
+      assert.equal(error.statusCode, 502);
+      assert.equal(JSON.stringify(error).includes('private'), false);
+      return true;
+    });
+  }
+  assert.throws(() => parseRequest('Res', { tools: [{ type: 'tool_search', execution: 'server' }] }, profile), (error) => error.code === 'unsupported_feature');
+});
+
+test('unsupported type diagnostics expose only actual unknown bounded type discriminators', () => {
+  for (const [type, expected] of [
+    ['web_search_preview', 'web_search_preview'], ['future_tool-2', 'future_tool-2'], ['x'.repeat(48), 'x'.repeat(48)],
+    ['x'.repeat(49), undefined], ['private prompt/key', undefined], ['future_tool\n', undefined], [null, undefined], [23, undefined],
+  ]) {
+    assert.throws(() => parseRequest('Res', { tools: [{ type, name: 'private-name', parameters: { secret: 'private-schema' } }] }, profile), (error) => {
+      assert.equal(error.toolType, expected);
+      assert.equal(error.field, 'tools.type');
+      assert.equal(/private-name|private-schema/.test(JSON.stringify(error)), false);
+      return true;
+    });
+  }
+  for (const tool of [{ type: 'function' }, { type: 'custom', name: 'c', format: { type: 'unknown' } }, { type: 'namespace', name: 'n' }]) {
+    assert.throws(() => parseRequest('Res', { tools: [tool] }, profile), (error) => {
+      assert.equal(error.toolType, undefined);
+      return true;
+    });
+  }
+  for (const [type, expected] of [['tool_search', undefined], ['future_nested', 'future_nested']]) {
+    assert.throws(() => parseRequest('Res', { tools: [{ type: 'namespace', name: 'private-namespace', tools: [{ type }] }] }, profile), (error) => {
+      assert.equal(error.toolType, expected);
+      assert.equal(JSON.stringify(error).includes('private-namespace'), false);
+      return true;
+    });
+  }
+});
+
 test('rejects server-executed built-ins with diagnostics that omit submitted tool data', () => {
   const secretToolName = 'private-search-backend';
   const secretArgument = 'sensitive query phrase';
