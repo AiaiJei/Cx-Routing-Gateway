@@ -12,21 +12,23 @@
   "worktree": ".worktree/codex-tool-definition-probe",
   "contract": "docs/tasks/2026-11-23-codex-tools-connectivity-probe-contract.json",
   "authorization": {
-    "source": "The user continued the referenced Codex task after reporting that Responses-to-Chat still rejected Codex tools and asking that automatic failback probing only check URL connectivity. The referenced task records the unresolved tools error and the transport-only probe direction. The user explicitly requested a dedicated PR for the repair and now says to continue and complete it.",
+    "source": "The user continued the referenced Codex task after reporting that Responses-to-Chat still rejected Codex tools and asking that automatic failback probing only check URL connectivity. The referenced task records the unresolved tools error and the transport-only probe direction. The user explicitly requested a dedicated PR for the repair, then authorized version 1.1.7, PR #21 merge, primary master synchronization, GitHub publication, and verified Desktop Portable delivery on 2026-11-23; see the task contract revision.",
     "operations": [
       "resume the existing task worktree and bind it to this contract",
       "implement the approved adapter and transport-probe changes",
       "verify against local fixtures without calling a real provider",
       "commit and push the dedicated task branch",
-      "create one dedicated PR against master and attach it to this task"
+      "create one dedicated PR against master and attach it to this task",
+      "bump package, product, and build versions from 1.1.6 to 1.1.7 in PR #21",
+      "merge PR #21 after required checks pass and synchronize primary master",
+      "build and verify Windows x64 release artifacts and manifest",
+      "publish GitHub Release v1.1.7 with verified assets",
+      "copy and verify the Portable 1.1.7 executable on Desktop"
     ],
     "not_authorized": [
-      "merge the new PR",
-      "change package, product, or build versions",
-      "publish or overwrite a GitHub release or tag",
-      "copy a new program to the Desktop",
       "make real provider requests",
-      "delete branches or worktrees"
+      "rewrite or delete existing releases/tags",
+      "delete branches or worktrees or unrelated files"
     ]
   },
   "scope": {

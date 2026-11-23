@@ -14,7 +14,7 @@
 
 - Do not call a real upstream provider or send a model/API request from a recovery probe.
 - Keep existing circuit thresholds, cooldowns, per-target health isolation, and generation handling.
-- Do not change package, product, or build versions; do not merge or publish.
+- For the original implementation, do not make real provider calls. Release-stage authorization is recorded as revision 1 in the task contract.
 - Keep unsupported tool semantics explicit in field/direction errors; do not silently drop tools.
 - Preserve all changes and untracked user files outside the named worktree.
 
@@ -81,3 +81,30 @@
 - [x] Record exact commands, results, review limits, and provider NOT_RUN status in task evidence and contract.
 - [x] Commit final evidence and task-state updates, push the task branch, and create one dedicated PR against master.
 - [x] Leave the PR open; do not merge, bump a version, publish, copy a Desktop binary, or delete the worktree.
+
+### Task 4: Version, Merge, and Release 1.1.7
+
+**Files:**
+- Update: apps/desktop/package.json
+- Update: apps/desktop/package-lock.json
+- Update: apps/desktop/electron-builder.yml
+- Update: apps/desktop/src/pages/SettingsPage.test.tsx
+- Update: tests/runtime/release-manifest.test.mjs
+- Update: scripts/verify-release.mjs
+- Update: docs/tasks/2026-11-23-codex-tools-connectivity-probe-contract.json
+- Update: docs/tasks/2026-11-23-codex-tools-connectivity-probe.md
+- Update: docs/tasks/evidence/codex-tools-connectivity-probe/verification.md
+
+**Interfaces:**
+- Package, product, lockfile root, builder, UI version expectation, test expectation, and verifier must agree on 1.1.7.
+- Release output is `apps/desktop/release/1.1.7-final-reviewed/`; Desktop destination is `Cx-Routing Gateway Portable 1.1.7.exe`.
+- GitHub release assets are Setup, Setup blockmap, Portable, and manifest; preserve v1.1.6 and its Desktop copy.
+
+- [x] Record this explicit authorization revision and release acceptance/rollback gates before code or release writes.
+- [x] Change all current product-version metadata and assertions from 1.1.6 to 1.1.7; run focused release tests, full Runtime and Desktop suites, Desktop build, syntax, and diff checks.
+- [ ] Commit and push the version change to PR #21; merge only after checks on the new head succeed.
+- [ ] Fast-forward and verify the primary `master` worktree while preserving unrelated untracked directories and all other worktrees.
+- [ ] Build Windows x64 artifacts in a confirmed-new output directory; verify manifest, packaged smoke, Portable smoke, and SHA-256.
+- [ ] Publish GitHub v1.1.7 only after all local gates pass; verify tag and uploaded asset digests.
+- [ ] Copy Portable to the confirmed-new Desktop path and verify its digest and isolated health smoke.
+- [ ] Record exact final commit, PR checks, artifact hashes, release asset state, Desktop path, and provider `NOT_RUN` state.

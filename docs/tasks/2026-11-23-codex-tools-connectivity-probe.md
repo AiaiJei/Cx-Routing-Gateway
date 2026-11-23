@@ -14,7 +14,7 @@ Custom freeform formats are included as model-facing description text. Chat and 
 
 ## Scope
 
-Credential persistence and routing state are not modified in this task; credential persistence was addressed separately in PR #19. This branch focuses on Codex tool-definition compatibility and transport-only failback checks. It does not change versions or releases and makes no third-party provider calls.
+Credential persistence and routing state are not modified in this task; credential persistence was addressed separately in PR #19. This branch focuses on Codex tool-definition compatibility and transport-only failback checks. Release/version work was excluded by the original contract, then explicitly added as revision 1 after the user authorized version 1.1.7, PR #21 merge, GitHub publication, primary master synchronization, and Desktop delivery on 2026-11-23. No third-party provider calls are authorized or made.
 
 ## Review
 
@@ -26,4 +26,4 @@ See [verification evidence](evidence/codex-tools-connectivity-probe/verification
 
 ## Delivery
 
-PR #21 targets `master` and is `OPEN` for review. At PR creation, Runtime and Desktop CI jobs were pending and packaging jobs were skipped by the workflow. The PR remains unmerged. Release, Desktop binary delivery, and branch/worktree deletion are not authorized.
+PR #21 targets `master`. At PR creation, Runtime and Desktop CI jobs were pending and packaging jobs were skipped by the workflow; the observed checks later passed on that original head. Revision 1 now authorizes merging after checks pass on the updated head, publishing v1.1.7, synchronizing the primary `master` worktree, and delivering the verified Portable to Desktop. Branch/worktree deletion and real provider calls remain unauthorized.

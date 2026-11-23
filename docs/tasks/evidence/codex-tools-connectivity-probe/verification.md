@@ -20,6 +20,14 @@ Base: `f58341f5224224bea9ae7abf03818d9cadb4df47`
 | `node -e` JSON parse of the task contract and `.codex/awg-task.json` | PASS |
 | `git diff --cached --check` | PASS: full staged task diff has no whitespace errors |
 
+## Release 1.1.7 Authorization and Local Checks
+
+- On 2026-11-23 the user explicitly authorized incrementing 1.1.6 to 1.1.7, merging PR #21, synchronizing the task result to primary `master`, publishing GitHub v1.1.7, and copying the verified Portable to Desktop. This is revision 1 of the task contract; real provider requests and branch/worktree deletion remain unauthorized.
+- The 1.1.7 SettingsPage assertions were first changed and failed against the 1.1.6 package metadata as expected (2 failed). After updating package/product, lockfile, builder, and release-verifier metadata, the focused release tests passed 2/2 and SettingsPage tests passed 13/13.
+- Fresh full checks after the version update: Runtime 178/178; Desktop 158/158 across 23 files; Desktop TypeScript/Vite production build passed; package/lockfile/contract JSON and 1.1.7 consistency checks passed; `node --check scripts/verify-release.mjs` passed; CRLF-aware `git diff --check` passed.
+- The local 1.1.6 Desktop Portable is retained at `C:\Users\20142\Desktop\Cx-Routing Gateway Portable 1.1.6.exe`, SHA-256 `4AD3574F3240D5CB8A25FAC4C4F62569A7BC34E4B0EBDBE5ACDEE44E88A4A8F6`. The 1.1.7 release output directory and Desktop destination were absent during preflight.
+- Current 1.1.7 GitHub release, artifact, Desktop-copy, and isolated smoke checks are pending. No real third-party provider call was made.
+
 ## Review Findings
 
 - Initial independent review found two Important issues. Responses explicit function choices bypassed declaration lookup when the tool list was empty. Explicit `format: null` defaulted to text, and incomplete or malformed grammar formats were accepted.
@@ -38,9 +46,8 @@ Base: `f58341f5224224bea9ae7abf03818d9cadb4df47`
 
 - AWG governance, verification-before-completion, requesting-code-review, receiving-code-review, and finishing-a-development-branch workflows are active. Implementation-stage skill invocations are recorded in the task contract and execution ledger.
 - The AWG Repo MCP is available, but this checkout has no `.codex/repo-map.json` and no registered `workspace_id`; Repo MCP calls were not made. Local source inspection and tests were used.
-- No real third-party provider request was made. Packaged Desktop quit/relaunch UI acceptance, merge, release, and Desktop binary delivery are `NOT_RUN`.
-- The user authorized creating a dedicated PR; that authorization does not imply in-product Owner acceptance or permission to merge/release.
+- No real third-party provider request was made. Packaged Desktop quit/relaunch UI acceptance and provider-level repair acceptance remain `NOT_RUN`; merge, release, and Desktop binary delivery are pending the current authorized release sequence.
+- The task contract revision records the user's explicit authorization to merge and release 1.1.7; it does not authorize real provider calls or deletion of the task branch/worktree.
 ## Pull Request
 
-- PR #21 targets `master`, is open, and remains unmerged.
-- At PR creation, Runtime and Desktop CI jobs were pending and package jobs were skipped by the workflow. This records the initial observed status and does not claim those jobs completed.
+- PR #21 targets `master`. Its original head `70249baab79e0f31af8d7ceb644fb53f2b64a7ae` had successful Runtime and Desktop CI checks; package jobs were skipped by the workflow. The version/release update is being added to the PR branch and needs fresh checks on its new head before merge.

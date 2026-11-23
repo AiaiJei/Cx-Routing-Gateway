@@ -17,15 +17,17 @@
       "implement the approved adapter and transport-probe changes",
       "verify against local fixtures without calling a real provider",
       "commit and push the dedicated task branch",
-      "create one dedicated PR against master and attach it to this task"
+      "create one dedicated PR against master and attach it to this task",
+      "bump package, product, and build versions from 1.1.6 to 1.1.7 in PR #21",
+      "merge PR #21 after required checks pass and synchronize the primary master worktree",
+      "build and verify the Windows x64 1.1.7 Setup, blockmap, Portable, and manifest artifacts",
+      "publish GitHub Release v1.1.7 with verified assets and release notes",
+      "copy the verified Portable 1.1.7 executable to Desktop and verify its digest and isolated smoke"
     ],
     "not_authorized": [
-      "merge the new PR",
-      "change package, product, or build versions",
-      "publish or overwrite a GitHub release or tag",
-      "copy a new program to the Desktop",
       "make real provider requests",
-      "delete branches or worktrees"
+      "rewrite or delete existing releases/tags, including v1.1.6",
+      "delete branches or worktrees or unrelated files"
     ]
   },
   "scope": {
@@ -35,7 +37,8 @@
       "return field- and direction-specific errors for target-inexpressible or malformed tool definitions",
       "replace the post-cooldown GET /v1/models probe with DNS validation and a bounded TCP or TLS connectivity check to approved addresses",
       "retain circuit thresholds, cooldowns, generation isolation, and concurrent probe deduplication",
-      "task plan, evidence, independent review, and one dedicated PR"
+      "task plan, evidence, independent review, and one dedicated PR",
+      "version 1.1.7 metadata, verified Windows x64 artifacts, GitHub release, master merge, and Desktop Portable delivery"
     ],
     "exclude": [
       "credential persistence or routing-state changes already delivered in PR #19",
@@ -43,7 +46,6 @@
       "failure thresholds, cooldown duration, retry policy, UI, or schema changes",
       "model-level, HTTP-level, authentication, or token-usage health validation during failback probes",
       "guaranteeing Chat/Mes model enforcement of arbitrary grammar constraints carried by freeform custom tools",
-      "version bump, release, merge, or Desktop program update",
       "real third-party provider calls"
     ]
   },
@@ -57,7 +59,13 @@
     "docs/tasks/2026-11-23-codex-tools-connectivity-probe-contract.json",
     "docs/tasks/2026-11-23-codex-tools-connectivity-probe.md",
     "docs/tasks/evidence/codex-tools-connectivity-probe/**",
-    ".superpowers/sdd/**"
+    ".superpowers/sdd/**",
+    "apps/desktop/package.json",
+    "apps/desktop/package-lock.json",
+    "apps/desktop/electron-builder.yml",
+    "apps/desktop/src/pages/SettingsPage.test.tsx",
+    "tests/runtime/release-manifest.test.mjs",
+    "scripts/verify-release.mjs"
   ],
   "acceptance": [
     "Responses namespace function tools become valid Chat and Messages function definitions with a reversible target-name mapping",
@@ -67,10 +75,15 @@
     "recovery probes use approved DNS results and a bounded TCP connection for HTTP or verified TLS handshake for HTTPS; they do not fetch credentials or send HTTP requests",
     "failed connectivity keeps the route on backup, successful connectivity permits preferred-route selection, and concurrent requests share one probe",
     "focused tests, full Runtime suite, Desktop suite/build, syntax checks, diff checks, and independent review complete with evidence",
-    "one dedicated PR targets master; no merge or release is performed"
+    "one dedicated PR targets master and is merged after required checks pass",
+    "package, product, and build versions consistently report 1.1.7",
+    "primary master worktree is synchronized to the PR merge commit",
+    "GitHub v1.1.7 contains Setup, blockmap, Portable, and manifest assets that pass release verification and packaged smoke",
+    "Desktop Portable 1.1.7 matches the verified digest and passes isolated health smoke; existing 1.1.6 remains unchanged",
+    "no real provider request is made; provider-level acceptance remains NOT_RUN"
   ],
-  "rollback": "Revert only this task's PR commits. Preserve the already merged PR #19/#20 behavior, all existing releases and Desktop files, and the task branch/worktree.",
-  "owner_acceptance": "NOT_RUN: the user authorized a dedicated PR; no in-product acceptance, merge, or release is implied.",
+  "rollback": "Before publishing v1.1.7, preserve v1.1.6 and stop publication if build, manifest, packaged smoke, or Desktop-copy smoke fails. After publishing v1.1.7, do not rewrite it; use a corrective patch release. Preserve the task branch/worktree and unrelated files.",
+  "owner_acceptance": "Repository merge and release explicitly authorized by the user. Real provider behavior remains NOT_RUN because no third-party model calls are authorized.",
   "verification": {
     "existing_worktree": "PASS: clean at base f58341f5224224bea9ae7abf03818d9cadb4df47",
     "adapter_baseline": "PASS: 10/10",
@@ -81,7 +94,11 @@
     "task2_probe": "PASS: 4/4 focused failback tests; refused TCP, HTTP-free recovery, deduplication, and timeout",
     "implementation": "PASS: Tasks 1 and 2 complete; fresh Runtime 178/178, Desktop 158/158, Desktop build, adapter 20/20, probe 4/4, syntax, and diff checks passed",
     "independent_review": "PASS: initial reviewer found two Important adapter validation gaps; both were fixed with RED/GREEN tests; read-only follow-up found no Critical or Important issues",
-    "pull_request": "OPEN: PR #21 targets master; at creation, Runtime and Desktop CI jobs were pending and package jobs skipped"
+    "pull_request": "OPEN: PR #21 targets master; Runtime and Desktop CI jobs SUCCESS; package jobs SKIPPED by workflow condition",
+    "version_release_authorization": "AUTHORIZED: user requested increment by one, merge PR #21, publish latest GitHub version, and sync task worktree to primary master and Desktop",
+    "version_release_local_checks": "PASS: 1.1.7 metadata aligned; focused release 2/2, SettingsPage 13/13, Runtime 178/178, Desktop 158/158, Desktop build, syntax, JSON, and CRLF-aware diff checks",
+    "release_v1_1_7": "NOT_RUN",
+    "desktop_v1_1_7": "NOT_RUN"
   },
   "capability": {
     "skills": [
@@ -100,5 +117,12 @@
     ],
     "repo_mcp": "UNAVAILABLE: no registered workspace_id; live source inspection used",
     "subagent_review": "AVAILABLE: one read-only reviewer completed initial and follow-up reviews; follow-up found no Critical or Important issues"
-  }
+  },
+  "revisions": [
+    {
+      "date": "2026-11-23",
+      "request": "版本号递增1，提交合并PR#；发布最新版本到Github，同步最新版本到本地桌面；任务工作树合并到主工作树",
+      "authorization": "Supersedes the earlier no-merge/no-version/no-release boundary for this task only. Authorizes version 1.1.7 in PR #21, merge after checks, primary master synchronization, GitHub v1.1.7 publication, and verified Desktop Portable delivery. Keeps real provider calls and deletion of branches/worktrees/out-of-scope files unauthorized."
+    }
+  ]
 }
