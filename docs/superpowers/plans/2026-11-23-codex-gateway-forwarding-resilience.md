@@ -126,8 +126,8 @@ Date: 2026-11-24. The Owner explicitly authorized committing and pushing the alr
 
 - [x] Confirm the active task worktree is .worktree/codex-codex-routing-forwarding, its branch is codex/codex-routing-forwarding, and the primary tree is master at the PR base; preserve primary-tree untracked governance directories.
 - [x] Refresh local verification before integration: Runtime 232/232, Desktop 197/197, and Desktop production build pass.
-- [ ] Commit and push the task-scoped changes to PR #22; wait for checks against the updated head.
+- [x] Commit 8b75677 and push the task-scoped changes to PR #22; updated-head Runtime and Desktop checks passed for push and pull_request runs (package jobs are skipped for branch events).
 - [ ] Merge PR #22 without deleting the branch; fast-forward the primary master worktree and verify its state.
-- [ ] Build NSIS and x64 Portable assets in a new, unique release-output directory; verify manifest hashes and packaged/Portable health smokes.
+- [x] Build NSIS and x64 Portable assets in a new, unique release-output directory; verify manifest hashes, unpacked version 1.1.8, and isolated packaged/Portable health smokes.
 - [ ] Publish GitHub v1.1.8 only after verification; preserve prior releases and local Desktop files.
-- Independent review for revision 3 remains BLOCKED by the CC Switch proxy (HTTP 404/400 before review); this is disclosed and is not represented as a PASS. Existing successful independent reviews cover the earlier forwarding/round-trip revisions, not the timing-only diff.
+- Independent review for revision 2 and revision 3 remains BLOCKED by the CC Switch proxy (HTTP 400 and HTTP 404/400 before review); no verdict was returned for either revision. Earlier independent reviews cover the original forwarding changes only. At the Owner's explicit direction, integration proceeds with this limitation disclosed; it is not represented as a PASS.

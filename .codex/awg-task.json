@@ -31,5 +31,5 @@
       "deletion of worktrees/branches/unrelated files"
     ]
   },
-  "owner_acceptance": "Owner reports the 1.1.8 round-trip candidate passed manual testing on 2026-11-24 and now explicitly authorizes PR #22 integration and GitHub publication. Revision 3 fixture verification passed; its independent review remains BLOCKED by the CC Switch proxy, and live same-model latency A/B/provider requests remain NOT_RUN. Preserve all existing Desktop binaries and processes."
+  "owner_acceptance": "Owner reports the prior 1.1.8 round-trip candidate passed manual testing on 2026-11-24 and explicitly authorizes integration/publication. Local Runtime/Desktop/build and 1.1.8 package smokes pass. Independent reviews of revisions 2 and 3 are BLOCKED by the CC Switch proxy (no review verdict); integration proceeds under the Owner direct authorization and this limitation remains explicit. Real provider requests and same-model latency A/B remain NOT_RUN."
 }

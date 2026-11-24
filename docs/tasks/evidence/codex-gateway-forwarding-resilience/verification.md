@@ -122,3 +122,12 @@ Date: 2026-11-24. The Owner reported that the previous 1.1.8 round-trip candidat
 Date: 2026-11-24. Direct Owner authorization now covers committing/pushing the accepted task-scope changes, updating and merging PR #22, synchronizing primary master, and publishing GitHub v1.1.8. Live GitHub state confirmed v1.1.7 is the latest release/tag and no v1.1.8 tag exists. PR #22 is open against master at 8bf96f5; its existing Runtime/Desktop checks pass, package jobs are skipped by tag/workflow rules, and those checks predate the current local changes. The task branch package/product/build versions are aligned at 1.1.8.
 
 Fresh local validation on the full current task worktree: npm --prefix apps/desktop run build passed; npm test passed 232/232; npm --prefix apps/desktop test passed 197/197 across 24 files. These are local fixture/suite results, not provider or Desktop Owner acceptance. Revision 3 independent review remains BLOCKED (two dispatch failures at the CC Switch local proxy, with no code verdict). Release packaging, updated-head CI, merge, primary sync, and GitHub publication are pending this preflight note.
+
+
+### Revision 4 local release candidate
+
+Updated-head CI for commit 8b7567707929e1ec253af6be021ea1e273df7643 passed Runtime and Desktop for both push and pull_request runs; package jobs were skipped by branch-event rules. A local Windows x64 release candidate was built in the unique task output directory apps/desktop/release/1.1.8-github-release. verify-release passed and generated a manifest covering the unpacked runtime, installer, blockmap, and Portable. Unpacked version smoke passed (1.1.8); isolated Portable smoke passed for Local Control and Gateway. Build is unsigned (no signing certificate configured).
+
+Release assets: Portable 115033173 bytes, SHA-256 78908A66518DD7C17D9B42A1AC3DBA042D2E52D53B739801A2D7889DAEFE5DDB; Setup 126513094 bytes, SHA-256 CE16E92F08C91BA2BE7BD64D9E7712F98980650833A04F276197AF1CC8ADCDBE; Setup blockmap 133196 bytes, SHA-256 7073DF5D2EC525A419821FBBDCE0240D56271264B97DB2712A0DE9D155567C21; manifest 1A3FA9A3FF4D722549D94D051283F8FC1A58663BB453605E69DD96B653C144C7.
+
+Independent review is BLOCKED for both the revision 2 round-trip changes and revision 3 timing changes because the CC Switch local proxy failed before review output. The Owner's explicit integration direction is recorded; this does not convert those reviews to PASS. No live provider requests were made.
