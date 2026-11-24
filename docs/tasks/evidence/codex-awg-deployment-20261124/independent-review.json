@@ -1,8 +1,8 @@
 {
   "status": "FINAL_REVIEW_PENDING",
   "reviewed_base": "49c9a389d58b2e5bdb02554d559989ed7fb07596",
-  "reviewed_head": "9692cc081a868e19f279533f3a0ea960d7c0e430",
-  "reviewer": "/root/codex_awg_independent_review",
+  "reviewed_head": "5db58827406104d949222d60e41ffef6db415401",
+  "reviewer": "independent reviewer agent codex_awg_independent_review",
   "verdict": "NOT_READY",
   "findings": [
     {
@@ -20,18 +20,18 @@
   ],
   "review_proxy_failures": [
     {
-      "reviewer": "/root/deployment_review",
+      "reviewer": "root/deployment_review",
       "code": "cc_switch_upstream_error",
       "status": 400,
       "cause": "unsupported_feature"
     },
     {
-      "reviewer": "/root/awg_pr_review",
+      "reviewer": "root/awg_pr_review",
       "status": 404,
       "cause": "route_not_found"
     },
     {
-      "reviewer": "/root/codex_awg_review_retry",
+      "reviewer": "root/codex_awg_review_retry",
       "status": 404,
       "cause": "route_not_found"
     }
@@ -39,7 +39,33 @@
   "final_review_pending": true,
   "claim": "No final independent review success is claimed.",
   "integration_method_review": {
-    "reviewer": "/root/codex_awg_independent_review",
+    "reviewer": "independent reviewer agent codex_awg_independent_review",
     "result": "Squash merge resolves master history contamination without force push; old task branch/PR references remain accessible and are not claimed removed."
-  }
+  },
+  "review_cycles": [
+    {
+      "head": "5db58827406104d949222d60e41ffef6db415401",
+      "verdict": "NOT_READY",
+      "findings": [
+        {
+          "severity": "MEDIUM",
+          "path": ".codex/awg-task.json",
+          "issue": "Active delete permission is true alongside the broad .tmp/worktrees/** scope while the contract prohibits worktree deletion.",
+          "disposition": "Set active task authorization.delete to false after legacy cleanup completed."
+        },
+        {
+          "severity": "LOW",
+          "path": "docs/tasks/evidence/codex-awg-deployment-20261124/ci-investigation.json",
+          "issue": "Final-head CI success and reviewed head were not reflected.",
+          "disposition": "Added both passing run IDs/results and retained the earlier failure as a separate historical diagnostic."
+        },
+        {
+          "severity": "LOW",
+          "path": "docs/tasks/2026-11-24-codex-awg-deployment-contract.json",
+          "issue": "History boundary wording could be read as describing the entire repository tree.",
+          "disposition": "Narrowed to deployment files added or changed by this PR."
+        }
+      ]
+    }
+  ]
 }

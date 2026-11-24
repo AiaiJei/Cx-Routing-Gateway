@@ -1,5 +1,4 @@
 {
-  "head": "cecd2d982a6baaeef48ba4681f014a531a36e70a",
   "initial_failed_run": 45375009198,
   "initial_runtime": {
     "passed": 231,
@@ -19,7 +18,15 @@
     "desktop": "PASS"
   },
   "local_focused_reproduction": "PASS; failure not reproduced",
-  "root_cause": "UNCONFIRMED: bounded async persistence wait timed out; exact cause not demonstrated",
+  "root_cause": "UNCONFIRMED: bounded asynchronous persistence wait timed out once; same-head retry and independent event run passed; exact cause not demonstrated.",
   "application_source_changed": false,
-  "final_head_ci": "PENDING"
+  "final_head_ci": {
+    "push_run": 45377363835,
+    "pull_request_run": 45377370947,
+    "runtime": "PASS",
+    "desktop": "PASS",
+    "package": "SKIPPED"
+  },
+  "failed_head": "cecd2d982a6baaeef48ba4681f014a531a36e70a",
+  "final_head": "5db58827406104d949222d60e41ffef6db415401"
 }

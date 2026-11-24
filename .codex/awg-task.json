@@ -26,7 +26,7 @@
   "worktree_directory": ".tmp/worktrees",
   "authorization": {
     "implementation": true,
-    "delete": true,
+    "delete": false,
     "evidence_append": true,
     "create_worktree": true,
     "commit": true,

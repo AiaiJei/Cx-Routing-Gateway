@@ -37,7 +37,8 @@
       "remove or rewrite any marketplace, including the already-installed codex-awg and the unrelated cx-bootstrap-local entry",
       "modify or delete the dirty .tmp-awg-source checkout or its reference directories",
       "modify Gateway application code or existing Desktop binaries/processes",
-      "release or publish artifacts, delete branches, or remove any worktree"
+      "release or publish artifacts, delete branches, or remove any worktree",
+      "any further deletion; the identified legacy cleanup is complete and the active task delete grant is disabled"
     ]
   },
   "scope": {
@@ -116,18 +117,20 @@
     "previous_contract_archive": "PASS: archived previous-active-awg-task.json SHA-256 matches b998ee30958acfc5996626ee8070052b969b5fdca6b49b1d0783fa82537a9e58.",
     "git_scope": "IN_PROGRESS: PR #24 against master; squash merge required; no Gateway application changes; primary sync must preserve existing uncommitted content.",
     "whitespace": "PASS: git -c core.whitespace=cr-at-eol diff --check. CRLF is treated as an allowed line ending.",
-    "independent_review": "FINAL_REVIEW_PENDING on the final committed head; earlier findings are removed from the final PR tree, workstation path strings are sanitized, and squash merge avoids importing old binary commits into master ancestry.",
+    "independent_review": "FINAL_REVIEW_PENDING: reviewer requested disabling the now-unneeded active delete grant, refreshing final-head evidence, and narrowing the path-boundary wording. These corrections are being committed for a final pass.",
     "local_deployment_result": "PASS",
-    "overall_acceptance": "IN_PROGRESS: local deployment PASS; final review/checks, squash merge and primary sync pending. Desktop/Hook trust and Owner runtime acceptance remain NOT_RUN.",
+    "overall_acceptance": "IN_PROGRESS: local deployment PASS; both final-head CI runs PASS; final independent review, squash merge and primary sync pending. Desktop/Hook trust and Owner runtime acceptance remain NOT_RUN.",
     "final_self_review": "PASS for identity, task binding, pinned source, local MCP binding, rollback and evidence alignment. Independent review of the first commit found two concrete issues; fixes are recorded and final review is pending.",
     "integration_authorization": "PASS: Owner message on 2026-11-24 explicitly authorizes a dedicated PR, commit, push, merge, and synchronization of the task worktree into primary master. This contract is revision 2.",
-    "worktree_and_pr": "IN_PROGRESS: final tree sanitized and full local suites pass; final review and final-head CI pending; squash merge into master and primary sync pending.",
+    "worktree_and_pr": "IN_PROGRESS: PR #24 final tree sanitized, full local suites and final-head CI pass; final review, squash merge and primary sync pending.",
     "worktree_ignore": "PASS: destination .tmp/worktrees path was verified absent before creation and ignored through an appended block in the local .git/info/exclude; shared .gitignore untouched.",
     "worktree_transfer": "PASS: 26 files initially copied; previous pointer matched archived original before replacement. Historical transfer hashes and a separately labeled current final-tree snapshot are in worktree-transfer-manifest.json.",
     "worktree_check": "PASS: official project.mjs check validates the dedicated task worktree root, Owner-confirmed IDs, task contract, project config and local install record.",
     "worktree_mcp": "PASS: official MCP SDK direct stdio in task worktree, version 0.1.6; correct active task, 12 map entries/0 missing, 3 context files, in-scope contract accepted, Gateway source rejected with SCOPE_DENIED. Canonical filesystem root was used; see worktree-mcp-verification.json.",
     "local_runtime_suite": "PASS after desktop prerequisite build: npm ci --prefix apps/desktop; npm run build --prefix apps/desktop; npm test; 232/232, 0 failed, 0 skipped.",
-    "failed_ci_job": "PARTIAL: push run 45375009198 initially failed 1/232 in asynchronous request-log persistence wait; same-head PR run passed and failed-job rerun attempt 2 passed. Focused local reproduction passed. Exact cause unconfirmed; no app code changed. Final-head CI remains pending."
+    "failed_ci_job": "PARTIAL: push run 45375009198 initially failed 1/232 in an asynchronous request-log persistence wait; same-head PR run passed and failed-job rerun attempt 2 passed. Focused local reproduction passed. Exact cause unconfirmed; no app code changed.",
+    "active_delete_scope": "PASS: legacy cleanup is complete; delete permission is false in the active task contract. Branches and worktrees are retained.",
+    "final_head_ci": "PASS at 5db58827406104d949222d60e41ffef6db415401: runtime and desktop passed for push run 45377363835 and pull_request run 45377370947; package jobs skipped by workflow."
   },
   "evidence_path": "docs/tasks/evidence/codex-awg-deployment-20261124",
   "previous_active_contract": {
@@ -155,5 +158,5 @@
     }
   ],
   "integration_method": "squash merge after final independent review and checks; preserve task branch/worktree; fast-forward primary master after preserving preexisting overlapping deployment files",
-  "history_boundary": "Final PR tree contains no generated cache/bytecode payloads or absolute workstation paths. Earlier task commits remain available from task branch/PR references; squash merge must keep them out of master ancestry. No remote erasure is claimed."
+  "history_boundary": "The deployment files added or changed by this PR contain no workstation-specific Windows absolute paths, SQLite caches or Python bytecode. Squash merge keeps the earlier task commits containing generated payloads out of master ancestry. Those commits remain accessible from the retained task branch/PR references; no remote erasure is claimed."
 }

@@ -51,7 +51,7 @@ On 2026-11-24 the Owner directly authorized one dedicated commit/PR, push, merge
 - [x] Commit and push the dedicated branch; PR #24 is open.
 - [x] Investigate the prior request-log wait timeout: the failed-job retry and same-head PR run passed; a focused local rerun passed. Exact cause remains unconfirmed and no app source changed.
 - [x] Build the desktop prerequisite and run the full task-worktree runtime suite: 232/232 passed. Run the pinned Codex-AWG source suite: 58/58 passed.
-- [ ] Confirm final-head PR checks; package jobs are skipped by workflow configuration.
+- [x] Confirm final-head PR checks at 5db5882: runtime and desktop pass for both push and pull_request; package jobs are skipped by workflow configuration.
 - [ ] Correct independent-review findings and obtain a fresh read-only review of the final commit.
 - [ ] Merge the dedicated PR and fast-forward/synchronize the primary master worktree.
 - [ ] Preserve the task worktree and branch; record final integration evidence.
