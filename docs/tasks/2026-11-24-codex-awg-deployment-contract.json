@@ -1,0 +1,155 @@
+{
+  "contract_version": 1,
+  "contract_revision": 2,
+  "task_id": "CXRG-CODEX-AWG-DEPLOYMENT-2026-11-24",
+  "title": "Remove legacy AWG deployment residue and install Codex-AWG for this repository",
+  "project": "Cx-Routing Gateway",
+  "project_id": "cx-routing-gateway",
+  "repository": "AiaiJei/Cx-Routing-Gateway",
+  "repo_id": "aiaijei-cx-routing-gateway",
+  "status": "active",
+  "stage": "pr-commit-review-merge-and-main-sync",
+  "base": "master",
+  "base_sha": "49c9a389d58b2e5bdb02554d559989ed7fb07596",
+  "source": {
+    "repository": "AiaiJei/Codex-AWG",
+    "ref": "main",
+    "commit": "d3f65d64223618626396f8f8944cc9a51d421fc4"
+  },
+  "authorization": {
+    "source": "Owner request on 2026-11-24 to remove the old deployment and use AiaiJei/Codex-AWG to deploy/install this repository; Owner confirmed the stable project and repository IDs. Owner directly authorized a dedicated PR, commit, push, merge into master, and synchronization of the primary worktree on 2026-11-24.",
+    "operations": [
+      "verify and reuse the existing installed codex-awg plugin because its source remote and commit match the requested repository",
+      "write the target-repository Codex-AWG project identity, task contract, managed Rules/config, map/context, and install record",
+      "move the identified old deployment residue out of active skill/plugin/cache locations into this task evidence archive",
+      "run local source tests, official project check, and bounded deployment verification",
+      "preserve task evidence and the exact upstream source checkout for reproducibility",
+      "create the repository-local task worktree at .tmp/worktrees/codex-awg-deployment-2026-11-24 and branch codex/codex-awg-deployment-2026-11-24 from current origin/master",
+      "commit only the repository deployment identity, managed Rules, project map/context, updated active task contract, plan, and deployment evidence listed in this contract",
+      "push the task branch, create a dedicated PR against master, and merge it after required checks and review",
+      "fast-forward the primary master worktree to the merged PR while preserving unrelated preexisting work"
+    ],
+    "host_operations": [
+      "read-only verification of the existing codex-awg marketplace/plugin registration; no global marketplace change planned"
+    ],
+    "not_authorized": [
+      "authentication files, credentials, tokens, or unrelated user-level Codex configuration",
+      "remove or rewrite any marketplace, including the already-installed codex-awg and the unrelated cx-bootstrap-local entry",
+      "modify or delete the dirty .tmp-awg-source checkout or its reference directories",
+      "modify Gateway application code or existing Desktop binaries/processes",
+      "release or publish artifacts, delete branches, or remove any worktree"
+    ]
+  },
+  "scope": {
+    "include": [
+      "Install AiaiJei/Codex-AWG main at d3f65d64223618626396f8f8944cc9a51d421fc4",
+      "Bind the current repository to project_id cx-routing-gateway and repo_id aiaijei-cx-routing-gateway",
+      "archive the original active task pointer before creating the new active deployment task contract",
+      "archive the identified legacy Repo Map cache and orphaned plugin/skill bytecode residue",
+      "add the project-level Codex-AWG config and managed Rules using the official project init command",
+      "register/install only the Codex-AWG local plugin source required for this repository",
+      "create and retain the repository-local task worktree and branch, commit only the listed deployment files, create one PR against master, merge it after review/checks, and synchronize primary master"
+    ],
+    "exclude": [
+      "Gateway application behavior/source and release artifacts",
+      "the preexisting cx-bootstrap-local marketplace or any unrelated host/plugin setting",
+      "credentials, authentication files, real provider calls, and external services",
+      "changes to .tmp-awg-source and all task worktrees/branches",
+      "release artifacts, delete branches, and remove worktrees"
+    ]
+  },
+  "authorized_paths": [
+    ".codex/awg-task.json",
+    ".codex/awg-project.json",
+    ".codex/config.toml",
+    "AGENTS.md",
+    ".awg/**",
+    ".git/info/exclude",
+    "docs/tasks/2026-11-24-codex-awg-deployment.md",
+    "docs/tasks/2026-11-24-codex-awg-deployment-contract.json",
+    "docs/tasks/evidence/codex-awg-deployment-20261124/**",
+    ".agent-workspace-governance/**",
+    ".agents/skills/ui-ux-pro-max/**",
+    "plugins/awg-codex/**",
+    ".tmp-codex-awg-source/**",
+    ".tmp/worktrees/**"
+  ],
+  "scope_paths": [
+    ".codex/awg-task.json",
+    ".codex/awg-project.json",
+    ".codex/config.toml",
+    "AGENTS.md",
+    ".awg/**",
+    "docs/tasks/2026-11-24-codex-awg-deployment.md",
+    "docs/tasks/2026-11-24-codex-awg-deployment-contract.json",
+    "docs/tasks/evidence/codex-awg-deployment-20261124/**",
+    ".agent-workspace-governance/**",
+    ".agents/skills/ui-ux-pro-max/**",
+    "plugins/awg-codex/**",
+    ".tmp-codex-awg-source/**",
+    ".tmp/worktrees/**",
+    ".git/info/exclude"
+  ],
+  "acceptance": [
+    "The official Codex-AWG check returns PASS for this exact Git root and the Owner-confirmed IDs.",
+    "The project config binds the local plugin MCP process to the exact root, project ID, repository ID, and retained source checkout.",
+    "The already-installed codex-awg plugin is enabled at version 0.1.6 from the requested AiaiJei/Codex-AWG remote and exact pinned commit; no marketplace replacement is needed.",
+    "The identified legacy runtime artifacts no longer occupy active skill/plugin/cache paths and their contents remain in the evidence archive.",
+    "The new active task contract validates and the previous active task pointer is byte-for-byte archived.",
+    "No unrelated source, credentials, marketplace entries, worktrees, branches, or Gateway artifacts changed.",
+    "A dedicated PR contains only the deployment files, receives required checks/review, is merged to master, and the primary worktree is synchronized to the merge result."
+  ],
+  "rollback": "Run the pinned official project rollback with the same root/IDs; restore .codex/awg-task.json byte-for-byte from previous-active-awg-task.json; move the archived legacy directories back only if needed. The existing global codex-awg plugin was present before this task and must remain installed. The Codex-AWG rollback preserves project data, so restore the task pointer explicitly.",
+  "owner_acceptance": "Local installation and direct MCP verification PASS. Owner acceptance, a new trusted Codex Desktop session loading this repository MCP, Hook definition review/trust, and real Hook delivery remain NOT_RUN; no Desktop runtime success is claimed.",
+  "verification": {
+    "repository_preflight": "PASS: exact root confirmed; master matches origin/master at 49c9a389d58b2e5bdb02554d559989ed7fb07596; unrelated old source clone contains local modifications and is preserved.",
+    "source_tests": "PASS on revision 2 integration run: npm test against pinned Codex-AWG d3f65d64223618626396f8f8944cc9a51d421fc4; 58/58, 0 failed, 0 skipped.",
+    "manifest_version": "PARTIAL: plugin.json is 0.1.6 while .codex-plugin/plugin.json is 0.1.4; upstream source is left unchanged and the installed version will be recorded.",
+    "plugin_cli_baseline": "PARTIAL: unfiltered codex plugin list/marketplace list still fails because existing marketplace cx-bootstrap-local points at C:/Users/20142/Desktop/Cx-Bootstrap with no supported manifest. Scoped codex plugin list --marketplace codex-awg --available --json passes and confirms codex-awg 0.1.6 enabled from C:/Users/20142/Desktop/Codex-AWG/plugins/codex-awg; that clean checkout has remote AiaiJei/Codex-AWG.git and exact commit d3f65d64223618626396f8f8944cc9a51d421fc4. No global configuration was changed.",
+    "project_init": "PASS: official project init created the project identity, managed Rules/config, map/context and install record; official check independently passes for the exact Git root and confirmed IDs.",
+    "legacy_cleanup": "PASS: the 3 identified legacy roots are absent from active discovery paths; all 14 archived files match their preflight size and SHA-256. The modified .tmp-awg-source checkout is preserved.",
+    "desktop_runtime_and_hook_trust": "NOT_RUN: requires a new trusted target-repository Desktop session and Owner review of the current Hook definitions.",
+    "plugin_install": "PASS: existing enabled codex-awg plugin source matches the requested repository and exact main commit; reuse it.",
+    "project_check": "PASS: node .tmp-codex-awg-source/plugins/codex-awg/scripts/project.mjs check --root \"C:\\Users\\20142\\Desktop\\Cx-Routing Gateway\" --project-id cx-routing-gateway --repo-id aiaijei-cx-routing-gateway; install record managed files validate.",
+    "mcp_integration": "PASS: official MCP SDK connected directly over stdio to codex-awg 0.1.6; 7 tools listed; project_status returned this task; map_get returned 12 entries and 0 missing paths; context_get returned 3 untruncated files. This is direct process verification, not Codex Desktop loading evidence.",
+    "scope_boundary": "PASS: MCP scope_check accepts the deployment contract path and rejects services/gateway/src/server.mjs with SCOPE_DENIED. Writes performed through the terminal were authorized by the Owner request and contract, not confined by the MCP.",
+    "previous_contract_archive": "PASS: archived previous-active-awg-task.json SHA-256 matches b998ee30958acfc5996626ee8070052b969b5fdca6b49b1d0783fa82537a9e58.",
+    "git_scope": "IN_PROGRESS: task files isolated in the task worktree; primary worktree original edits and .tmp-awg-source preserved pending merge/sync.",
+    "whitespace": "PASS: git -c core.whitespace=cr-at-eol diff --check. CRLF is treated as an allowed line ending.",
+    "independent_review": "NOT_RUN for revision 2 commit; prior review of revision 1 did not produce a verdict because the CC Switch proxy returned HTTP 400 unsupported_feature.",
+    "local_deployment_result": "PASS",
+    "overall_acceptance": "IN_PROGRESS: worktree checks pass; PR review, checks, merge and primary worktree sync remain. Desktop/Hook trust and Owner runtime acceptance remain NOT_RUN.",
+    "final_self_review": "PASS: project ID/task identity, source and MCP binding, generated local config/install record, rollback instructions, previous-task snapshot hash, archive hashes and acceptance boundaries agree across the task record. Independent reviewer remains BLOCKED and no independent verdict is claimed.",
+    "integration_authorization": "PASS: Owner message on 2026-11-24 explicitly authorizes a dedicated PR, commit, push, merge, and synchronization of the task worktree into primary master. This contract is revision 2.",
+    "worktree_and_pr": "IN_PROGRESS: isolated task worktree passes project check/tests/MCP. Commit, independent review, PR checks, merge and primary worktree synchronization remain.",
+    "worktree_ignore": "PASS: destination .tmp/worktrees path was verified absent before creation and ignored through an appended block in the local .git/info/exclude; shared .gitignore untouched.",
+    "worktree_transfer": "PASS: 26 task-scoped files were initially copied; the previous task pointer was replaced only after its SHA-256 matched the archived original. Final hashes/byte counts for every payload file are in worktree-transfer-manifest.json. The local plugin config/install record and both source workspaces are excluded.",
+    "worktree_check": "PASS: official project.mjs check validates the dedicated task worktree root, Owner-confirmed IDs, task contract, project config and local install record.",
+    "worktree_mcp": "PASS: official MCP SDK direct stdio in task worktree, version 0.1.6; correct active task, 12 map entries/0 missing, 3 context files, in-scope contract accepted, Gateway source rejected with SCOPE_DENIED. Canonical filesystem root was used; see worktree-mcp-verification.json."
+  },
+  "evidence_path": "docs/tasks/evidence/codex-awg-deployment-20261124",
+  "previous_active_contract": {
+    "task_id": "CXRG-CODEX-GATEWAY-FORWARDING-RESILIENCE-2026-11-23",
+    "full_contract": "docs/tasks/2026-11-23-codex-gateway-forwarding-resilience-contract.json",
+    "active_pointer_snapshot": "docs/tasks/evidence/codex-awg-deployment-20261124/previous-active-awg-task.json",
+    "pointer_sha256": "b998ee30958acfc5996626ee8070052b969b5fdca6b49b1d0783fa82537a9e58"
+  },
+  "evidence_files": {
+    "preflight": "preflight.json",
+    "mcp": "mcp-verification.json",
+    "verification": "verification.md",
+    "previous_contract": "previous-active-awg-task.json",
+    "legacy_archive": "legacy-deployment/",
+    "independent_review": "independent-review.json",
+    "worktree_transfer_manifest": "worktree-transfer-manifest.json",
+    "worktree_mcp_verification": "worktree-mcp-verification.json"
+  },
+  "revision_history": [
+    {
+      "revision": 2,
+      "date": "2026-11-24",
+      "source": "Owner message: “建立专属PR提交合并，任务工作树合并到主工作树；”",
+      "change": "Authorize one dedicated task worktree/branch, commit, push, PR, merge into master, and primary worktree synchronization. Explicitly keep release, branch deletion, and worktree removal unauthorized."
+    }
+  ]
+}

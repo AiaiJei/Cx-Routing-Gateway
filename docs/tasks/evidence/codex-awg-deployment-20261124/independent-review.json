@@ -1,0 +1,11 @@
+{
+  "status": "BLOCKED",
+  "review_started": false,
+  "reason": "Reviewer agent failed before producing any review verdict. CC Switch local proxy returned HTTP 400 unsupported_feature for the Codex /responses endpoint.",
+  "endpoint": "/responses",
+  "upstream_status": 400,
+  "code": "cc_switch_upstream_error",
+  "reviewer": "/root/deployment_review",
+  "verdict": null,
+  "claim": "No independent review success is claimed."
+}

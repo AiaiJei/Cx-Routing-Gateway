@@ -1,0 +1,45 @@
+{
+  "verified_at": "2026-11-24T09:47:36.133Z",
+  "root": "C:\\Users\\20142\\Desktop\\Cx-Routing Gateway\\.tmp\\worktrees\\codex-awg-deployment-2026-11-24",
+  "server": {
+    "name": "codex-awg",
+    "version": "0.1.6"
+  },
+  "transport": "official MCP SDK direct stdio process, task worktree; expected_root taken from filesystem canonical path",
+  "project_status": {
+    "status": "PASS",
+    "task_id": "CXRG-CODEX-AWG-DEPLOYMENT-2026-11-24"
+  },
+  "map_get": {
+    "status": "PASS",
+    "entries": 12,
+    "missing": []
+  },
+  "context_get": {
+    "status": "PASS",
+    "files": [
+      {
+        "path": "AGENTS.md",
+        "sha256": "f9bf1e4af2b0d1103a35d2b6aceeffe3628c5191480119c42ae534111ad3b3a1",
+        "truncated": false
+      },
+      {
+        "path": ".codex/awg-project.json",
+        "sha256": "304005d5f4b9a26a4b6e130a58363b5eadea7f2dbafc8dccdd716c18d74e9e0c",
+        "truncated": false
+      },
+      {
+        "path": ".awg/context.md",
+        "sha256": "15995ed5d17475402ae9ff24d6092033d0dac2176c2975ba3aea2468c09cbd2f",
+        "truncated": false
+      }
+    ],
+    "truncated": false
+  },
+  "scope_check": {
+    "allowed": "PASS",
+    "outside_scope": "SCOPE_DENIED"
+  },
+  "desktop_runtime": "NOT_RUN",
+  "hook_trust_and_delivery": "NOT_RUN"
+}
