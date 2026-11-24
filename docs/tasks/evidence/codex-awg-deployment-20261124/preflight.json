@@ -1,0 +1,112 @@
+{
+  "task_id": "CXRG-CODEX-AWG-DEPLOYMENT-2026-11-24",
+  "project_id": "cx-routing-gateway",
+  "repo_id": "aiaijei-cx-routing-gateway",
+  "repository_root": "<primary-worktree>",
+  "repository": "AiaiJei/Cx-Routing-Gateway",
+  "branch": "master",
+  "head": "49c9a389d58b2e5bdb02554d559989ed7fb07596",
+  "awg_source": {
+    "repository": "AiaiJei/Codex-AWG",
+    "ref": "main",
+    "commit": "d3f65d64223618626396f8f8944cc9a51d421fc4",
+    "plugin_json_version": "0.1.6",
+    "codex_plugin_manifest_version": "0.1.4",
+    "tests": "PASS: npm ci --ignore-scripts; npm test; 58/58"
+  },
+  "previous_active_task_pointer": {
+    "path": ".codex/awg-task.json",
+    "sha256": "b998ee30958acfc5996626ee8070052b969b5fdca6b49b1d0783fa82537a9e58",
+    "archived_as": "docs/tasks/evidence/codex-awg-deployment-20261124/previous-active-awg-task.json"
+  },
+  "legacy_artifacts": {
+    "roots": [
+      ".agent-workspace-governance",
+      ".agents/skills/ui-ux-pro-max",
+      "plugins/awg-codex"
+    ],
+    "files": [
+      {
+        "path": ".agent-workspace-governance/repo-map-awg-cache/repo-map.sqlite3",
+        "bytes": 16384,
+        "sha256": "86d4f2f2a5086cd48f024f313d10b60eaad67226b03afdc71365d914a9563c5c"
+      },
+      {
+        "path": ".agent-workspace-governance/repo-map-awg-cache/repo-map.sqlite3-shm",
+        "bytes": 32768,
+        "sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb"
+      },
+      {
+        "path": ".agent-workspace-governance/repo-map-awg-cache/repo-map.sqlite3-wal",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".agents/skills/ui-ux-pro-max/scripts/__pycache__/core.cpython-312.pyc",
+        "bytes": 47348,
+        "sha256": "74cbc11d227f71d6fa758af20da988e747e5c9bb8869054a6481b320f3473ab0"
+      },
+      {
+        "path": ".agents/skills/ui-ux-pro-max/scripts/__pycache__/reasoning_contract.cpython-312.pyc",
+        "bytes": 7867,
+        "sha256": "e6044f169aff64ca8cb57efe789abdbb010db233e4bd48a08ec52f94f099f9ff"
+      },
+      {
+        "path": "plugins/awg-codex/mcp/repo_map/__pycache__/backend.cpython-312.pyc",
+        "bytes": 8724,
+        "sha256": "e2505d949d301ae30607dcfe04313a0d629fa0a7e81e826f3870d52aa59caacf"
+      },
+      {
+        "path": "plugins/awg-codex/mcp/repo_map/__pycache__/cache.cpython-312.pyc",
+        "bytes": 6000,
+        "sha256": "374704dd68c0f6b7d9b3c0f613feebdcc2260fa3d5a8e31a6bcb380540c78668"
+      },
+      {
+        "path": "plugins/awg-codex/mcp/repo_map/__pycache__/errors.cpython-312.pyc",
+        "bytes": 1199,
+        "sha256": "ff345c8cca1b37c850cf686bbb20f4c1df56f2aef4ef9f2d4102b13d17d1f334"
+      },
+      {
+        "path": "plugins/awg-codex/mcp/repo_map/__pycache__/plugin_service.cpython-312.pyc",
+        "bytes": 7260,
+        "sha256": "beda726b4e717f58187b513a294e85c09e19407866a6f3a8645f1f158a86a179"
+      },
+      {
+        "path": "plugins/awg-codex/mcp/repo_map/__pycache__/protocol.cpython-312.pyc",
+        "bytes": 4888,
+        "sha256": "b5ba8d9f9c7edb35e0eea74469e3961b0617c1aeb2f0f8cd13dc5ebbd56415c9"
+      },
+      {
+        "path": "plugins/awg-codex/mcp/repo_map/__pycache__/schema.cpython-312.pyc",
+        "bytes": 2665,
+        "sha256": "98bf8217fb8697fd344e783fc3c5ae2518a587fccb515ab43113f3e54ef7ad59"
+      },
+      {
+        "path": "plugins/awg-codex/mcp/repo_map/__pycache__/service.cpython-312.pyc",
+        "bytes": 22412,
+        "sha256": "6805d2e5ade9ff8c3d072151f067c0eb196119dc51f77d6eea141d978715b66b"
+      },
+      {
+        "path": "plugins/awg-codex/mcp/repo_map/__pycache__/source.cpython-312.pyc",
+        "bytes": 14908,
+        "sha256": "605bd33b867c953bc22c74cc44edcea469a2285f42c6a89a18090cf6410b3657"
+      },
+      {
+        "path": "plugins/awg-codex/mcp/repo_map/__pycache__/__init__.cpython-312.pyc",
+        "bytes": 245,
+        "sha256": "30562cd1e35270751b2e3ae68145e17ecd7cf5a8b205986f7f616ecfeda55b6f"
+      }
+    ],
+    "modified_legacy_source_clone_preserved": ".tmp-awg-source"
+  },
+  "preexisting_cli_issue": "codex plugin list --json exited 1 because configured marketplace cx-bootstrap-local points to <preexisting-bootstrap-checkout>, which has no supported manifest; this marketplace is outside this task and will be preserved.",
+  "plugin_registration": {
+    "status": "PASS: existing codex-awg plugin is already installed and enabled at 0.1.6",
+    "source_path": "<verified-local-plugin-checkout>/plugins/codex-awg",
+    "source_remote": "https://github.com/AiaiJei/Codex-AWG.git",
+    "source_commit": "d3f65d64223618626396f8f8944cc9a51d421fc4",
+    "scoped_plugin_listing": "PASS: codex plugin list --marketplace codex-awg --available --json",
+    "marketplace_add_attempt": "NO CHANGE: rejected because codex-awg is already registered from this other clean checkout; no need to replace it.",
+    "unrelated_marketplace": "cx-bootstrap-local remains untouched; unfiltered plugin list still fails on its missing supported manifest."
+  }
+}
