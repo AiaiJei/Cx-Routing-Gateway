@@ -1,6 +1,6 @@
 {
   "verified_at": "2026-11-24T09:47:36.133Z",
-  "root": "C:\\Users\\20142\\Desktop\\Cx-Routing Gateway\\.tmp\\worktrees\\codex-awg-deployment-2026-11-24",
+  "root": "<primary-worktree>\\.tmp\\worktrees\\codex-awg-deployment-2026-11-24",
   "server": {
     "name": "codex-awg",
     "version": "0.1.6"

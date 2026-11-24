@@ -103,29 +103,31 @@
   "owner_acceptance": "Local installation and direct MCP verification PASS. Owner acceptance, a new trusted Codex Desktop session loading this repository MCP, Hook definition review/trust, and real Hook delivery remain NOT_RUN; no Desktop runtime success is claimed.",
   "verification": {
     "repository_preflight": "PASS: exact root confirmed; master matches origin/master at 49c9a389d58b2e5bdb02554d559989ed7fb07596; unrelated old source clone contains local modifications and is preserved.",
-    "source_tests": "PASS on revision 2 integration run: npm test against pinned Codex-AWG d3f65d64223618626396f8f8944cc9a51d421fc4; 58/58, 0 failed, 0 skipped.",
+    "source_tests": "PASS: fresh npm test against pinned Codex-AWG d3f65d64223618626396f8f8944cc9a51d421fc4; 58/58, 0 failed, 0 skipped.",
     "manifest_version": "PARTIAL: plugin.json is 0.1.6 while .codex-plugin/plugin.json is 0.1.4; upstream source is left unchanged and the installed version will be recorded.",
-    "plugin_cli_baseline": "PARTIAL: unfiltered codex plugin list/marketplace list still fails because existing marketplace cx-bootstrap-local points at C:/Users/20142/Desktop/Cx-Bootstrap with no supported manifest. Scoped codex plugin list --marketplace codex-awg --available --json passes and confirms codex-awg 0.1.6 enabled from C:/Users/20142/Desktop/Codex-AWG/plugins/codex-awg; that clean checkout has remote AiaiJei/Codex-AWG.git and exact commit d3f65d64223618626396f8f8944cc9a51d421fc4. No global configuration was changed.",
+    "plugin_cli_baseline": "PARTIAL: unfiltered codex plugin list/marketplace list still fails because existing marketplace cx-bootstrap-local points at <preexisting-bootstrap-checkout> with no supported manifest. Scoped codex plugin list --marketplace codex-awg --available --json passes and confirms codex-awg 0.1.6 enabled from <verified-local-plugin-checkout>/plugins/codex-awg; that clean checkout has remote AiaiJei/Codex-AWG.git and exact commit d3f65d64223618626396f8f8944cc9a51d421fc4. No global configuration was changed.",
     "project_init": "PASS: official project init created the project identity, managed Rules/config, map/context and install record; official check independently passes for the exact Git root and confirmed IDs.",
     "legacy_cleanup": "PASS: the 3 identified legacy roots are absent from active discovery paths; at the initial local move all 14 files matched preflight sizes and SHA-256. Generated SQLite/bytecode payloads remain only in the primary worktree local archive and are excluded from the PR.",
     "desktop_runtime_and_hook_trust": "NOT_RUN: requires a new trusted target-repository Desktop session and Owner review of the current Hook definitions.",
     "plugin_install": "PASS: existing enabled codex-awg plugin source matches the requested repository and exact main commit; reuse it.",
-    "project_check": "PASS: node .tmp-codex-awg-source/plugins/codex-awg/scripts/project.mjs check --root \"C:\\Users\\20142\\Desktop\\Cx-Routing Gateway\" --project-id cx-routing-gateway --repo-id aiaijei-cx-routing-gateway; install record managed files validate.",
+    "project_check": "PASS: node .tmp-codex-awg-source/plugins/codex-awg/scripts/project.mjs check --root \"<primary-worktree>\" --project-id cx-routing-gateway --repo-id aiaijei-cx-routing-gateway; install record managed files validate.",
     "mcp_integration": "PASS: official MCP SDK connected directly over stdio to codex-awg 0.1.6; 7 tools listed; project_status returned this task; map_get returned 12 entries and 0 missing paths; context_get returned 3 untruncated files. This is direct process verification, not Codex Desktop loading evidence.",
     "scope_boundary": "PASS: MCP scope_check accepts the deployment contract path and rejects services/gateway/src/server.mjs with SCOPE_DENIED. Writes performed through the terminal were authorized by the Owner request and contract, not confined by the MCP.",
     "previous_contract_archive": "PASS: archived previous-active-awg-task.json SHA-256 matches b998ee30958acfc5996626ee8070052b969b5fdca6b49b1d0783fa82537a9e58.",
-    "git_scope": "IN_PROGRESS: task branch commit and PR #24 are open; independent review findings are being corrected; merge and primary worktree synchronization remain pending.",
+    "git_scope": "IN_PROGRESS: PR #24 against master; squash merge required; no Gateway application changes; primary sync must preserve existing uncommitted content.",
     "whitespace": "PASS: git -c core.whitespace=cr-at-eol diff --check. CRLF is treated as an allowed line ending.",
-    "independent_review": "FIXES_REQUIRED on 9692cc081a868e19f279533f3a0ea960d7c0e430: reviewer found absolute workstation paths embedded in committed .pyc files and conflicting revision-1/revision-2 authorization wording. Payload removal and wording correction are in progress; final independent review pending.",
+    "independent_review": "FINAL_REVIEW_PENDING on the final committed head; earlier findings are removed from the final PR tree, workstation path strings are sanitized, and squash merge avoids importing old binary commits into master ancestry.",
     "local_deployment_result": "PASS",
-    "overall_acceptance": "IN_PROGRESS: local deployment and source checks pass; PR checks pass for desktop/runtime with package jobs skipped; independent review correction, final review, merge and primary worktree sync remain. Desktop/Hook trust and Owner runtime acceptance remain NOT_RUN.",
+    "overall_acceptance": "IN_PROGRESS: local deployment PASS; final review/checks, squash merge and primary sync pending. Desktop/Hook trust and Owner runtime acceptance remain NOT_RUN.",
     "final_self_review": "PASS for identity, task binding, pinned source, local MCP binding, rollback and evidence alignment. Independent review of the first commit found two concrete issues; fixes are recorded and final review is pending.",
     "integration_authorization": "PASS: Owner message on 2026-11-24 explicitly authorizes a dedicated PR, commit, push, merge, and synchronization of the task worktree into primary master. This contract is revision 2.",
-    "worktree_and_pr": "IN_PROGRESS: commit 9692cc081a868e19f279533f3a0ea960d7c0e430 was pushed and PR #24 is open; generated cache/bytecode payloads are removed from the task branch and authorization wording is corrected. Final independent review, merge and primary worktree sync remain.",
+    "worktree_and_pr": "IN_PROGRESS: final tree sanitized and full local suites pass; final review and final-head CI pending; squash merge into master and primary sync pending.",
     "worktree_ignore": "PASS: destination .tmp/worktrees path was verified absent before creation and ignored through an appended block in the local .git/info/exclude; shared .gitignore untouched.",
-    "worktree_transfer": "PASS: 26 task-scoped files were initially copied; the previous task pointer was replaced only after its SHA-256 matched the archived original. Final hashes/byte counts for every payload file are in worktree-transfer-manifest.json. The local plugin config/install record and both source workspaces are excluded.",
+    "worktree_transfer": "PASS: 26 files initially copied; previous pointer matched archived original before replacement. Historical transfer hashes and a separately labeled current final-tree snapshot are in worktree-transfer-manifest.json.",
     "worktree_check": "PASS: official project.mjs check validates the dedicated task worktree root, Owner-confirmed IDs, task contract, project config and local install record.",
-    "worktree_mcp": "PASS: official MCP SDK direct stdio in task worktree, version 0.1.6; correct active task, 12 map entries/0 missing, 3 context files, in-scope contract accepted, Gateway source rejected with SCOPE_DENIED. Canonical filesystem root was used; see worktree-mcp-verification.json."
+    "worktree_mcp": "PASS: official MCP SDK direct stdio in task worktree, version 0.1.6; correct active task, 12 map entries/0 missing, 3 context files, in-scope contract accepted, Gateway source rejected with SCOPE_DENIED. Canonical filesystem root was used; see worktree-mcp-verification.json.",
+    "local_runtime_suite": "PASS after desktop prerequisite build: npm ci --prefix apps/desktop; npm run build --prefix apps/desktop; npm test; 232/232, 0 failed, 0 skipped.",
+    "failed_ci_job": "PARTIAL: push run 45375009198 initially failed 1/232 in asynchronous request-log persistence wait; same-head PR run passed and failed-job rerun attempt 2 passed. Focused local reproduction passed. Exact cause unconfirmed; no app code changed. Final-head CI remains pending."
   },
   "evidence_path": "docs/tasks/evidence/codex-awg-deployment-20261124",
   "previous_active_contract": {
@@ -151,5 +153,7 @@
       "source": "Owner message: “建立专属PR提交合并，任务工作树合并到主工作树；”",
       "change": "Authorize one dedicated task worktree/branch, commit, push, PR, merge into master, and primary worktree synchronization. Explicitly keep release, branch deletion, and worktree removal unauthorized."
     }
-  ]
+  ],
+  "integration_method": "squash merge after final independent review and checks; preserve task branch/worktree; fast-forward primary master after preserving preexisting overlapping deployment files",
+  "history_boundary": "Final PR tree contains no generated cache/bytecode payloads or absolute workstation paths. Earlier task commits remain available from task branch/PR references; squash merge must keep them out of master ancestry. No remote erasure is claimed."
 }

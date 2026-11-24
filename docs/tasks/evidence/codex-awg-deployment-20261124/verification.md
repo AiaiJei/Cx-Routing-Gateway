@@ -2,44 +2,46 @@
 
 Date: 2026-11-24. Task: CXRG-CODEX-AWG-DEPLOYMENT-2026-11-24.
 
-## Result
+## Current result
 
-Local deployment: **PASS**. Overall acceptance: **PARTIAL**. The first independent review found two issues in commit 9692cc0; fixes are in progress and a final independent review is pending. Desktop loading, Hook trust/delivery and Owner acceptance remain **NOT_RUN**.
+Local deployment: **PASS**. Overall runtime acceptance: **PARTIAL**. PR #24 remains open pending final review and final-head CI; squash merge and primary-worktree sync are pending. Desktop loading, Hook review/trust/delivery and Owner runtime acceptance remain **NOT_RUN**.
 
-- Repository: C:\Users\20142\Desktop\Cx-Routing Gateway, branch master.
-- IDs: project_id=cx-routing-gateway; repo_id=aiaijei-cx-routing-gateway (Owner confirmed).
-- Source: AiaiJei/Codex-AWG main, pinned commit d3f65d64223618626396f8f8944cc9a51d421fc4.
-- Official project check: PASS for this root, IDs, task and managed files.
-- Scoped plugin listing: PASS; codex-awg@codex-awg is installed/enabled at 0.1.6. The existing marketplace source is C:\Users\20142\Desktop\Codex-AWG; its origin and exact commit match the verified repository-local source. No global registration change was needed.
-- Direct MCP integration: PASS (fresh final run). Official SDK, real stdio child process, version 0.1.6, 7 tools; project_status resolves the current task; map_get has 12 entries and 0 missing paths; context_get returns 3 untruncated files. scope_check accepts the task contract path and returns SCOPE_DENIED for services/gateway/src/server.mjs. See mcp-verification.json.
-- Legacy removal: PASS. The roots .agent-workspace-governance, .agents/skills/ui-ux-pro-max and plugins/awg-codex are absent. At the initial local move, all 14 files matched the sizes and SHA-256 values in preflight.json. Generated SQLite and .pyc payloads remain only in the primary worktree's local archive and are omitted from the PR because bytecode contains workstation paths.
-- Previous active task: PASS. The archived pointer SHA-256 is b998ee30958acfc5996626ee8070052b969b5fdca6b49b1d0783fa82537a9e58, identical to preflight.
-- Git integration: PR #24 contains commit 9692cc081a868e19f279533f3a0ea960d7c0e430 on codex/codex-awg-deployment-2026-11-24. The PR is open against master; master and origin/master remain at 49c9a389d58b2e5bdb02554d559989ed7fb07596 pending review and merge. The modified preexisting .tmp-awg-source checkout and its reference directories are preserved.
-- Whitespace: git -c core.whitespace=cr-at-eol diff --check PASS.
-- Fresh final source test: npm test in .tmp-codex-awg-source PASS, 58/58, 0 failed, 0 skipped. The earlier npm ci --ignore-scripts also passed with zero reported vulnerabilities. Gateway application tests were not rerun because its source was not changed.
-- Final self-review: PASS for alignment across repository identity, active task, pinned source, MCP binding, rollback instructions, evidence hashes and acceptance boundaries. This does not replace independent review.
-- Independent review of commit 9692cc0: **FIXES_REQUIRED**. It found that committed .pyc files expose absolute workstation paths and that revision 1's blanket prohibition conflicts with the later Owner authorization. The payloads were removed from the task branch and the wording is being corrected; a fresh review is pending. See independent-review.json.
+- Repository: AiaiJei/Cx-Routing-Gateway. Primary worktree is identified as `<primary-worktree>` in tracked evidence; task worktree is `.tmp/worktrees/codex-awg-deployment-2026-11-24`.
+- Owner-confirmed IDs: project_id=cx-routing-gateway; repo_id=aiaijei-cx-routing-gateway.
+- Source: AiaiJei/Codex-AWG main, pinned at d3f65d64223618626396f8f8944cc9a51d421fc4.
+- Official project check: PASS for both bound roots, IDs, active task and managed files. A fresh task-worktree check passed after the review corrections.
+- Pinned source tests: fresh `npm test` PASS, 58/58, 0 failed, 0 skipped. Initial `npm ci --ignore-scripts` also passed.
+- Plugin listing: scoped listing PASS; codex-awg@codex-awg is enabled at 0.1.6 from the existing verified local source checkout. Its remote and pinned commit match the repository-local source. No global marketplace change was needed.
+- Direct MCP: official SDK over real stdio PASS, version 0.1.6, 7 tools; correct task, 12 map entries/0 missing, 3 untruncated context files. In-scope contract accepted; Gateway source rejected with SCOPE_DENIED. See mcp-verification.json and worktree-mcp-verification.json. This is direct process evidence, not Desktop loading evidence.
+- Legacy cleanup: the three old runtime roots are absent. All 14 local rollback payloads match preflight sizes/SHA-256. The final PR tree contains only a README under legacy-deployment; generated SQLite/bytecode payloads are omitted from that tree.
+- Previous active pointer: the byte-for-byte archive matches SHA-256 b998ee30958acfc5996626ee8070052b969b5fdca6b49b1d0783fa82537a9e58.
+- Transfer hashes: copied_files in worktree-transfer-manifest.json describe the initial transfer, before corrections. final_files is a separate current snapshot and excludes the manifest itself to avoid self-reference.
+- Review corrections: final tree removes generated payloads and absolute workstation paths; plan explicitly states Owner revision 2 supersedes the original integration restriction. Final independent tree review is pending; see independent-review.json.
+
+## CI investigation and regression checks
+
+The push CI run 45375009198 on cecd2d9 initially failed 1 of 232 runtime tests: `Responses round trip through Messages preserves stream text, tools, and usage`, in waitForUsage (100 reads with 5 ms waits). Stream output assertions had succeeded; the request-log wait timed out. Server inspection confirms the streaming response ends before credential bookkeeping and appendUsage finish; Windows config replacement retries can also delay persistence. This identifies the failing boundary but does not establish the exact timing/storage cause of that CI occurrence.
+
+The same-head pull_request run 45375017141 passed runtime and desktop. Rerunning only the failed job of 45375009198 passed on attempt 2, without a source change. A focused local run of the originally failing test passed. The failure was not reproduced; no Gateway application fix or root-cause completion is claimed. Final-head checks must pass before merge. Package jobs are skipped by the existing workflow for ordinary PR/push runs.
+
+The first full local `npm test` attempt passed 231/232 and failed because apps/desktop/dist/index.html had not been built in the fresh task worktree. After `npm ci --prefix apps/desktop` and `npm run build --prefix apps/desktop`, a fresh full `npm test` passed 232/232, 0 failed, 0 skipped. The dependency install reported 6 moderate npm audit findings; desktop CI separately runs its configured production dependency audit. This documentation-only deployment change does not modify Gateway application code.
+
+## Integration and history boundary
+
+Use squash merge for PR #24, then verify the merge result has the clean final tree and does not have 9692cc0 or cecd2d9 as ancestors. Earlier generated payloads remain accessible through the retained task branch and PR references; no remote erasure is claimed. Squash method was independently accepted as sufficient to avoid contaminating master history. Do not force push or delete task branches/worktrees.
+
+Before primary master fast-forward, preserve and verify all overlapping uncommitted deployment files. Preserve unrelated preexisting work, both source checkouts, local config/install records and local rollback payloads. Record sync results separately after the merge; current master remains at base 49c9a389d58b2e5bdb02554d559989ed7fb07596 until then.
 
 ## Evidence boundaries and known limitations
 
-The init command, file/archive changes and Git commands ran through the terminal. They were authorized by the Owner request and task contract; they were not confined or approved by AWG MCP/Hook enforcement. Only the recorded direct MCP calls exercised AWG tool validation. Skills, MCP and Hooks do not sandbox arbitrary terminal commands.
+Init, file/archive changes and Git operations ran through the terminal under Owner authorization and the task contract. They were not confined or approved by AWG MCP/Hook enforcement. Only the recorded direct MCP calls exercised AWG tool validation. Skills, MCP and Hooks do not sandbox arbitrary terminal commands.
 
-Desktop loading, Hook review/trust and real delivery, and Owner acceptance: **NOT_RUN**. The Owner's next step is to open a new session in this exact trusted repository, confirm AWG tools/Skills are present and review current Hook commands before deciding trust. Existing current-session tool availability is not evidence that the newly added project MCP has been loaded.
+Desktop loading, Hook definition review/trust, actual delivery and Owner acceptance: **NOT_RUN**. The Owner needs a new trusted session in this exact repository, confirmation of the AWG tools/Skills, and review of current Hook commands before deciding trust. Current-session availability is not evidence of loading the newly configured project MCP.
 
-The preexisting cx-bootstrap-local marketplace points to a directory without a supported manifest and breaks unfiltered plugin listings. The scoped codex-awg listing passes. This unrelated registration is preserved. Source plugin.json reports 0.1.6 while .codex-plugin/plugin.json reports 0.1.4; upstream is preserved, and both the installed CLI entry and direct server handshake report 0.1.6.
+The preexisting cx-bootstrap-local marketplace lacks a supported manifest and breaks unfiltered plugin listings; scoped codex-awg listing passes. Preserve this unrelated registration. Upstream plugin.json says 0.1.6 while .codex-plugin/plugin.json says 0.1.4; source is unchanged, and the installed listing/direct handshake report 0.1.6.
 
-.codex/config.toml and .awg/install.json contain host-specific paths and are locally ignored by the official installer through .git/info/exclude. The repository-local .tmp-codex-awg-source directory is retained because the project MCP config points into it. Do not move or remove it without rebinding the project.
+Host-specific .codex/config.toml and .awg/install.json remain local and ignored through .git/info/exclude. The primary .tmp-codex-awg-source checkout is retained because local MCP config points into it. Moving it requires rebinding.
 
 ## Rollback
 
-Only if rollback is requested, run the pinned plugin's project.mjs rollback with the same root/IDs. It validates managed hashes before removing its unchanged blocks/config; modified project data is preserved. Restore .codex/awg-task.json byte-for-byte from previous-active-awg-task.json and, if required, restore generated cache/bytecode from the local archive retained in the primary worktree; those payloads are not part of the versioned PR. Leave the preexisting global codex-awg installation and both source checkouts intact.
-
-## Revision 2 worktree verification
-
-- Task branch/worktree: `codex/codex-awg-deployment-2026-11-24` at `.tmp/worktrees/codex-awg-deployment-2026-11-24`, based on current `origin/master` `49c9a389d58b2e5bdb02554d559989ed7fb07596`.
-- Official project check: PASS for the exact task worktree root and IDs.
-- Codex-AWG source tests: `npm test` PASS, 58/58.
-- Direct official SDK MCP integration: PASS in the task worktree; 0 missing map paths; scope probe rejects Gateway source writes. See `worktree-mcp-verification.json`.
-- Transfer: 26 task files verified by byte count and SHA-256. The base pointer matched the archived old pointer hash before the authorized replacement. See `worktree-transfer-manifest.json`.
-- The first diagnostic probe returned `PROJECT_ROOT_MISMATCH` because the test passed a slash-form root string rather than the Windows canonical root. Re-running with the canonical root returned by `realpath()` passed; no plugin source change was needed.
-- Commit and push: PASS; PR #24 is open. GitHub CI: desktop/runtime PASS; package jobs SKIPPED. Review correction and final independent review: IN_PROGRESS. Merge and primary worktree sync: PENDING. Desktop Hook trust/runtime remains NOT_RUN.
+Only if requested, run the pinned project.mjs rollback with the same root/IDs. It validates managed hashes and preserves modified project data. Restore the previous task pointer byte-for-byte from previous-active-awg-task.json and, if needed, restore generated cache/bytecode from the primary local archive. Leave the preexisting global codex-awg installation, marketplaces and both source checkouts intact.

@@ -1,0 +1,25 @@
+{
+  "head": "cecd2d982a6baaeef48ba4681f014a531a36e70a",
+  "initial_failed_run": 45375009198,
+  "initial_runtime": {
+    "passed": 231,
+    "failed": 1,
+    "failed_test": "Responses round trip through Messages preserves stream text, tools, and usage",
+    "error": "Expected request log was not persisted",
+    "boundary": "stream completed before asynchronous request-log persistence was observed"
+  },
+  "same_head_pr_run": {
+    "run_id": 45375017141,
+    "runtime": "PASS",
+    "desktop": "PASS"
+  },
+  "failed_run_retry": {
+    "attempt": 2,
+    "runtime": "PASS",
+    "desktop": "PASS"
+  },
+  "local_focused_reproduction": "PASS; failure not reproduced",
+  "root_cause": "UNCONFIRMED: bounded async persistence wait timed out; exact cause not demonstrated",
+  "application_source_changed": false,
+  "final_head_ci": "PENDING"
+}
