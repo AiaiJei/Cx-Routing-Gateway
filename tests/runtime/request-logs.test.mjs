@@ -28,6 +28,10 @@ async function setup(t, respond, outbound = 'Chat', gatewayOptions = {}) {
   const controlPort = await listen(control);
   t.after(async () => { await Promise.all([close(gateway), close(control), close(upstream)]); await store.writeQueue; });
   return {
+    async persistedLogs() {
+      await store.writeQueue;
+      return (await new ConfigStore(store.filePath).read()).usage;
+    },
     async request(protocol, stream, reasoning) {
       const endpoint = { Chat: 'chat/completions', Res: 'responses', Mes: 'messages' }[protocol];
       return fetch(`http://127.0.0.1:${port}/v1/${endpoint}`, { method: 'POST', headers: { authorization: 'Bearer test-key', 'content-type': 'application/json' }, body: JSON.stringify({ model: protocol, stream, input: 'private-prompt', messages: [{ role: 'user', content: 'private-prompt' }], ...(reasoning === undefined ? {} : reasoning) }) });
@@ -89,6 +93,38 @@ test('passthrough and converted streams preserve responses and persist first-gen
     assert.ok(log.firstTokenMs >= firstSent - 100);
     assert.ok(log.durationMs >= log.firstTokenMs + 15);
   }
+});
+
+test('paced Responses-to-Chat stream logs separate upstream stages without retaining payload data', async t => {
+  const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
+  const app = await setup(t, async (_req, res) => {
+    await pause(60);
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.flushHeaders();
+    await pause(60);
+    res.write(': first-upstream-byte\n\n');
+    await pause(60);
+    res.write(event({ choices: [{ delta: { content: 'private-response-marker' } }] }));
+    await pause(60);
+    res.end(event({ choices: [{ delta: {}, finish_reason: 'stop' }], usage: { prompt_tokens: 3, completion_tokens: 2, total_tokens: 5 } }) + 'data: [DONE]\n\n');
+  }, 'Chat');
+
+  const response = await app.request('Res', true);
+  assert.equal(response.status, 200);
+  const responseBody = await response.text();
+  assert.match(responseBody, /private-response-marker/);
+  assert.ok(responseBody.indexOf('private-response-marker') < responseBody.indexOf('response.completed'));
+  const [log] = await app.logs(1);
+
+  assert.ok(log.upstreamHeadersMs >= 35);
+  assert.ok(log.upstreamFirstByteMs - log.upstreamHeadersMs >= 35);
+  assert.ok(log.upstreamBodyMs >= 90);
+  assert.ok(log.upstreamChunkCount >= 3);
+  assert.ok(log.gatewayProcessingMs > 0);
+  assert.ok(log.firstTokenMs >= log.upstreamFirstByteMs);
+  const [persisted] = await app.persistedLogs();
+  assert.deepEqual(persisted, log);
+  assert.doesNotMatch(JSON.stringify(persisted), /private-prompt|private-response-marker|data:|event:|test-key|authorization|responseBody|requestBody/);
 });
 
 test('request logs measure elapsed time monotonically across wall-clock changes', async t => {
@@ -173,4 +209,37 @@ test('request logs capture gateway status for sanitized gateway failures', async
   await response.text();
   const [log] = await app.logs(1);
   assert.equal(log.httpStatus, 200);
+});
+
+test('interrupted Responses stream persists actual statuses and bounded failure phase without payloads', async t => {
+  let requests = 0;
+  const app = await setup(t, async (req, res) => {
+    requests++;
+    for await (const _chunk of req) { /* Drain the local fixture request. */ }
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.write(event({ type: 'response.output_text.delta', sequence_number: 4, delta: 'private-response' }));
+    const timer = setTimeout(() => res.destroy(), 50);
+    res.on('close', () => clearTimeout(timer));
+  }, 'Res');
+  const response = await app.request('Res', true);
+  assert.equal(response.status, 200);
+  // Consume both the legacy abrupt-close path and Task 3's terminal error path.
+  try { await response.text(); } catch (error) { assert.equal(error.message, 'terminated'); }
+  const [log] = await app.logs(1);
+  assert.equal(log.status, 'failed');
+  assert.equal(log.errorCode, 'upstream_connection_reset');
+  assert.equal(log.upstreamStatus, 200);
+  assert.equal(log.gatewayStatus, 200);
+  assert.equal(log.streamFailurePhase, 'upstream_body');
+  assert.equal(log.stream, true);
+  assert.ok(Number.isFinite(log.firstTokenMs));
+  assert.ok(Number.isFinite(log.upstreamHeadersMs));
+  assert.ok(Number.isFinite(log.upstreamFirstByteMs));
+  assert.ok(Number.isFinite(log.upstreamBodyMs));
+  assert.ok(log.upstreamChunkCount >= 1);
+  assert.ok(Number.isFinite(log.gatewayProcessingMs));
+  assert.equal(requests, 1);
+  const [persisted] = await app.persistedLogs();
+  assert.deepEqual(persisted, log);
+  assert.doesNotMatch(JSON.stringify(persisted), /private-prompt|private-response|test-key|authorization|responseBody|requestBody/);
 });

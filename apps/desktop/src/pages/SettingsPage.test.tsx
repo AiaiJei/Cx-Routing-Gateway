@@ -7,7 +7,7 @@ import { defaultWorkspaceClient } from "../data/workspace-client";
 describe("SettingsPage", () => {
   it("shows the current product version", async () => {
     render(<SettingsPage />);
-    expect(await screen.findByText("版本 1.1.7")).toBeVisible();
+    expect(await screen.findByText("版本 1.1.8")).toBeVisible();
   });
 
   it("shows the unconfigured GitHub token state without disabling the update control", async () => {
@@ -127,7 +127,7 @@ describe("SettingsPage", () => {
   });
   it("shows the installed product version in the desktop application section", async () => {
     render(<SettingsPage />);
-    expect(await screen.findByText("版本 1.1.7")).toBeVisible();
+    expect(await screen.findByText("版本 1.1.8")).toBeVisible();
     expect(screen.getByRole("heading", { name: "桌面应用" })).toBeVisible();
   });
   it("shows the GitHub release link when an update is available", async () => {

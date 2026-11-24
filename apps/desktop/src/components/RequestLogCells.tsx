@@ -1,7 +1,42 @@
-import type { CallLog, Protocol, RequestTokens } from "../domain/types";
+import type { CallLog, Protocol, RequestTokens, StreamFailurePhase } from "../domain/types";
 import { formatDuration, formatMetric, formatRequestTime, tokenFields } from "../domain/request-log";
 import { ProtocolBadge } from "./ProtocolBadge";
 import { Tooltip } from "./Tooltip";
+
+const failurePhases: Record<StreamFailurePhase, string> = {
+  upstream_headers: "收到上游响应头前",
+  upstream_body: "读取上游响应体时",
+  downstream_closed: "下游客户端已断开",
+};
+
+function isInterruptedStream(log: CallLog): boolean {
+  return log.stream === true && log.status.startsWith("失败")
+    && log.gatewayStatus !== undefined && log.gatewayStatus >= 200 && log.gatewayStatus < 300
+    && (log.streamFailurePhase === "upstream_body" || log.streamFailurePhase === "downstream_closed");
+}
+
+export function requestStatusLabel(log: CallLog): string {
+  return isInterruptedStream(log) ? `${log.status} · 流已中断` : log.status;
+}
+
+export function requestStatusDetails(log: CallLog): string {
+  return [
+    log.httpStatus !== undefined ? `HTTP ${log.httpStatus}` : undefined,
+    log.upstreamStatus !== undefined ? `上游 HTTP ${log.upstreamStatus}` : undefined,
+    log.gatewayStatus !== undefined ? `${log.streamFailurePhase ? "下游" : "网关"} HTTP ${log.gatewayStatus}` : undefined,
+    log.streamFailurePhase ? `失败阶段：${failurePhases[log.streamFailurePhase]}` : undefined,
+    isInterruptedStream(log) ? `流已中断；下游 HTTP ${log.gatewayStatus} 不代表流完整完成` : undefined,
+    log.error,
+  ].filter(Boolean).join(" · ") || "—";
+}
+
+export function RequestStatus({ log }: { log: CallLog }) {
+  const label = requestStatusLabel(log);
+  const details = requestStatusDetails(log);
+  return <Tooltip className="request-status-trigger" label={`状态 ${label}，${details}`} content={<>
+    <span className="tooltip-heading">状态详情</span><p className="helper-text">{details}</p>
+  </>}><span className={`status-badge ${log.status.startsWith("成功") ? "status-positive" : "status-negative"}`}>{label}</span></Tooltip>;
+}
 
 type MainToken = "input" | "output" | "cacheRead" | "cacheWrite";
 function TokenIcon({ kind }: { kind: MainToken }) {

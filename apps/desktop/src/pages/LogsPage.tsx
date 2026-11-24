@@ -2,10 +2,9 @@ import { WorkspaceState } from "../components/WorkspaceState";
 import { useState } from "react";
 import { EmptyResult, FixtureNotice, PageHeader, SearchField } from "../components/PageHeader";
 import { Button } from "../components/Button";
-import { Tooltip } from "../components/Tooltip";
 import { SegmentedControl } from "../components/SegmentedControl";
 import { Modal } from "../components/Modal";
-import { RequestDuration, RequestProtocol, RequestTime, RequestTokenSummary, TokenDetails } from "../components/RequestLogCells";
+import { RequestDuration, RequestProtocol, RequestStatus, RequestTime, RequestTokenSummary, TokenDetails, requestStatusDetails, requestStatusLabel } from "../components/RequestLogCells";
 import { formatDuration, formatRequestTime, requestType } from "../domain/request-log";
 import { requestLogDateRanges, selectRequestLogs, type RequestLogDateRange } from "../domain/request-log-filter";
 import { useWorkspace } from "../data/use-workspace";
@@ -48,13 +47,6 @@ export function LogsPage() {
       setClearingLogs(false);
     }
   }
-  const statusDetails = (log: CallLog) => [
-    log.httpStatus !== undefined ? `HTTP ${log.httpStatus}` : undefined,
-    log.upstreamStatus !== undefined ? `上游 HTTP ${log.upstreamStatus}` : undefined,
-    log.gatewayStatus !== undefined ? `网关 HTTP ${log.gatewayStatus}` : undefined,
-    log.error,
-  ].filter(Boolean).join(' · ') || '—';
-
   if (loading) return <WorkspaceState title="请求日志" loading={loading} error={error} />;
   if (error) return <div className="page-content">
     <PageHeader title="请求日志" description="查看请求摘要、Token 用量与响应耗时。" action={headerActions} />
@@ -86,7 +78,7 @@ export function LogsPage() {
             <td><RequestProtocol log={log} /></td>
             <td className="log-type">{requestType(log)}</td>
             <td className="numeric"><RequestTokenSummary log={log} /></td>
-            <td className="log-status"><Tooltip label={`状态 ${log.status}，${statusDetails(log)}`} content={<><span className="tooltip-heading">状态详情</span><p className="helper-text">{statusDetails(log)}</p></>}><span className={`status-badge ${log.status.startsWith("成功") ? "status-positive" : "status-negative"}`}>{log.status}</span></Tooltip></td>
+            <td className="log-status"><RequestStatus log={log} /></td>
             <td className="numeric"><RequestDuration log={log} /></td>
             <td><Button variant="tertiary" size="small" aria-label={`查看 ${log.id}`} onClick={() => setSelectedLog(log)}>详情</Button></td>
           </tr>
@@ -98,11 +90,16 @@ export function LogsPage() {
           <div><dt>协议方向</dt><dd>{selectedLog.direction}</dd></div>
           <div><dt>入口凭证</dt><dd>{selectedLog.credential}</dd></div>
           <div><dt>推理</dt><dd>{selectedLog.reasoning ?? "-"}</dd></div>
-          <div><dt>状态</dt><dd>{selectedLog.status}</dd></div>
+          <div><dt>状态</dt><dd>{requestStatusLabel(selectedLog)}</dd></div>
           <div><dt>类型</dt><dd>{requestType(selectedLog)}</dd></div>
           <div><dt>首字</dt><dd>{formatDuration(selectedLog.stream ? selectedLog.firstTokenMs : undefined)}</dd></div>
           <div><dt>总耗时</dt><dd>{formatDuration(selectedLog.durationMs)}</dd></div>
-          <div><dt>错误信息</dt><dd>{statusDetails(selectedLog)}</dd></div>
+          <div><dt>上游响应头</dt><dd>{formatDuration(selectedLog.upstreamHeadersMs)}</dd></div>
+          <div><dt>上游首字节</dt><dd>{formatDuration(selectedLog.upstreamFirstByteMs)}</dd></div>
+          <div><dt>上游响应体</dt><dd>{formatDuration(selectedLog.upstreamBodyMs)}</dd></div>
+          <div><dt>上游数据块</dt><dd>{selectedLog.upstreamChunkCount ?? "—"}</dd></div>
+          <div><dt>网关处理</dt><dd>{formatDuration(selectedLog.gatewayProcessingMs)}</dd></div>
+          <div><dt>错误信息</dt><dd>{requestStatusDetails(selectedLog)}</dd></div>
         </dl>
         <section className="log-detail-tokens" aria-label="Token 用量"><h3 className="tooltip-heading">Token 用量</h3><TokenDetails tokens={selectedLog.tokens} /></section>
         <p className="action-feedback">请求和响应正文未记录；日志字段已脱敏。</p>
@@ -114,7 +111,7 @@ export function LogsPage() {
           <Button variant="danger" disabled={clearingLogs} onClick={() => void clearLogs()}>{clearingLogs ? "清空中…" : "确认清空"}</Button>
         </div>
       </Modal>}
-      <p className="helper-text page-footnote">{data.meta.live ? "请求和响应正文未记录；运行时日志字段已脱敏。" : "示例字段已脱敏。"} 首字为首次生成内容的等待时间；非流请求或未采集的指标显示 —。</p>
+      <p className="helper-text page-footnote">{data.meta.live ? "请求和响应正文未记录；运行时日志字段已脱敏。" : "示例字段已脱敏。"} 首字为首次生成内容的等待时间；响应头和首字节从网关收到请求开始计时；响应体为首个字节到流结束或中断；数据块是上游读取块数，不等于 SSE 事件数；网关处理只计解析、转换和写出的同步耗时。未采集的指标显示 —。</p>
     </div>
   );
 }

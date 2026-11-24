@@ -16,6 +16,8 @@
 .logs-table .log-model { min-width: 0; max-width: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .logs-table .log-type { white-space: nowrap; color: var(--muted); font-size: 13px; }
 .logs-table .log-status { min-width: 0; max-width: none; }
+.request-status-trigger { max-width: 100%; white-space: normal; }
+.request-status-trigger .status-badge { max-width: 100%; white-space: normal; overflow-wrap: anywhere; text-align: left; }
 .logs-table td:nth-child(1), .logs-table td:nth-child(2), .logs-table td:nth-child(3) { min-width: 0; }
 .logs-table td:nth-child(4) { white-space: nowrap; }
 .logs-table td:nth-child(7) { padding-inline: 6px; }

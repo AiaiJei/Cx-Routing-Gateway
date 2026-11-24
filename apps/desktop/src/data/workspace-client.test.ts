@@ -81,19 +81,25 @@ it("forwards an upstream edit through the Desktop bridge without exposing a cred
 
 it("maps measured metrics while preserving missing, zero and invalid historical values", () => {
   const state = { settings: { gatewayHost: "127.0.0.1", gatewayPort: 4318 }, upstreams: [], routes: [], clientKeys: [], usage: [
-    { requestId: "zero", createdAt: "2026-11-19T00:00:00.000Z", inboundProtocol: "Chat", outboundProtocol: "Res", status: "completed", stream: true, durationMs: 0, firstTokenMs: 0, tokens: { input: 0, output: 12, cacheRead: 0, total: 12, private: "secret" } },
+    { requestId: "zero", createdAt: "2026-11-19T00:00:00.000Z", inboundProtocol: "Chat", outboundProtocol: "Res", status: "completed", stream: true, durationMs: 0, firstTokenMs: 0, upstreamHeadersMs: 0, upstreamFirstByteMs: 18, upstreamBodyMs: 72.5, upstreamChunkCount: 0, gatewayProcessingMs: 1.5, tokens: { input: 0, output: 12, cacheRead: 0, total: 12, private: "secret" } },
     { requestId: "legacy", status: "failed" },
-    { requestId: "invalid", stream: "false", durationMs: -1, firstTokenMs: Infinity, tokens: { input: "100", output: -2, cacheWrite: 1.5 } },
+    { requestId: "invalid", stream: "false", durationMs: -1, firstTokenMs: Infinity, upstreamHeadersMs: -2, upstreamFirstByteMs: Infinity, upstreamBodyMs: "72", upstreamChunkCount: 1.5, gatewayProcessingMs: NaN, tokens: { input: "100", output: -2, cacheWrite: 1.5 } },
   ] };
   const [zero, legacy, invalid] = mapRuntimeState(state).logs;
-  expect(zero).toMatchObject({ stream: true, durationMs: 0, firstTokenMs: 0, tokens: { input: 0, output: 12, cacheRead: 0, total: 12 } });
+  expect(zero).toMatchObject({ stream: true, durationMs: 0, firstTokenMs: 0, upstreamHeadersMs: 0, upstreamFirstByteMs: 18, upstreamBodyMs: 72.5, upstreamChunkCount: 0, gatewayProcessingMs: 1.5, tokens: { input: 0, output: 12, cacheRead: 0, total: 12 } });
   expect(zero.tokens).not.toHaveProperty("private");
   expect(legacy.durationMs).toBeNull();
   expect(legacy.stream).toBeUndefined();
   expect(legacy.firstTokenMs).toBeUndefined();
+  expect(legacy).not.toHaveProperty("upstreamHeadersMs");
   expect(invalid.durationMs).toBeNull();
   expect(invalid.stream).toBeUndefined();
   expect(invalid.firstTokenMs).toBeUndefined();
+  expect(invalid).not.toHaveProperty("upstreamHeadersMs");
+  expect(invalid).not.toHaveProperty("upstreamFirstByteMs");
+  expect(invalid).not.toHaveProperty("upstreamBodyMs");
+  expect(invalid).not.toHaveProperty("upstreamChunkCount");
+  expect(invalid).not.toHaveProperty("gatewayProcessingMs");
   expect(invalid.tokens).toBeUndefined();
 });
 
@@ -147,4 +153,48 @@ it("maps HTTP, upstream, and gateway status details without raw provider text", 
     ["gateway", undefined, undefined, 400, "当前请求包含不支持的协议特性"],
   ]);
   expect(JSON.stringify(workspace.logs)).not.toContain("secret provider detail");
+});
+
+it("preserves actual partial-stream statuses and only the three supported failure phases", () => {
+  const { logs } = mapRuntimeState({
+    settings: { gatewayHost: "127.0.0.1", gatewayPort: 4318 }, upstreams: [], routes: [], clientKeys: [],
+    usage: [
+      { status: "failed", stream: true, upstreamStatus: 200, gatewayStatus: 200, streamFailurePhase: "upstream_body", errorCode: "upstream_connection_reset", providerMessage: "private-provider-error", responseBody: "private-body" },
+      { status: "failed", stream: true, gatewayStatus: 502, streamFailurePhase: "upstream_headers" },
+      { status: "failed", stream: true, upstreamStatus: 200, gatewayStatus: 200, streamFailurePhase: "downstream_closed" },
+      { status: "failed", gatewayStatus: 502 },
+    ],
+  });
+  expect(logs[0]).toMatchObject({ status: "失败", stream: true, upstreamStatus: 200, gatewayStatus: 200, streamFailurePhase: "upstream_body" });
+  expect(logs[1]).toMatchObject({ gatewayStatus: 502, streamFailurePhase: "upstream_headers" });
+  expect(logs[2]).toMatchObject({ streamFailurePhase: "downstream_closed" });
+  expect(logs[3].gatewayStatus).toBe(502);
+  expect(logs[3]).not.toHaveProperty("streamFailurePhase");
+  expect(JSON.stringify(logs)).not.toMatch(/private-provider-error|private-body|providerMessage|responseBody/);
+});
+
+it.each([100, 200, 502, 599])("accepts valid integer HTTP status %s at each log boundary", (code) => {
+  const { logs } = mapRuntimeState({
+    settings: { gatewayHost: "127.0.0.1", gatewayPort: 4318 }, upstreams: [], routes: [], clientKeys: [],
+    usage: [{ httpStatus: code, upstreamStatus: code, gatewayStatus: code }],
+  });
+  expect(logs[0]).toMatchObject({ httpStatus: code, upstreamStatus: code, gatewayStatus: code });
+});
+
+it.each([0, 99, 600, -1, 200.5, NaN, Infinity, "200", null, {}, true, undefined])("omits invalid HTTP status %s instead of coercing it", (code) => {
+  const { logs } = mapRuntimeState({
+    settings: { gatewayHost: "127.0.0.1", gatewayPort: 4318 }, upstreams: [], routes: [], clientKeys: [],
+    usage: [{ httpStatus: code, upstreamStatus: code, gatewayStatus: code }],
+  });
+  expect(logs[0].httpStatus).toBeUndefined();
+  expect(logs[0].upstreamStatus).toBeUndefined();
+  expect(logs[0].gatewayStatus).toBeUndefined();
+});
+
+it.each(["unknown", "UPSTREAM_BODY", "__proto__", "private-provider-error", "", null, 1, {}, undefined])("omits unknown failure phase %s", (phase) => {
+  const { logs } = mapRuntimeState({
+    settings: { gatewayHost: "127.0.0.1", gatewayPort: 4318 }, upstreams: [], routes: [], clientKeys: [],
+    usage: [{ status: "failed", streamFailurePhase: phase }],
+  });
+  expect(logs[0]).not.toHaveProperty("streamFailurePhase");
 });

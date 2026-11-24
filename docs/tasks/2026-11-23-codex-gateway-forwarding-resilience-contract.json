@@ -1,0 +1,173 @@
+{
+  "contract_version": 1,
+  "task_id": "CXRG-CODEX-GATEWAY-FORWARDING-RESILIENCE-2026-11-23",
+  "title": "Codex forwarding, safe upstream address selection, stream reset handling, and management placeholder",
+  "project": "Cx-Routing Gateway",
+  "repository": "AiaiJei/Cx-Routing-Gateway",
+  "status": "active",
+  "stage": "release_and_primary_integration_authorized",
+  "base": "master",
+  "base_sha": "451d40f3f621a635afc093bc50070feb2a58fa59",
+  "branch": "codex/codex-routing-forwarding",
+  "worktree": ".worktree/codex-codex-routing-forwarding",
+  "contract": "docs/tasks/2026-11-23-codex-gateway-forwarding-resilience-contract.json",
+  "authorization": {
+    "source": "The user approved proceeding with the combined forwarding repair, execution plan/self-check acceptance checklist, initial Codex CLI/Desktop frontend placeholder, and one dedicated PR. The user added request b0c5a487-4dec-4841-85e0-c3f48c82d3a1 as a recurring streaming connection-reset case and clarified on 2026-11-23 that upstream connectivity checks can pass while actual model requests repeatedly return HTTP 502/reset without a provider usage-log entry. On 2026-11-24, the user authorized a patch increment from 1.1.7 to 1.1.8 and a separate local Desktop test build, with commit/push/PR integration to be decided after their manual test.",
+    "operations": [
+      "bind this isolated worktree to this task and preserve the previous task archive",
+      "write and review the task design, implementation plan, and acceptance/evidence checklist",
+      "implement Codex tool_search forwarding, protocol-safe stream failure handling, and safe pre-send fallback across validated destination addresses in the named paths",
+      "implement a clearly labeled Codex management frontend placeholder that reuses existing route/upstream/credential pages",
+      "run local fixture tests, Runtime tests, Desktop tests/build, syntax and diff checks, and independent review",
+      "commit and push the original forwarding implementation and create one dedicated PR against master; leave it open",
+      "revision 1 only: update version-bound metadata/assertions from 1.1.7 to 1.1.8, build an isolated Windows x64 Portable for local testing, run its isolated smoke, and copy a distinct versioned test executable to Desktop while preserving the existing 1.1.7 executable and process",
+      "2026-11-24 revision 2: repair and verify Res round trips through Chat and Messages with local fixtures, and deliver a distinctly named local 1.1.8 Portable candidate for Owner re-test",
+      "2026-11-24 revision 3: add privacy-preserving stream-stage timing diagnostics and display them in request details; use local SSE fixtures only; do not change protocol conversion or reasoning controls",
+      "2026-11-24 revision 4: commit the task-scoped 1.1.8 version, Res round-trip, and stream-timing changes; push/update PR #22, wait for current checks, merge to master, synchronize the primary master worktree, and publish GitHub Release v1.1.8 with locally verified Windows assets. Preserve existing Desktop binaries/processes and all task worktrees; do not make live provider requests."
+    ],
+    "not_authorized": [
+      "real third-party provider/model requests",
+      "automatic retries after an upstream request may have been sent or output has begun",
+      "writing Codex CLI/Desktop configuration or authentication files",
+      "creating a second credential store or duplicating upstream credentials",
+      "overwrite/delete the existing 1.1.7 Desktop executable or stop its currently running process",
+      "deleting branches, worktrees, releases, or unrelated files"
+    ]
+  },
+  "scope": {
+    "include": [
+      "Responses tool_search definitions, history, responses, and streaming conversion to/from Chat",
+      "Responses additional_tools structural carriers and dynamically loaded tool_search_output definitions/results",
+      "safe bounded tool-type diagnostics for unsupported tool definitions",
+      "accurate Responses stream-reset termination and upstream/downstream status/failure-phase logging",
+      "retry only a connection attempt that failed before HTTP request bytes could be sent; never replay a possibly transmitted model request",
+      "desktop request-log presentation of interrupted streams and actual response statuses",
+      "Codex CLI/Desktop navigation and non-operational management placeholder",
+      "revision 1: patch version 1.1.7 to 1.1.8 and update version-bound metadata/assertions",
+      "revision 1: isolated local Windows x64 Portable build, smoke, and side-by-side Desktop copy only; no public release",
+      "revision 2: Res → Chat → Res and Res → Mes → Res request and response conversion including streaming and non-streaming",
+      "revision 3: privacy-preserving numeric streaming-stage timings exposed in existing request details, verified with local paced SSE fixtures",
+      "task plan, self-check checklist, local evidence, independent review, and one dedicated PR",
+      "revision 4: commit and push the accepted task-scoped 1.1.8 changes, update and merge PR #22 after checks, synchronize primary master, and publish GitHub Release v1.1.8 with verified Windows assets"
+    ],
+    "exclude": [
+      "implementation of server-side web search or other tools that Chat cannot execute equivalently",
+      "provider/network behavior outside the Gateway process",
+      "blind or ambiguous model-request retries",
+      "Codex config-file synchronization, auth-file access, or credential persistence changes",
+      "real third-party provider requests"
+    ]
+  },
+  "authorized_paths": [
+    ".codex/awg-task.json",
+    "services/gateway/src/protocol-adapters.mjs",
+    "services/gateway/src/server.mjs",
+    "services/gateway/src/request-metrics.mjs",
+    "tests/runtime/protocol-adapters.test.mjs",
+    "tests/runtime/gateway-server.test.mjs",
+    "tests/runtime/request-logs.test.mjs",
+    "apps/desktop/src/App.tsx",
+    "apps/desktop/src/components/navigation.ts",
+    "apps/desktop/src/components/NavigationIcon.tsx",
+    "apps/desktop/src/components/AppShell.test.tsx",
+    "apps/desktop/src/components/RequestLogCells.tsx",
+    "apps/desktop/src/components/RequestLogCells.test.tsx",
+    "apps/desktop/src/pages/CodexPage.tsx",
+    "apps/desktop/src/pages/CodexPage.test.tsx",
+    "apps/desktop/src/pages/LogsPage.tsx",
+    "apps/desktop/src/pages/LogsPage.test.tsx",
+    "apps/desktop/src/domain/types.ts",
+    "apps/desktop/src/data/workspace-client.ts",
+    "apps/desktop/src/data/workspace-client.test.ts",
+    "apps/desktop/src/styles/app.css",
+    "apps/desktop/src/styles/request-logs.css",
+    "apps/desktop/package.json",
+    "apps/desktop/package-lock.json",
+    "apps/desktop/electron-builder.yml",
+    "apps/desktop/src/pages/SettingsPage.test.tsx",
+    "scripts/verify-release.mjs",
+    "tests/runtime/release-manifest.test.mjs",
+    "apps/desktop/release/1.1.8-codex-forwarding-local-test/**",
+    "apps/desktop/release/1.1.8-responses-roundtrip-local-test/**",
+    "C:\\Users\\20142\\Desktop\\Cx-Routing Gateway Portable 1.1.8 - Responses Roundtrip.exe",
+    "C:\\Users\\20142\\Desktop\\Cx-Routing Gateway Portable 1.1.8.exe",
+    "docs/superpowers/specs/2026-11-23-codex-gateway-forwarding-resilience-design.md",
+    "docs/superpowers/plans/2026-11-23-codex-gateway-forwarding-resilience.md",
+    "docs/tasks/2026-11-23-codex-gateway-forwarding-resilience-contract.json",
+    "docs/tasks/2026-11-23-codex-gateway-forwarding-resilience.md",
+    "docs/tasks/evidence/codex-gateway-forwarding-resilience/**",
+    ".superpowers/sdd/2026-11-23-codex-gateway-forwarding-resilience/**",
+    ".superpowers/sdd/.gitignore"
+  ],
+  "acceptance": [
+    "Codex tool_search requests, tool_search_call/tool_search_output history, additional_tools carriers, calls, and stream events round-trip across Responses and Chat without dropping IDs or client-execution semantics",
+    "additional_tools are consumed as structural metadata and their nested function/custom/namespace tools reach Chat without a null-content system/developer message",
+    "Unsupported server-side tools remain explicit safe field/direction errors; future unsupported tools expose only a bounded type discriminator in logs",
+    "A local upstream fixture that emits a Responses output event and then resets yields a protocol-level terminal error event with monotonic sequence_number, a failed request log, the actual upstream/downstream statuses, and a bounded failure phase",
+    "A reset before downstream headers remains a sanitized HTTP 502; a post-header stream reset is not mislabeled as a new wire-level 502",
+    "Native Responses passthrough withholds response.completed until clean transport EOF; missing terminal markers and upstream failure terminals cannot be logged as success",
+    "Responses sequence exhaustion and malformed upstream HTTP status are rejected safely before invalid frames or uncaught exceptions can escape",
+    "Each outbound attempt is pinned to the currently validated address set; a connection from an obsolete address set is not reused",
+    "When a validated upstream resolves to multiple approved addresses and an earlier address fails before the HTTP request is sent, the Gateway may use a later address; a local fixture proves a healthy later address receives exactly one model request",
+    "No automatic retry is made after ambiguous request transmission or partial output; logs never retain prompts, bodies, schemas, tool arguments, or credentials",
+    "The Codex placeholder clearly states what is and is not implemented and links to existing route/upstream/credential management without writing Codex config files",
+    "Full Runtime tests, Desktop tests, Desktop build, syntax/diff checks, and independent review pass with evidence",
+    "Both Res round trips preserve supported request controls and responses that contain text and tool calls; empty and failed upstream streams are recorded as failures and truncation is explicit",
+    "Streaming request logs record finite numeric upstream-header, first-byte, body-duration, chunk-count and Gateway-processing timings without retaining prompt or response content; a paced local SSE fixture proves the timing boundaries and old logs remain compatible in Desktop details",
+    "PR #22 targets master; current CI passes before merge; merge into master and synchronize the primary worktree; publish the next GitHub release v1.1.8 with verified installer, Portable, blockmap, and manifest assets matching their SHA-256 values. Do not overwrite local Desktop binaries or call a live provider."
+  ],
+  "scope_revisions": [
+    {
+      "date": "2026-11-23",
+      "source": "User follow-up: recurring `HTTP 502 · upstream connection reset` despite a successful connectivity test and no provider-side usage log.",
+      "decision": "Add local-only coverage and safe fallback across already validated DNS addresses only while TCP/TLS connection establishment fails before request bytes can be sent. Do not retry after connection readiness, possible request transmission, response headers, or partial output. Keep provider-level reset cause unconfirmed without the provider's request trace."
+    },
+    {
+      "date": "2026-11-23",
+      "source": "Independent backend review identified remaining native Responses passthrough, address-pool isolation, HTTP status validation, and sequence exhaustion edge cases.",
+      "decision": "Extend the same forwarding-resilience boundary to defer native response completion until clean EOF, fail closed on invalid/incomplete terminal streams and exhausted sequence space, isolate each upstream address attempt from cross-request socket pooling, and sanitize invalid HTTP response statuses. Keep all verification local and do not add post-send retries."
+    },
+    {
+      "date": "2026-11-24",
+      "source": "User follow-up: increment the version by one, update the local Desktop application for manual testing, and decide about PR integration only after testing.",
+      "decision": "Bump the current patch version 1.1.7 to 1.1.8 in the existing PR worktree; build and smoke a side-by-side local Windows x64 Portable at the task-scoped output/Desktop paths. Preserve the existing 1.1.7 file and running process. Leave this revision uncommitted and unpushed; do not publish, merge PR #22, or sync the primary master worktree until the Owner reports test results and decides integration."
+    },
+    {
+      "date": "2026-11-24",
+      "source": "Owner follow-up reporting CC Switch HTTP 400 with RG and directing repair of both Chat and Messages Responses round trips.",
+      "decision": "Use local mock endpoints and HTTP requests to repair request conversion and Responses termination. Keep version 1.1.8 and previous files, with a separately named local test candidate. Record CC Switch 400 origin as undetermined."
+    },
+    {
+      "date": "2026-11-24",
+      "source": "Owner reports the previous round-trip candidate passed manual testing and identifies slow streaming on Res → Chat for deepseek-v4.1-flash-1017, with four request-log records as evidence.",
+      "decision": "Record the prior Owner retest as passed while keeping PR integration pending. Add only numeric per-request streaming-stage diagnostics (upstreamHeadersMs, upstreamFirstByteMs, upstreamBodyMs, upstreamChunkCount, gatewayProcessingMs) and expose them in existing request details. Verify with local paced SSE fixtures; make no real-provider requests, do not change conversion behavior, do not map reasoning controls, and do not change version/build artifacts."
+    },
+    {
+      "date": "2026-11-24",
+      "source": "Owner explicitly requested: merge and commit the PR, publish the latest GitHub version, and merge the task worktree into the primary worktree.",
+      "decision": "Authorize revision 4 integration of the already manually accepted 1.1.8 round-trip candidate plus the locally verified timing diagnostics. The live latest GitHub Release/tag is v1.1.7, so publish v1.1.8 after updating PR #22, passing current checks, merging to master, and verifying release assets. Keep the independent review for revision 3 marked BLOCKED, disclose that status, preserve existing Desktop files/processes and all worktrees, and make no real provider calls."
+    }
+  ],
+  "rollback": "For revision 1, preserve the existing v1.1.7 Desktop file/process and remove only the newly created v1.1.8 local-test executable/output if the Owner rejects the test build. Do not alter the already-open PR #22, primary master state, other worktrees, or unrelated user files. For revision 2, exit the candidate normally and relaunch a preceding Desktop copy. Preserve both earlier copies. Revision 4: if pre-merge checks or release packaging fail, stop before merge/tag/release and preserve the open PR and v1.1.7. After merge, do not delete or rewrite the merge commit, tag, or release; use an explicitly authorized forward corrective change. Keep all prior Desktop candidates and processes unchanged.",
+  "owner_acceptance": "Owner reports the prior 1.1.8 round-trip candidate passed manual testing on 2026-11-24 and explicitly authorizes integration/publication. Local Runtime/Desktop/build and 1.1.8 package smokes pass. Independent reviews of revisions 2 and 3 are BLOCKED by the CC Switch proxy (no review verdict); integration proceeds under the Owner direct authorization and this limitation remains explicit. Real provider requests and same-model latency A/B remain NOT_RUN.",
+  "verification": {
+    "worktree": "PASS: existing isolated worktree at master 451d40f3f621a635afc093bc50070feb2a58fa59; clean before task writes; remote master matched",
+    "repo_mcp": "UNAVAILABLE: no .codex/awg-project.json or registered workspace; live source and GitHub state inspection used",
+    "runtime_baseline": "PASS: 178/178 after building the Desktop dist required by a runtime fixture",
+    "desktop_baseline": "PASS: 158/158",
+    "desktop_build_baseline": "PASS",
+    "implementation": "PASS: Gateway server suite 68/68; focused reset/address-fallback regressions 6/6; fresh full Runtime 218/218 and Desktop 196/196 after the 1.1.8 bump; Desktop production build; Node syntax checks, contract JSON validation, and git diff --check passed. Local fixtures verify fallback only before connection readiness and no retry after an accepted request reset.",
+    "independent_review": "PASS: adapter/history, Desktop request-log/placeholder, and final backend fix-snapshot reviews reported no remaining blocking findings. The final backend reviewer found no Critical/Important regressions and explicitly did not claim live-provider behavior. Two failed review dispatches are not counted as approvals.",
+    "pull_request": "PASS: PR #22 targets master from codex/codex-routing-forwarding; current pushed head 8b7567707929e1ec253af6be021ea1e273df7643 has passing Runtime and Desktop jobs for both push and pull_request events. Package jobs are skipped for branch events. Revision 2/3 independent reviews remain BLOCKED with no verdict. PR merge is authorized by the Owner and pending.",
+    "provider": "NOT_RUN by Codex: only isolated portable health smoke was run; Owner manual testing may use configured providers",
+    "responses_roundtrip_revision_2": "PASS: 231 Runtime tests, 196 Desktop tests, production build, x64 Portable, 14 packaged-runtime HTTP cases, and source and Desktop-copy isolated smoke. Independent review BLOCKED by reviewer CC Switch HTTP 400. Owner client retest and PR integration pending.",
+    "local_version_1_1_8": "PASS: package/product/lock/builder metadata aligned; Settings 13/13; release-manifest 2/2; Runtime 218/218; Desktop 196/196; production build; x64 unpacked and Portable packaging; packaged version smoke; source and Desktop-copy portable health smoke passed. Desktop copy SHA-256 E4841BC2C1C5B8E279CA612D955942B1D2E8EF7422D967D4B77B80889E8EFD52, 115030754 bytes. Existing 1.1.7 binary/hash/process preserved. Owner real-route test FAILED for request 8c4fb1ee-a411-4846-bd58-f0ee08175fd1. See the Owner test evidence.",
+    "latency_diagnostics_revision_3": "PASS: paced local Res-to-Chat SSE fixture passed after expected RED; headers/first-byte/body/chunk-count/synchronous-processing timings remain finite and separate; converted event order and sanitized persisted request logs verified. Runtime 232/232; Desktop 197/197; Desktop TypeScript/Vite build; syntax/JSON checks; CRLF-aware git diff check. No provider calls or executable replacement.",
+    "latency_diagnostics_independent_review": "BLOCKED: two reviewer dispatches could not start because the CC Switch local proxy returned HTTP 404 route_not_found and HTTP 400 unsupported_feature for their Codex /responses calls. Neither returned a code-review verdict; the earlier review of the round-trip candidate does not cover revision 3.",
+    "same_model_latency_ab": "NOT_RUN: requires a new diagnostic-enabled Desktop Portable; no package build or executable replacement was authorized in revision 3. Owner comparison and review of fresh request IDs are pending.",
+    "integration_authorization": "PASS: direct Owner request on 2026-11-24 authorizes PR #22 commit/update, merge, primary-worktree synchronization, and GitHub v1.1.8 publication; no Desktop overwrite or provider call is authorized.",
+    "release_preflight": "PASS: live GitHub reports latest release/tag v1.1.7; no v1.1.8 tag exists; task worktree package/product/build metadata is 1.1.8; release target is v1.1.8.",
+    "release_candidate_1_1_8": "PASS: local Windows x64 NSIS installer, Portable, blockmap, and manifest built under apps/desktop/release/1.1.8-github-release. verify-release passed; unpacked app reported 1.1.8; isolated Portable health smoke passed for Local Control and Gateway. Unsigned because no signing certificate is configured. Portable 115033173 bytes, SHA-256 78908A66518DD7C17D9B42A1AC3DBA042D2E52D53B739801A2D7889DAEFE5DDB; Setup 126513094 bytes, SHA-256 CE16E92F08C91BA2BE7BD64D9E7712F98980650833A04F276197AF1CC8ADCDBE; blockmap 133196 bytes, SHA-256 7073DF5D2EC525A419821FBBDCE0240D56271264B97DB2712A0DE9D155567C21; manifest SHA-256 1A3FA9A3FF4D722549D94D051283F8FC1A58663BB453605E69DD96B653C144C7. Existing Desktop v1.1.7 and both v1.1.8 test executables retain their prior recorded hashes; they were not overwritten. GitHub publication remains pending.",
+    "responses_roundtrip_independent_review": "BLOCKED: the revision 2 reviewer session returned HTTP 400 unsupported_feature from its CC Switch route before providing a code verdict. Owner manual testing of the 1.1.8 round-trip candidate passed; no live provider calls were made by Codex."
+  }
+}

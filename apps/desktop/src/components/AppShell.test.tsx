@@ -33,7 +33,7 @@ describe("AppShell", () => {
     expect(context).toHaveTextContent("本机工作区运行记录请求日志");
   });
 
-  it("names the product and exposes all six workspace destinations", () => {
+  it("names the product and exposes all seven workspace destinations", () => {
     render(
       <MemoryRouter initialEntries={["/"]}>
         <AppShell>
@@ -44,7 +44,7 @@ describe("AppShell", () => {
 
     expect(screen.getByTestId("window-title")).toHaveTextContent("Cx-Routing Gateway");
     expect(screen.queryByRole("link", { name: /Cx-Routing Gateway/ })).not.toBeInTheDocument();
-    const destinations = ["总览", "上游服务", "模型路由", "请求日志", "接入凭证", "设置"];
+    const destinations = ["总览", "上游服务", "模型路由", "请求日志", "接入凭证", "Codex 路由与管理", "设置"];
     for (const label of destinations) {
       const link = screen.getByRole("link", { name: label });
       expect(link).toBeVisible();
@@ -52,7 +52,7 @@ describe("AppShell", () => {
       expect(icon).toHaveAttribute("aria-hidden", "true");
       expect(link.firstElementChild).toBe(icon);
     }
-    expect(screen.getByRole("navigation", { name: "主导航" }).querySelectorAll("svg")).toHaveLength(6);
+    expect(screen.getByRole("navigation", { name: "主导航" }).querySelectorAll("svg")).toHaveLength(7);
     expect(screen.getByRole("heading", { name: "总览" })).toBeVisible();
     expect(screen.getByRole("link", { name: "跳到主要内容" })).toHaveAttribute("href", "#main-content");
     expect(screen.getByRole("banner", { name: "窗口标题栏" })).toBeVisible();

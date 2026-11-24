@@ -4,16 +4,17 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
+import net from 'node:net';
 import crypto from 'node:crypto';
 import { ConfigStore } from '../../packages/shared/src/config-store.mjs';
 import { SecretVault } from '../../packages/shared/src/secret-vault.mjs';
 import { createControlServer } from '../../services/local-control/src/server.mjs';
 import { createGatewayServer, validateDestination } from '../../services/gateway/src/server.mjs';
 
-function listen(server) { return new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server.address().port))); }
+function listen(server, host = '127.0.0.1') { return new Promise((resolve) => server.listen(0, host, () => resolve(server.address().port))); }
 
-async function createTimeoutFixture(t, upstream, gatewayOptions = {}) {
-  const upstreamPort = await listen(upstream);
+async function createTimeoutFixture(t, upstream, gatewayOptions = {}, upstreamHost = '127.0.0.1', responsesUpstream = 'Chat') {
+  const upstreamPort = await listen(upstream, upstreamHost);
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-deadline-'));
   const store = new ConfigStore(path.join(dir, 'config.json'));
   const vault = new SecretVault(path.join(dir, 'secrets.json'), 'test-master-key');
@@ -23,7 +24,7 @@ async function createTimeoutFixture(t, upstream, gatewayOptions = {}) {
     upstreams: [{ id: 'deadline-upstream', name: 'Deadline', baseUrl: `http://127.0.0.1:${upstreamPort}`, protocol: 'Chat', trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'], enabled: true }],
     routes: [
       { id: 'deadline-chat-route', alias: 'deadline-chat', inboundProtocol: 'Chat', outboundProtocol: 'Chat', upstreamId: 'deadline-upstream', modelId: 'mock-chat', enabled: true },
-      { id: 'deadline-res-route', alias: 'deadline-res', inboundProtocol: 'Res', outboundProtocol: 'Chat', upstreamId: 'deadline-upstream', modelId: 'mock-chat', enabled: true },
+      { id: 'deadline-res-route', alias: 'deadline-res', inboundProtocol: 'Res', outboundProtocol: responsesUpstream, upstreamId: 'deadline-upstream', modelId: responsesUpstream === 'Mes' ? 'mock-mes' : 'mock-chat', enabled: true },
     ],
     clientKeys: [{ id: 'deadline-key', keyHash, scope: [], createdAt: new Date().toISOString(), enabled: true, name: 'deadline' }],
   }));
@@ -732,11 +733,17 @@ test('gateway converts parallel streamed tool calls from Chat to Responses', asy
   t.after(() => gateway.close());
   const response = await fetch(`http://127.0.0.1:${gateway.address().port}/v1/responses`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${clientKey}` }, body: JSON.stringify({ model: 'parallel-responses', stream: true, input: 'lookup a and b', tools: [{ type: 'function', name: 'lookup', parameters: { type: 'object' } }] }) });
   assert.equal(response.status, 200);
-  const text = await response.text();
-  assert.match(text, /"output_index":0,"item":\{"type":"function_call","id":"call-a"/);
-  assert.match(text, /"output_index":1,"item":\{"type":"function_call","id":"call-b"/);
-  assert.match(text, /"output_index":0,"delta":"\{\\"key\\":\\"a\\"\}"/);
-  assert.match(text, /"output_index":1,"delta":"\{\\"key\\":\\"b\\"\}"/);
+  const frames = responsesFrames(await response.text());
+  const finished = frames.filter(frame => frame.type === 'response.output_item.done');
+  assert.deepEqual(finished.map(({ output_index, item }) => [output_index, item.call_id, JSON.parse(item.arguments)]),
+    [[0, 'call-a', { key: 'a' }], [1, 'call-b', { key: 'b' }]]);
+  for (const { output_index, item } of finished) {
+    const added = frames.find(frame => frame.type === 'response.output_item.added' && frame.output_index === output_index);
+    const delta = frames.find(frame => frame.type === 'response.function_call_arguments.delta' && frame.output_index === output_index);
+    assert.equal(added.item.id, item.id);
+    assert.equal(delta.item_id, item.id);
+    assert.equal(delta.delta, item.arguments);
+  }
 });
 
 test('gateway converts one function tool definition and tool call from Chat to Messages', async (t) => {
@@ -796,6 +803,26 @@ test('gateway restores a namespaced Responses tool call after a Chat upstream re
   assert.equal(body.output[0].name, 'get_time');
   assert.equal(body.output[0].namespace, 'mcp__clock');
   assert.equal(body.output[0].call_id, 'call-gateway-ns');
+});
+
+test('gateway safely rejects server-executed built-ins without echoing submitted tool data', async (t) => {
+  const upstream = http.createServer((_req, res) => {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'unexpected upstream call' } }] }));
+  });
+  const app = await createTimeoutFixture(t, upstream);
+  const privateName = 'private-search-backend';
+  const privateSchema = { type: 'object', properties: { privateField: { type: 'string', description: 'secret schema detail' } } };
+  const privateArgument = 'sensitive query phrase';
+  const response = await app.request('Res', false, 'find something', {
+    tools: [{ type: 'web_search_preview', name: privateName, execution: 'server', parameters: privateSchema, arguments: privateArgument }],
+  });
+  assert.equal(response.status, 400);
+  const payload = await response.json();
+  assert.equal(payload.error, 'unsupported_feature');
+  assert.equal(payload.field, 'tools.type');
+  const diagnostics = JSON.stringify(payload);
+  assert.doesNotMatch(diagnostics, /private-search-backend|secret schema detail|sensitive query phrase/);
 });
 
 test('gateway streams namespaced custom tools back as Responses custom input', async (t) => {
@@ -1119,6 +1146,9 @@ test('gateway cancels the active upstream request when its client disconnects', 
   assert.equal(recovered.status, 200);
   assert.equal((await recovered.json()).choices[0].message.content, 'after-disconnect');
   assert.equal(upstreamCalls, 2);
+  const cancelled = (await store.read()).usage.find(entry => entry.errorCode === 'request_aborted');
+  assert.ok(cancelled);
+  assert.equal(cancelled.gatewayStatus, undefined);
   const state = await store.read();
   assert.deepEqual(state.usage.map(entry => entry.status), ['failed', 'completed']);
 });
@@ -1519,4 +1549,785 @@ test('gateway normalizes a reset upstream response into a readable sanitized err
   });
   assert.equal(recovered.status, 200);
   assert.equal((await recovered.json()).choices[0].message.content, 'backup');
+});
+
+function responsesFrames(wire) {
+  return wire.split(/\r?\n\r?\n/).filter(frame => frame.trim()).map(frame => {
+    const data = frame.split(/\r?\n/).filter(line => line.startsWith('data:')).map(line => line.slice(5).trimStart()).join('\n');
+    return data && data !== '[DONE]' ? JSON.parse(data) : undefined;
+  }).filter(Boolean);
+}
+
+async function waitForUsage(store, count = 1) {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const usage = (await store.read()).usage || [];
+    if (usage.length >= count) return usage.at(-1);
+    await new Promise(resolve => setTimeout(resolve, 5));
+  }
+  throw new Error('Expected request log was not persisted');
+}
+
+test('Chat to Responses streams complete assistant text and function output items', async t => {
+  let posted;
+  const upstream = http.createServer(async (req, res) => {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    posted = { path: req.url, body: JSON.parse(Buffer.concat(chunks)) };
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    const chat = (delta, finish_reason = null) => ({ choices: [{ index: 0, delta, finish_reason }] });
+    const chunksOut = [
+      chat({ role: 'assistant', reasoning_content: 'fixture reasoning' }),
+      chat({ content: '已找到' }),
+      chat({ content: '文档', tool_calls: [{ index: 0, id: 'call_fixture', type: 'function', function: { name: 'lookup', arguments: '{"key":' } }] }),
+      chat({ tool_calls: [{ index: 0, function: { arguments: '"doc"}' } }] }, 'tool_calls'),
+      { choices: [], usage: { prompt_tokens: 8, completion_tokens: 4, total_tokens: 12 } },
+    ];
+    res.end(chunksOut.map(chunk => 'data: ' + JSON.stringify(chunk) + '\n\n').join('') + 'data: [DONE]\n\n');
+  });
+  const app = await createTimeoutFixture(t, upstream);
+  const response = await app.request('Res', true, 'find doc', {
+    tools: [{ type: 'function', name: 'lookup', parameters: { type: 'object' } }],
+  });
+  assert.equal(response.status, 200);
+  const wire = await response.text();
+  assert.equal(posted.path, '/v1/chat/completions');
+  assert.equal(posted.body.tools[0].function.name, 'lookup');
+  assert.equal(posted.body.messages.at(-1).content, 'find doc');
+  assert.doesNotMatch(wire, /fixture reasoning/);
+  const frames = responsesFrames(wire);
+  const created = frames[0];
+  const completed = frames.at(-1);
+  assert.equal(created.type, 'response.created');
+  assert.equal(completed.type, 'response.completed');
+  assert.equal(completed.response.id, created.response.id);
+  assert.deepEqual(frames.map(frame => frame.sequence_number), frames.map((_, index) => index));
+  const opened = frames.filter(frame => frame.type === 'response.output_item.added');
+  const closed = frames.filter(frame => frame.type === 'response.output_item.done');
+  const message = closed.find(frame => frame.item.type === 'message');
+  const call = closed.find(frame => frame.item.type === 'function_call');
+  assert.ok(message);
+  assert.ok(call);
+  assert.equal(message.item.content[0].text, '已找到文档');
+  assert.equal(call.item.call_id, 'call_fixture');
+  assert.equal(call.item.name, 'lookup');
+  assert.equal(call.item.arguments, '{"key":"doc"}');
+  assert.notEqual(message.output_index, call.output_index);
+  assert.equal(opened.find(frame => frame.output_index === message.output_index).item.id, message.item.id);
+  assert.equal(opened.find(frame => frame.output_index === call.output_index).item.id, call.item.id);
+  const textDeltas = frames.filter(frame => frame.type === 'response.output_text.delta');
+  assert.equal(textDeltas.map(frame => frame.delta).join(''), '已找到文档');
+  assert.ok(textDeltas.every(frame => frame.item_id === message.item.id && frame.output_index === message.output_index && frame.content_index === 0));
+  const argumentDeltas = frames.filter(frame => frame.type === 'response.function_call_arguments.delta');
+  assert.equal(argumentDeltas.map(frame => frame.delta).join(''), call.item.arguments);
+  assert.ok(argumentDeltas.every(frame => frame.item_id === call.item.id && frame.output_index === call.output_index));
+  assert.ok(frames.some(frame => frame.type === 'response.content_part.added' && frame.item_id === message.item.id));
+  assert.ok(frames.some(frame => frame.type === 'response.output_text.done' && frame.item_id === message.item.id && frame.text === '已找到文档'));
+  assert.ok(frames.some(frame => frame.type === 'response.content_part.done' && frame.item_id === message.item.id));
+  assert.ok(frames.some(frame => frame.type === 'response.function_call_arguments.done' && frame.item_id === call.item.id));
+  assert.deepEqual(completed.response.output, closed.map(frame => frame.item));
+  assert.equal(completed.response.usage.output_tokens, 4);
+  assert.equal((await waitForUsage(app.store)).status, 'completed');
+});
+
+test('Chat to Responses with only reasoning and usage fails before a downstream completion', async t => {
+  const upstream = http.createServer((_req, res) => {
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.end('data: {"choices":[{"delta":{"reasoning_content":"fixture private reasoning"}}]}\n\n'
+      + 'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\n'
+      + 'data: {"choices":[],"usage":{"prompt_tokens":8,"completion_tokens":4,"total_tokens":12}}\n\n'
+      + 'data: [DONE]\n\n');
+  });
+  const app = await createTimeoutFixture(t, upstream);
+  const response = await app.request('Res', true);
+  const wire = await response.text();
+  assert.equal(response.status, 502, wire);
+  assert.doesNotMatch(wire, /response\.completed|fixture private reasoning/);
+  const log = await waitForUsage(app.store);
+  assert.equal(log.status, 'failed');
+  assert.equal(log.gatewayStatus, 502);
+  assert.equal(log.upstreamStatus, 200);
+  assert.equal(log.tokens.output, 4);
+});
+
+function messagesEvent(type, fields = {}) {
+  return 'event: ' + type + '\ndata: ' + JSON.stringify({ type, ...fields }) + '\n\n';
+}
+
+test('Responses round trip through Messages preserves stream text, tools, and usage', async t => {
+  let posted;
+  const schema = { type: 'object', properties: { key: { type: 'string' } } };
+  const upstream = http.createServer(async (req, res) => {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    const body = JSON.parse(Buffer.concat(chunks));
+    posted = { path: req.url, body };
+    if (body.tool_choice?.type !== 'auto') {
+      res.writeHead(400, { 'content-type': 'application/json' });
+      res.end('{}');
+      return;
+    }
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.end(
+      messagesEvent('message_start', { message: { id: 'msg_fixture', content: [], usage: { input_tokens: 8, output_tokens: 1 } } })
+      + messagesEvent('content_block_start', { index: 0, content_block: { type: 'text', text: '' } })
+      + messagesEvent('content_block_delta', { index: 0, delta: { type: 'text_delta', text: 'Found ' } })
+      + messagesEvent('content_block_delta', { index: 0, delta: { type: 'text_delta', text: 'doc' } })
+      + messagesEvent('content_block_stop', { index: 0 })
+      + messagesEvent('content_block_start', { index: 1, content_block: { type: 'tool_use', id: 'toolu_fixture', name: 'lookup', input: {} } })
+      + messagesEvent('content_block_delta', { index: 1, delta: { type: 'input_json_delta', partial_json: '{"key":' } })
+      + messagesEvent('content_block_delta', { index: 1, delta: { type: 'input_json_delta', partial_json: '"doc"}' } })
+      + messagesEvent('content_block_stop', { index: 1 })
+      + messagesEvent('message_delta', { delta: { stop_reason: 'tool_use' }, usage: { output_tokens: 6 } })
+      + messagesEvent('message_stop'),
+    );
+  });
+  const app = await createTimeoutFixture(t, upstream, {}, '127.0.0.1', 'Mes');
+  const response = await app.request('Res', true, 'Find doc', {
+    instructions: 'Be concise', tool_choice: 'auto', max_output_tokens: 64,
+    tools: [{ type: 'function', name: 'lookup', parameters: schema }],
+  });
+  const wire = await response.text();
+  assert.equal(posted.path, '/v1/messages');
+  assert.deepEqual(posted.body, {
+    model: 'mock-mes', stream: true, messages: [{ role: 'user', content: 'Find doc' }], system: 'Be concise',
+    max_tokens: 64, tools: [{ name: 'lookup', input_schema: schema }], tool_choice: { type: 'auto' },
+  });
+  assert.equal(response.status, 200, wire);
+  const frames = responsesFrames(wire);
+  assert.equal(frames[0].type, 'response.created');
+  assert.deepEqual(frames.map(frame => frame.sequence_number), frames.map((_, index) => index));
+  const closed = frames.filter(frame => frame.type === 'response.output_item.done');
+  assert.deepEqual(closed.map(frame => frame.output_index), [0, 1]);
+  assert.deepEqual(closed.map(frame => frame.item.type), ['message', 'function_call']);
+  for (const { output_index, item } of closed) {
+    assert.equal(frames.find(frame => frame.type === 'response.output_item.added' && frame.output_index === output_index).item.id, item.id);
+  }
+  const [message, call] = closed.map(frame => frame.item);
+  const text = frames.filter(frame => frame.type === 'response.output_text.delta');
+  const args = frames.filter(frame => frame.type === 'response.function_call_arguments.delta');
+  assert.ok(text.every(frame => frame.item_id === message.id && frame.output_index === 0 && frame.content_index === 0));
+  assert.ok(args.every(frame => frame.item_id === call.id && frame.output_index === 1));
+  assert.equal(text.map(frame => frame.delta).join(''), 'Found doc');
+  assert.equal(message.content[0].text, 'Found doc');
+  assert.equal(call.call_id, 'toolu_fixture');
+  assert.equal(call.name, 'lookup');
+  assert.equal(args.map(frame => frame.delta).join(''), call.arguments);
+  assert.deepEqual(JSON.parse(call.arguments), { key: 'doc' });
+  assert.equal(frames.at(-1).type, 'response.completed');
+  assert.equal(frames.at(-1).response.id, frames[0].response.id);
+  assert.deepEqual(frames.at(-1).response.output, [message, call]);
+  assert.equal(frames.at(-1).response.usage.output_tokens, 6);
+  assert.equal((await waitForUsage(app.store)).status, 'completed');
+});
+
+for (const protocol of ['Chat', 'Mes']) {
+  test(`Responses round trip through ${protocol} retains text next to a non-streaming tool call`, async t => {
+    const upstream = http.createServer((_req, res) => {
+      const chat = { choices: [{ finish_reason: 'tool_calls', message: {
+        content: 'Looking up doc', tool_calls: [{ id: 'call_json', function: { name: 'lookup', arguments: '{"key":"doc"}' } }],
+      } }] };
+      const mes = { stop_reason: 'tool_use', content: [
+        { type: 'text', text: 'Looking up doc' }, { type: 'tool_use', id: 'call_json', name: 'lookup', input: { key: 'doc' } },
+      ] };
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify(protocol === 'Chat' ? chat : mes));
+    });
+    const app = await createTimeoutFixture(t, upstream, {}, '127.0.0.1', protocol);
+    const response = await app.request('Res', false, 'Find doc', {
+      tools: [{ type: 'function', name: 'lookup', parameters: { type: 'object' } }],
+    });
+    assert.equal(response.status, 200);
+    const { output } = await response.json();
+    assert.deepEqual(output.map(item => item.type), ['message', 'function_call']);
+    assert.equal(output[0].content[0].text, 'Looking up doc');
+    assert.deepEqual([output[1].call_id, output[1].name, JSON.parse(output[1].arguments)], ['call_json', 'lookup', { key: 'doc' }]);
+  });
+
+  test(`Responses follow-up through ${protocol} groups assistant text and parallel calls before their results`, async t => {
+    let body;
+    const upstream = http.createServer(async (req, res) => {
+      const chunks = [];
+      for await (const chunk of req) chunks.push(chunk);
+      body = JSON.parse(Buffer.concat(chunks));
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify(protocol === 'Chat'
+        ? { choices: [{ message: { content: 'Done' } }] }
+        : { content: [{ type: 'text', text: 'Done' }] }));
+    });
+    const app = await createTimeoutFixture(t, upstream, {}, '127.0.0.1', protocol);
+    const keys = ['a', 'b'];
+    const response = await app.request('Res', false, [
+      { role: 'user', content: 'Find both' },
+      { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Looking up both' }] },
+      ...keys.map(key => ({ type: 'function_call', name: 'lookup', call_id: 'call_' + key, arguments: JSON.stringify({ key }) })),
+      ...keys.map(key => ({ type: 'function_call_output', call_id: 'call_' + key, output: 'value ' + key })),
+    ]);
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).output[0].content[0].text, 'Done');
+    if (protocol === 'Chat') {
+      assert.deepEqual(body.messages.map(message => message.role), ['user', 'assistant', 'tool', 'tool']);
+      assert.equal(body.messages[1].content, 'Looking up both');
+      assert.deepEqual(body.messages[1].tool_calls.map(call => call.id), ['call_a', 'call_b']);
+      assert.deepEqual(body.messages.slice(2).map(result => result.tool_call_id), ['call_a', 'call_b']);
+    } else {
+      assert.deepEqual(body.messages.map(message => message.role), ['user', 'assistant', 'user']);
+      assert.deepEqual(body.messages[1].content, [
+        { type: 'text', text: 'Looking up both' },
+        ...keys.map(key => ({ type: 'tool_use', id: 'call_' + key, name: 'lookup', input: { key } })),
+      ]);
+      assert.deepEqual(body.messages[2].content.map(result => result.tool_use_id), ['call_a', 'call_b']);
+    }
+  });
+}
+
+test('Messages to Responses rejects a thinking-only stream with HTTP 502', async t => {
+  const upstream = http.createServer((_req, res) => {
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.end(messagesEvent('message_start', { message: { usage: { input_tokens: 8, output_tokens: 1 } } })
+      + messagesEvent('content_block_start', { index: 0, content_block: { type: 'thinking', thinking: '' } })
+      + messagesEvent('content_block_delta', { index: 0, delta: { type: 'thinking_delta', thinking: 'private fixture thought' } })
+      + messagesEvent('content_block_stop', { index: 0 })
+      + messagesEvent('message_delta', { delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 4 } })
+      + messagesEvent('message_stop'));
+  });
+  const app = await createTimeoutFixture(t, upstream, {}, '127.0.0.1', 'Mes');
+  const response = await app.request('Res', true);
+  assert.equal(response.status, 502);
+  assert.doesNotMatch(await response.text(), /private fixture thought|response\.completed/);
+  const log = await waitForUsage(app.store);
+  assert.equal(log.status, 'failed');
+  assert.equal(log.upstreamStatus, 200);
+});
+
+test('Messages SSE error cannot complete a Responses stream after partial text', async t => {
+  const upstream = http.createServer((_req, res) => {
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.end(messagesEvent('content_block_delta', { index: 0, delta: { type: 'text_delta', text: 'partial' } })
+      + messagesEvent('error', { error: { type: 'overloaded_error', message: 'private fixture error' } })
+      + messagesEvent('message_stop'));
+  });
+  const app = await createTimeoutFixture(t, upstream, {}, '127.0.0.1', 'Mes');
+  const response = await app.request('Res', true);
+  assert.equal(response.status, 200);
+  const wire = await response.text();
+  assert.doesNotMatch(wire, /private fixture error|response\.completed/);
+  const frames = responsesFrames(wire);
+  assert.equal(frames.find(frame => frame.type === 'response.output_text.delta').delta, 'partial');
+  assert.equal(frames.at(-1).type, 'error');
+  assert.deepEqual(frames.map(frame => frame.sequence_number), frames.map((_, index) => index));
+  const log = await waitForUsage(app.store);
+  assert.equal(log.status, 'failed');
+  assert.equal(log.gatewayStatus, 200);
+  assert.equal(log.upstreamStatus, 200);
+});
+
+test('Messages end of stream without message_stop fails after partial text', async t => {
+  const upstream = http.createServer((_req, res) => {
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.end(messagesEvent('content_block_delta', { index: 0, delta: { type: 'text_delta', text: 'partial' } }));
+  });
+  const app = await createTimeoutFixture(t, upstream, {}, '127.0.0.1', 'Mes');
+  const response = await app.request('Res', true);
+  assert.equal(response.status, 200);
+  assert.equal(responsesFrames(await response.text()).at(-1).type, 'error');
+  assert.equal((await waitForUsage(app.store)).status, 'failed');
+});
+
+for (const protocol of ['Chat', 'Mes']) {
+  test(`Responses reports incomplete when ${protocol} stops at its output limit`, async t => {
+    const upstream = http.createServer((_req, res) => {
+      res.writeHead(200, { 'content-type': 'text/event-stream' });
+      res.end(protocol === 'Chat'
+        ? 'data: {"choices":[{"delta":{"content":"partial"},"finish_reason":"length"}]}\n\ndata: [DONE]\n\n'
+        : messagesEvent('content_block_delta', { index: 0, delta: { type: 'text_delta', text: 'partial' } })
+          + messagesEvent('message_delta', { delta: { stop_reason: 'max_tokens' } })
+          + messagesEvent('message_stop'));
+    });
+    const app = await createTimeoutFixture(t, upstream, {}, '127.0.0.1', protocol);
+    const response = await app.request('Res', true);
+    assert.equal(response.status, 200);
+    const frames = responsesFrames(await response.text());
+    assert.equal(frames.at(-1).type, 'response.incomplete');
+    assert.equal(frames.at(-1).response.status, 'incomplete');
+    assert.equal(frames.at(-1).response.incomplete_details.reason, 'max_output_tokens');
+    assert.equal(frames.at(-1).response.output[0].content[0].text, 'partial');
+    assert.equal(frames.at(-1).response.output[0].status, 'incomplete');
+    assert.ok(!frames.some(frame => frame.type === 'response.completed'));
+  });
+}
+
+test('Messages tool use without argument deltas returns an empty object to Responses', async t => {
+  const upstream = http.createServer((_req, res) => {
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.end(messagesEvent('content_block_start', { index: 0, content_block: { type: 'tool_use', id: 'toolu_empty', name: 'lookup', input: {} } })
+      + messagesEvent('content_block_stop', { index: 0 })
+      + messagesEvent('message_delta', { delta: { stop_reason: 'tool_use' } })
+      + messagesEvent('message_stop'));
+  });
+  const app = await createTimeoutFixture(t, upstream, {}, '127.0.0.1', 'Mes');
+  const response = await app.request('Res', true);
+  assert.equal(response.status, 200);
+  const frames = responsesFrames(await response.text());
+  assert.equal(frames.at(-1).response.output[0].arguments, '{}');
+  assert.equal(frames.find(frame => frame.type === 'response.function_call_arguments.done').arguments, '{}');
+});
+
+test('Responses stream reset before headers stays a sanitized 502 without retry', async t => {
+  let attempts = 0;
+  let fallbackAttempts = 0;
+  const upstream = http.createServer((_req, res) => { attempts += 1; res.destroy(); });
+  const app = await createTimeoutFixture(t, upstream, {
+    dnsLookup: async hostname => hostname === 'dual-reset.test'
+      ? [{ address: '127.0.0.1', family: 4 }, { address: '127.0.0.2', family: 4 }]
+      : [],
+  });
+  const fallback = http.createServer(async (req, res) => {
+    fallbackAttempts += 1;
+    for await (const _chunk of req) { /* A fallback here would replay an ambiguous model request. */ }
+    replyFailoverResponse(res, 200, 'must-not-retry-after-reset');
+  });
+  await new Promise((resolve, reject) => fallback.listen(upstream.address().port, '127.0.0.2', resolve).once('error', reject));
+  t.after(() => { fallback.closeAllConnections(); fallback.close(); });
+  await app.store.update(config => ({ ...config, upstreams: config.upstreams.map(item => ({ ...item, baseUrl: `http://dual-reset.test:${upstream.address().port}`, approvedAddresses: ['127.0.0.1', '127.0.0.2'] })) }));
+  const response = await app.request('Res', true, 'private-reset-prompt');
+  assert.equal(response.status, 502);
+  const error = await response.json();
+  assert.equal(error.error, 'upstream_connection_reset');
+  const log = await waitForUsage(app.store);
+  assert.equal(log.status, 'failed');
+  assert.equal(log.gatewayStatus, 502);
+  assert.equal(log.upstreamStatus, undefined);
+  assert.equal(log.streamFailurePhase, 'upstream_headers');
+  assert.equal(attempts, 1);
+  assert.equal(fallbackAttempts, 0);
+  assert.doesNotMatch(JSON.stringify(log), /private-reset-prompt|Bearer|socket hang up/);
+});
+
+for (const converted of [false, true]) {
+  test(`Responses ${converted ? 'converted' : 'passthrough'} stream reset after output ends with a sequenced error, not a second HTTP 502`, async t => {
+    let upstreamResponse;
+    let attempts = 0;
+    const upstream = http.createServer((_req, res) => {
+      attempts += 1;
+      upstreamResponse = res;
+      res.writeHead(200, { 'content-type': 'text/event-stream' });
+      res.write(converted
+        ? 'data: {"choices":[{"delta":{"content":"private-partial-output"}}]}\n\n'
+        : 'event: response.output_text.delta\ndata: {"type":"response.output_text.delta","sequence_number":4,"delta":"private-partial-output"}\n\n');
+    });
+    const app = await createTimeoutFixture(t, upstream);
+    if (!converted) await app.store.update(config => ({ ...config, routes: config.routes.map(route => route.inboundProtocol === 'Res' ? { ...route, outboundProtocol: 'Res' } : route) }));
+    const response = await app.request('Res', true, 'private-reset-prompt');
+    assert.equal(response.status, 200);
+    const reader = response.body.getReader();
+    const first = await reader.read();
+    assert.equal(first.done, false);
+    let wire = Buffer.from(first.value).toString('utf8');
+    upstreamResponse.destroy();
+    while (true) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      wire += Buffer.from(chunk.value).toString('utf8');
+    }
+    const frames = responsesFrames(wire);
+    const terminal = frames.at(-1);
+    assert.equal(terminal.type, 'error');
+    assert.equal(terminal.code, 'upstream_connection_reset');
+    assert.equal(terminal.param, null);
+    assert.equal(typeof terminal.message, 'string');
+    assert.ok(Number.isSafeInteger(terminal.sequence_number));
+    assert.ok(terminal.sequence_number > frames[0].sequence_number);
+    assert.equal(frames.filter(frame => frame.type === 'error').length, 1);
+    assert.equal(frames.some(frame => frame.type === 'response.completed'), false);
+    const log = await waitForUsage(app.store);
+    assert.equal(log.status, 'failed');
+    assert.equal(log.errorCode, 'upstream_connection_reset');
+    assert.equal(log.upstreamStatus, 200);
+    assert.equal(log.gatewayStatus, 200);
+    assert.equal(log.streamFailurePhase, 'upstream_body');
+    assert.ok(log.firstTokenMs >= 0);
+    assert.ok(Number.isFinite(log.upstreamHeadersMs));
+    assert.ok(Number.isFinite(log.upstreamFirstByteMs));
+    assert.ok(Number.isFinite(log.upstreamBodyMs));
+    assert.ok(log.upstreamChunkCount >= 1);
+    assert.ok(Number.isFinite(log.gatewayProcessingMs));
+    assert.equal(attempts, 1);
+    assert.doesNotMatch(JSON.stringify(log), /private-reset-prompt|private-partial-output|Bearer|socket hang up/);
+  });
+}
+
+test('Responses client disconnect stops upstream and records a bounded failure phase', async t => {
+  let closed;
+  const upstreamClosed = new Promise(resolve => { closed = resolve; });
+  const upstream = http.createServer((_req, res) => {
+    res.on('close', closed);
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.write('event: response.output_text.delta\ndata: {"type":"response.output_text.delta","sequence_number":1,"delta":"partial"}\n\n');
+  });
+  const app = await createTimeoutFixture(t, upstream);
+  await app.store.update(config => ({ ...config, routes: config.routes.map(route => route.inboundProtocol === 'Res' ? { ...route, outboundProtocol: 'Res' } : route) }));
+  const response = await app.request('Res', true);
+  const reader = response.body.getReader();
+  await reader.read();
+  await reader.cancel();
+  await upstreamClosed;
+  const log = await waitForUsage(app.store);
+  assert.equal(log.status, 'failed');
+  assert.equal(log.upstreamStatus, 200);
+  assert.equal(log.gatewayStatus, 200);
+  assert.equal(log.streamFailurePhase, 'downstream_closed');
+});
+test('Gateway forwards Codex tool search, structural tools and resumed namespace history through local Chat', async t => {
+  let received = [];
+  const upstream = http.createServer(async (req, res) => {
+    let text = ''; for await (const chunk of req) text += chunk;
+    const body = JSON.parse(text); received.push(body);
+    const search = body.tools?.find(tool => tool.function?.parameters?.properties?.query?.type === 'string');
+    if (!body.stream) {
+      res.setHeader('content-type', 'application/json');
+      res.end(JSON.stringify({ id: 'chat-search-integration', choices: [{ finish_reason: 'tool_calls', message: { tool_calls: [{ id: 'search-integration-1', type: 'function', function: { name: search?.function.name, arguments: '{"query":"clock","limit":2}' } }] } }] }));
+    } else {
+      const loaded = body.tools.find(tool => tool.function?.name.includes('get_time'));
+      res.writeHead(200, { 'content-type': 'text/event-stream' });
+      res.end('data: ' + JSON.stringify({ choices: [{ delta: { tool_calls: [{ index: 0, id: 'loaded-call-1', type: 'function', function: { name: loaded?.function.name, arguments: '{}' } }] } }] }) + '\n\n' + 'data: {"choices":[{"delta":{},"finish_reason":"tool_calls"}]}\n\ndata: [DONE]\n\n');
+    }
+  });
+  const app = await createTimeoutFixture(t, upstream);
+  const initialInput = [
+    { role: 'user', content: 'private-codex-tool-prompt' },
+    { type: 'additional_tools', role: 'developer', tools: [{ type: 'namespace', name: 'mcp__patch', tools: [{ type: 'custom', name: 'apply_patch', format: { type: 'text' } }] }] },
+  ];
+  const response = await app.request('Res', false, initialInput, { tools: [{ type: 'tool_search' }] });
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  const searchCall = result.output[0];
+  assert.equal(searchCall.type, 'tool_search_call');
+  assert.equal(searchCall.call_id, 'search-integration-1');
+  assert.equal(searchCall.execution, 'client');
+  assert.deepEqual(searchCall.arguments, { query: 'clock', limit: 2 });
+  assert.equal(received[0].messages.length, 1);
+  assert.equal(received[0].tools.length, 2);
+  assert.equal(received[0].tools.every(tool => tool.type === 'function'), true);
+
+  const loaded = [{ type: 'namespace', name: 'mcp__clock', tools: [{ type: 'function', name: 'get_time', parameters: { type: 'object', properties: {} } }] }];
+  const resumed = await app.request('Res', true, [
+    ...initialInput,
+    searchCall,
+    { type: 'tool_search_output', call_id: 'search-integration-1', execution: 'client', status: 'completed', tools: loaded },
+  ], { tools: [{ type: 'tool_search' }] });
+  assert.equal(resumed.status, 200);
+  const frames = responsesFrames(await resumed.text());
+  const call = frames.find(frame => frame.type === 'response.output_item.added' && frame.item?.call_id === 'loaded-call-1').item;
+  assert.equal(call.type, 'function_call');
+  assert.equal(call.name, 'get_time');
+  assert.equal(call.namespace, 'mcp__clock');
+  assert.equal(frames.filter(frame => frame.type === 'response.completed').length, 1);
+  assert.deepEqual(frames.map(frame => frame.sequence_number), frames.map((_frame, index) => index));
+  const resumedChat = received[1];
+  assert.equal(resumedChat.messages[1].tool_calls[0].id, 'search-integration-1');
+  assert.equal(resumedChat.messages[2].role, 'tool');
+  assert.equal(resumedChat.messages[2].tool_call_id, 'search-integration-1');
+  assert.deepEqual(JSON.parse(resumedChat.messages[2].content), { status: 'completed', tools: loaded });
+  const log = await waitForUsage(app.store, 2);
+  assert.equal(log.status, 'completed');
+  assert.doesNotMatch(JSON.stringify((await app.store.read()).usage), /private-codex-tool-prompt|apply_patch|get_time|clock/);
+  assert.equal(received.length, 2);
+});
+test('Gateway records invalid upstream tool-search arguments as one failed request, never success', async t => {
+  const upstream = http.createServer((_req, res) => {
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify({ choices: [{ finish_reason: 'tool_calls', message: { tool_calls: [{ id: 'bad-search', type: 'function', function: { name: 'tool_search', arguments: 'private-invalid-json' } }] } }] }));
+  });
+  const app = await createTimeoutFixture(t, upstream);
+  const response = await app.request('Res', false, 'private-prompt', { tools: [{ type: 'tool_search' }] });
+  assert.equal(response.status, 502);
+  const body = await response.text();
+  assert.doesNotMatch(body, /private-invalid-json|private-prompt/);
+  await waitForUsage(app.store);
+  const logs = (await app.store.read()).usage;
+  assert.equal(logs.length, 1);
+  assert.equal(logs[0].status, 'failed');
+  assert.equal(logs[0].upstreamStatus, 200);
+  assert.equal(logs[0].gatewayStatus, 502);
+  assert.doesNotMatch(JSON.stringify(logs), /private-invalid-json|private-prompt/);
+});
+test('Responses reset after upstream headers but before downstream output returns a real 502', async t => {
+  let resetUpstream;
+  let notifyHeaders;
+  const headersSent = new Promise(resolve => { notifyHeaders = resolve; });
+  const upstream = http.createServer((_req, res) => {
+    resetUpstream = res;
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.flushHeaders();
+    notifyHeaders();
+  });
+  const app = await createTimeoutFixture(t, upstream);
+  await app.store.update(config => ({ ...config, routes: config.routes.map(route => route.inboundProtocol === 'Res' ? { ...route, outboundProtocol: 'Res' } : route) }));
+  const pending = app.request('Res', true);
+  await headersSent;
+  // Wait one turn so the Gateway can receive upstream headers without any body.
+  await new Promise(resolve => setTimeout(resolve, 20));
+  resetUpstream.destroy();
+  const response = await pending;
+  assert.equal(response.status, 502);
+  assert.equal((await response.json()).error, 'upstream_connection_reset');
+  const log = await waitForUsage(app.store);
+  assert.equal(log.upstreamStatus, 200);
+  assert.equal(log.gatewayStatus, 502);
+  assert.equal(log.streamFailurePhase, 'upstream_body');
+  assert.equal(log.firstTokenMs, undefined);
+});
+test('converted search stream EOF without a completion marker fails instead of dropping buffered calls', async t => {
+  const upstream = http.createServer((_req, res) => {
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    const payload = { choices: [{ delta: { tool_calls: [{ index: 0, id: 'eof-search', function: { name: 'tool_search', arguments: JSON.stringify({ query: 'clock' }) } }] } }] };
+    res.end(`data: ${JSON.stringify(payload)}\n\n`);
+  });
+  const app = await createTimeoutFixture(t, upstream);
+  const response = await app.request('Res', true, 'find tool', { tools: [{ type: 'tool_search' }] });
+  assert.equal(response.status, 502);
+  assert.equal((await response.json()).error, 'upstream_error');
+  const log = await waitForUsage(app.store);
+  assert.equal(log.status, 'failed');
+});
+
+test('converted completion waits for transport EOF and never precedes a reset error', async t => {
+  let responseToReset;
+  const upstream = http.createServer((_req, res) => {
+    responseToReset = res;
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.write('data: {"choices":[{"delta":{"content":"partial"}}]}\n\ndata: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\n');
+  });
+  const app = await createTimeoutFixture(t, upstream);
+  const response = await app.request('Res', true);
+  const reader = response.body.getReader();
+  const first = await reader.read();
+  let wire = Buffer.from(first.value).toString();
+  responseToReset.destroy();
+  while (true) { const chunk = await reader.read(); if (chunk.done) break; wire += Buffer.from(chunk.value).toString(); }
+  const frames = responsesFrames(wire);
+  assert.equal(frames.filter(frame => frame.type === 'response.completed').length, 0);
+  assert.equal(frames.filter(frame => frame.type === 'error').length, 1);
+  assert.equal((await waitForUsage(app.store)).status, 'failed');
+});
+
+for (const incompleteDelimiter of [false, true]) {
+  test(`passthrough sequence tracking survives ${incompleteDelimiter ? 'a valid tail without blank line' : 'an SSE frame larger than the metrics cap'}`, async t => {
+    let responseToReset;
+    const wireEvent = 'event: response.output_text.delta\ndata: ' + JSON.stringify({ type: 'response.output_text.delta', sequence_number: 40, delta: incompleteDelimiter ? 'tail' : 'x'.repeat(270 * 1024) }) + (incompleteDelimiter ? '' : '\n\n');
+    const upstream = http.createServer((_req, res) => {
+      responseToReset = res;
+      res.writeHead(200, { 'content-type': 'text/event-stream' });
+      res.write((incompleteDelimiter ? ': ready\n\n' : '') + wireEvent);
+    });
+    const app = await createTimeoutFixture(t, upstream);
+    await app.store.update(config => ({ ...config, routes: config.routes.map(route => route.inboundProtocol === 'Res' ? { ...route, outboundProtocol: 'Res' } : route) }));
+    const response = await app.request('Res', true);
+    const reader = response.body.getReader();
+    let wire = '';
+    do { const chunk = await reader.read(); assert.equal(chunk.done, false); wire += Buffer.from(chunk.value).toString(); } while (!incompleteDelimiter && Buffer.byteLength(wire) < Buffer.byteLength(wireEvent));
+    responseToReset.destroy();
+    while (true) { const chunk = await reader.read(); if (chunk.done) break; wire += Buffer.from(chunk.value).toString(); }
+    const frames = responsesFrames(wire);
+    assert.equal(frames[0].sequence_number, 40);
+    assert.equal(frames.at(-1).type, 'error');
+    assert.equal(frames.at(-1).sequence_number, 41);
+  });
+}
+
+test('client cancellation does not penalize a healthy upstream or switch the next request to backup', async t => {
+  let primaryRequests = 0;
+  let backupRequests = 0;
+  const backup = http.createServer((_req, res) => { backupRequests += 1; replyFailoverResponse(res, 200, 'backup'); });
+  const backupPort = await listen(backup);
+  t.after(() => { backup.closeAllConnections(); backup.close(); });
+  const primary = http.createServer(async (req, res) => {
+    primaryRequests += 1;
+    let text = ''; for await (const chunk of req) text += chunk;
+    if (JSON.parse(text).stream) { res.writeHead(200, { 'content-type': 'text/event-stream' }); res.write('data: {"choices":[{"delta":{"content":"partial"}}]}\n\n'); }
+    else replyFailoverResponse(res, 200, 'primary');
+  });
+  const app = await createTimeoutFixture(t, primary);
+  await app.store.update(config => ({ ...config, upstreams: [...config.upstreams, { id: 'cancel-backup', enabled: true, baseUrl: `http://127.0.0.1:${backupPort}`, protocol: 'Chat', trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'] }], routes: config.routes.map(route => ({ ...route, targets: [{ upstreamId: 'deadline-upstream', modelId: 'mock-chat' }, { upstreamId: 'cancel-backup', modelId: 'backup' }], failover: { failureThreshold: 1, statusClasses: [5], cooldownSeconds: 60 } })) }));
+  const response = await app.request('Chat', true);
+  const reader = response.body.getReader();
+  await reader.read(); await reader.cancel();
+  const failed = await waitForUsage(app.store);
+  assert.equal(failed.streamFailurePhase, 'downstream_closed');
+  assert.equal(failed.errorCode, 'request_aborted');
+  const next = await app.request('Chat', false);
+  assert.equal((await next.json()).choices[0].message.content, 'primary');
+  assert.equal(primaryRequests, 2);
+  assert.equal(backupRequests, 0);
+});
+
+test('credential usage bookkeeping failure cannot replace a valid response or create duplicate terminal logs', async t => {
+  const upstream = http.createServer((_req, res) => replyFailoverResponse(res, 200, 'valid'));
+  const app = await createTimeoutFixture(t, upstream);
+  const update = app.store.update.bind(app.store);
+  app.store.update = mutator => update(async current => {
+    const next = await mutator(current);
+    if (next.clientKeys.some(key => key.lastUsedAt)) throw new Error('private-bookkeeping-failure');
+    return next;
+  });
+  const response = await app.request('Chat', false);
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).choices[0].message.content, 'valid');
+  await waitForUsage(app.store);
+  const logs = (await app.store.read()).usage;
+  assert.equal(logs.length, 1);
+  assert.equal(logs[0].status, 'completed');
+  assert.equal(logs[0].credentialUsageUpdateFailed, true);
+  assert.doesNotMatch(JSON.stringify(logs), /private-bookkeeping-failure/);
+});
+
+test('gateway advances to a later validated address only when TCP fails before the model request is sent', async t => {
+  let modelRequests = 0;
+  const upstream = http.createServer(async (req, res) => {
+    modelRequests += 1;
+    let body = '';
+    for await (const chunk of req) body += chunk;
+    assert.equal(JSON.parse(body).model, 'mock-chat');
+    replyFailoverResponse(res, 200, 'connected-to-healthy-address');
+  });
+  const app = await createTimeoutFixture(t, upstream, {
+    dnsLookup: async hostname => hostname === 'dual-address.test'
+      ? [{ address: '127.0.0.1', family: 4 }, { address: '127.0.0.2', family: 4 }]
+      : [],
+  }, '127.0.0.2');
+  const port = upstream.address().port;
+  await app.store.update(config => ({
+    ...config,
+    upstreams: config.upstreams.map(item => ({ ...item, baseUrl: `http://dual-address.test:${port}`, approvedAddresses: ['127.0.0.1', '127.0.0.2'] })),
+  }));
+
+  const response = await app.request('Chat', false);
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).choices[0].message.content, 'connected-to-healthy-address');
+  assert.equal(modelRequests, 1);
+  assert.equal((await waitForUsage(app.store)).status, 'completed');
+});
+
+test('Responses passthrough clean EOF without a terminal marker emits one failed terminal event', async t => {
+  const upstream = http.createServer((_req, res) => {
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.end('event: response.output_text.delta\ndata: {"type":"response.output_text.delta","sequence_number":40,"delta":"partial"}\n\n');
+  });
+  const app = await createTimeoutFixture(t, upstream);
+  await app.store.update(config => ({ ...config, routes: config.routes.map(route => ({ ...route, outboundProtocol: 'Res' })) }));
+  const response = await app.request('Res', true);
+  const frames = responsesFrames(await response.text());
+  assert.equal(frames.at(-1).type, 'error');
+  assert.equal(frames.at(-1).sequence_number, 41);
+  assert.equal(frames.filter(frame => frame.type === 'error').length, 1);
+  assert.equal((await waitForUsage(app.store)).status, 'failed');
+});
+
+test('Responses passthrough successful terminal preserves original framing and UTF-8 after clean EOF', async t => {
+  const wire = ': ping\r\n\r\nevent: response.output_text.delta\r\ndata: {"type":"response.output_text.delta","sequence_number":40,"delta":"你好"}\r\n\r\nevent: response.completed\r\ndata: {"type":"response.completed","sequence_number":41,"response":{"status":"completed"}}\r\n\r\n';
+  const upstream = http.createServer((_req, res) => {
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    const bytes = Buffer.from(wire);
+    const split = bytes.indexOf(Buffer.from('你好')) + 1;
+    res.write(bytes.subarray(0, split));
+    res.end(bytes.subarray(split));
+  });
+  const app = await createTimeoutFixture(t, upstream);
+  await app.store.update(config => ({ ...config, routes: config.routes.map(route => ({ ...route, outboundProtocol: 'Res' })) }));
+  const response = await app.request('Res', true);
+  assert.equal(await response.text(), wire);
+  assert.equal((await waitForUsage(app.store)).status, 'completed');
+});
+
+test('Responses passthrough semantic failure cannot be recorded as a completed request', async t => {
+  const upstream = http.createServer((_req, res) => {
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.end('data: {"type":"response.output_text.delta","sequence_number":40,"delta":"partial"}\n\ndata: {"type":"response.failed","sequence_number":41,"response":{"error":{"message":"private-provider-error"}}}\n\n');
+  });
+  const app = await createTimeoutFixture(t, upstream);
+  await app.store.update(config => ({ ...config, routes: config.routes.map(route => ({ ...route, outboundProtocol: 'Res' })) }));
+  const response = await app.request('Res', true);
+  const wire = await response.text();
+  assert.equal(responsesFrames(wire).at(-1).type, 'error');
+  assert.doesNotMatch(wire, /private-provider-error/);
+  const log = await waitForUsage(app.store);
+  assert.equal(log.status, 'failed');
+  assert.doesNotMatch(JSON.stringify(log), /private-provider-error/);
+});
+
+test('Responses passthrough completion waits for clean EOF and never precedes reset error', async t => {
+  let upstreamResponse;
+  const upstream = http.createServer((_req, res) => {
+    upstreamResponse = res;
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.write('data: {"type":"response.output_text.delta","sequence_number":40,"delta":"partial"}\n\ndata: {"type":"response.completed","sequence_number":41,"response":{"status":"completed"}}\n\n');
+  });
+  const app = await createTimeoutFixture(t, upstream);
+  await app.store.update(config => ({ ...config, routes: config.routes.map(route => ({ ...route, outboundProtocol: 'Res' })) }));
+  const response = await app.request('Res', true);
+  const reader = response.body.getReader();
+  let wire = Buffer.from((await reader.read()).value).toString();
+  upstreamResponse.destroy();
+  while (true) { const chunk = await reader.read(); if (chunk.done) break; wire += Buffer.from(chunk.value).toString(); }
+  const frames = responsesFrames(wire);
+  assert.equal(frames.filter(frame => frame.type === 'response.completed').length, 0);
+  assert.equal(frames.filter(frame => frame.type === 'error').length, 1);
+  assert.ok(frames.at(-1).sequence_number > 40);
+  assert.equal((await waitForUsage(app.store)).status, 'failed');
+});
+
+test('Responses passthrough rejects an exhausted sequence range before forwarding the unsafe event', async t => {
+  const upstream = http.createServer((_req, res) => {
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.end('data: {"type":"response.output_text.delta","sequence_number":40,"delta":"safe"}\n\n' + `data: ${JSON.stringify({ type: 'response.output_text.delta', sequence_number: Number.MAX_SAFE_INTEGER, delta: 'unsafe' })}\n\n` + 'data: {"type":"response.output_text.delta","sequence_number":42,"delta":"after-invalid"}\n\n');
+  });
+  const app = await createTimeoutFixture(t, upstream);
+  await app.store.update(config => ({ ...config, routes: config.routes.map(route => ({ ...route, outboundProtocol: 'Res' })) }));
+  const response = await app.request('Res', true);
+  const frames = responsesFrames(await response.text());
+  assert.equal(frames.some(frame => frame.delta === 'unsafe'), false);
+  assert.equal(frames.some(frame => frame.delta === 'after-invalid'), false);
+  assert.equal(frames.at(-1).type, 'error');
+  assert.equal(frames.at(-1).sequence_number, 41);
+});
+
+test('gateway does not reuse a pooled connection outside the latest approved DNS set', async t => {
+  let primaryRequests = 0;
+  let alternateRequests = 0;
+  let address = '127.0.0.1';
+  const primary = http.createServer((_req, res) => { primaryRequests += 1; replyFailoverResponse(res, 200, 'first-address'); });
+  const app = await createTimeoutFixture(t, primary, { dnsLookup: async () => [{ address, family: 4 }] });
+  const alternate = http.createServer((_req, res) => { alternateRequests += 1; replyFailoverResponse(res, 200, 'new-address'); });
+  await new Promise((resolve, reject) => alternate.listen(primary.address().port, '127.0.0.2', resolve).once('error', reject));
+  t.after(() => { alternate.closeAllConnections(); alternate.close(); });
+  await app.store.update(config => ({ ...config, upstreams: config.upstreams.map(item => ({ ...item, baseUrl: `http://pooled-address.test:${primary.address().port}` })) }));
+  assert.equal((await (await app.request('Chat', false)).json()).choices[0].message.content, 'first-address');
+  address = '127.0.0.2';
+  await app.store.update(config => ({ ...config, upstreams: config.upstreams.map(item => ({ ...item, approvedAddresses: [address] })) }));
+  assert.equal((await (await app.request('Chat', false)).json()).choices[0].message.content, 'new-address');
+  assert.equal(primaryRequests, 1);
+  assert.equal(alternateRequests, 1);
+});
+
+test('gateway sanitizes an invalid upstream HTTP status and remains available for the next request', async t => {
+  let requests = 0;
+  const upstream = net.createServer(socket => {
+    socket.once('data', () => {
+      requests += 1;
+      if (requests === 1) socket.end('HTTP/1.1 600 Invalid\r\nContent-Length: 0\r\nConnection: close\r\n\r\n');
+      else { const body = JSON.stringify({ choices: [{ message: { content: 'healthy' } }] }); socket.end(`HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: ${Buffer.byteLength(body)}\r\nConnection: close\r\n\r\n${body}`); }
+    });
+  });
+  // Match the shared HTTP fixture cleanup surface for this raw TCP fixture.
+  const sockets = new Set();
+  upstream.on('connection', socket => { sockets.add(socket); socket.on('close', () => sockets.delete(socket)); });
+  upstream.closeAllConnections = () => { for (const socket of sockets) socket.destroy(); };
+  const app = await createTimeoutFixture(t, upstream);
+  const failed = await app.request('Chat', false);
+  assert.equal(failed.status, 502);
+  assert.equal((await failed.json()).error, 'upstream_error');
+  assert.equal((await waitForUsage(app.store)).status, 'failed');
+  const recovered = await app.request('Chat', false);
+  assert.equal((await recovered.json()).choices[0].message.content, 'healthy');
+  assert.equal(requests, 2);
 });

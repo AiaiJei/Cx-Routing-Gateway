@@ -1,103 +1,35 @@
 {
   "contract_version": 1,
-  "task_id": "CXRG-CODEX-TOOLS-CONNECTIVITY-PROBE-2026-11-23",
-  "title": "Support Codex namespaced tools and transport-only failback probes",
+  "task_id": "CXRG-CODEX-GATEWAY-FORWARDING-RESILIENCE-2026-11-23",
+  "title": "Codex forwarding, safe upstream address selection, stream reset handling, and frontend placeholder",
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
   "status": "active",
-  "stage": "pull-request",
+  "stage": "release_and_primary_integration_authorized",
   "base": "master",
-  "base_sha": "f58341f5224224bea9ae7abf03818d9cadb4df47",
-  "branch": "codex/tool-definition-probe",
-  "worktree": ".worktree/codex-tool-definition-probe",
-  "contract": "docs/tasks/2026-11-23-codex-tools-connectivity-probe-contract.json",
+  "base_sha": "451d40f3f621a635afc093bc50070feb2a58fa59",
+  "branch": "codex/codex-routing-forwarding",
+  "worktree": ".worktree/codex-codex-routing-forwarding",
+  "contract": "docs/tasks/2026-11-23-codex-gateway-forwarding-resilience-contract.json",
   "authorization": {
-    "source": "The user continued the referenced Codex task after reporting that Responses-to-Chat still rejected Codex tools and asking that automatic failback probing only check URL connectivity. The referenced task records the unresolved tools error and the transport-only probe direction. The user explicitly requested a dedicated PR for the repair, then authorized version 1.1.7, PR #21 merge, primary master synchronization, GitHub publication, and verified Desktop Portable delivery on 2026-11-23; see the task contract revision.",
     "operations": [
-      "resume the existing task worktree and bind it to this contract",
-      "implement the approved adapter and transport-probe changes",
-      "verify against local fixtures without calling a real provider",
-      "commit and push the dedicated task branch",
-      "create one dedicated PR against master and attach it to this task",
-      "bump package, product, and build versions from 1.1.6 to 1.1.7 in PR #21",
-      "merge PR #21 after required checks pass and synchronize primary master",
-      "build and verify Windows x64 release artifacts and manifest",
-      "publish GitHub Release v1.1.7 with verified assets",
-      "copy and verify the Portable 1.1.7 executable on Desktop"
+      "write plan and acceptance checklist",
+      "implement authorized gateway and desktop paths",
+      "use another validated address only for a connection failure proven to occur before HTTP request bytes can be sent",
+      "run local-only verification and independent review",
+      "commit, push, and create one open PR against master for the original forwarding work",
+      "2026-11-24 revision 1: bump patch version 1.1.7 to 1.1.8, build and smoke an isolated local Windows x64 Portable, and copy it beside the existing Desktop executable for Owner testing",
+      "2026-11-24 revision 2: repair and verify Res round trips through Chat and Messages with local fixtures, and deliver a distinctly named local 1.1.8 Portable candidate for Owner re-test",
+      "2026-11-24 revision 3: add privacy-preserving stream-stage timing diagnostics and display them in request details; use local SSE fixtures only; do not change protocol conversion or reasoning controls",
+      "2026-11-24 revision 4: commit the task-scoped 1.1.8 version, Res round-trip, and stream-timing changes; push/update PR #22, wait for current checks, merge to master, synchronize the primary master worktree, and publish GitHub Release v1.1.8 with locally verified Windows assets. Preserve existing Desktop binaries/processes and all task worktrees; do not make live provider requests."
     ],
     "not_authorized": [
-      "make real provider requests",
-      "rewrite or delete existing releases/tags",
-      "delete branches or worktrees or unrelated files"
+      "real provider calls by Codex",
+      "ambiguous retries",
+      "Codex config/auth file writes",
+      "overwrite/delete existing v1.1.7 Desktop executable or stop its running process",
+      "deletion of worktrees/branches/unrelated files"
     ]
   },
-  "scope": {
-    "include": [
-      "normalize Responses namespace groups containing function and custom tools for Chat and Messages targets",
-      "preserve original tool names, namespaces, explicit tool choice, tool-call results, and relevant history across non-streaming and streaming conversions",
-      "return field- and direction-specific errors for target-inexpressible or malformed tool definitions",
-      "replace the post-cooldown GET /v1/models probe with DNS validation and a bounded TCP or TLS connectivity check to approved addresses",
-      "retain circuit thresholds, cooldowns, generation isolation, and concurrent probe deduplication",
-      "task plan, evidence, independent review, and one dedicated PR"
-    ],
-    "exclude": [
-      "credential persistence or routing-state changes already delivered in PR #19",
-      "protocol behavior outside the Codex tool and probe compatibility cases",
-      "failure thresholds, cooldown duration, retry policy, UI, or schema changes",
-      "model-level, HTTP-level, authentication, or token-usage health validation during failback probes",
-      "version bump, release, merge, or Desktop program update",
-      "real third-party provider calls"
-    ]
-  },
-  "authorized_paths": [
-    ".codex/awg-task.json",
-    "services/gateway/src/protocol-adapters.mjs",
-    "services/gateway/src/server.mjs",
-    "tests/runtime/protocol-adapters.test.mjs",
-    "tests/runtime/gateway-server.test.mjs",
-    "docs/superpowers/plans/2026-11-23-codex-tools-connectivity-probe.md",
-    "docs/tasks/2026-11-23-codex-tools-connectivity-probe-contract.json",
-    "docs/tasks/2026-11-23-codex-tools-connectivity-probe.md",
-    "docs/tasks/evidence/codex-tools-connectivity-probe/**",
-    ".superpowers/sdd/**"
-  ],
-  "acceptance": [
-    "Responses namespace function tools become valid Chat and Messages function definitions with a reversible target-name mapping",
-    "non-streaming function calls and explicit tool_choice restore the original name and namespace in the Responses reply",
-    "custom tools and tool-call history round-trip as custom_tool_call/custom_tool_call_output; streaming preserves namespace and custom input",
-    "unsupported built-in tool types and invalid definitions produce safe field- and direction-specific errors",
-    "recovery probes use approved DNS results and a bounded TCP connection for HTTP or verified TLS handshake for HTTPS; they do not fetch credentials or send HTTP requests",
-    "failed connectivity keeps the route on backup, successful connectivity permits preferred-route selection, and concurrent requests share one probe",
-    "focused tests, full Runtime suite, Desktop suite/build, syntax checks, diff checks, and independent review complete with evidence",
-    "one dedicated PR targets master; no merge or release is performed"
-  ],
-  "rollback": "Revert only this task's PR commits. Preserve the already merged PR #19/#20 behavior, all existing releases and Desktop files, and the task branch/worktree.",
-  "owner_acceptance": "NOT_RUN: the user authorized a dedicated PR; no in-product acceptance, merge, or release is implied.",
-  "verification": {
-    "existing_worktree": "PASS: clean at base f58341f5224224bea9ae7abf03818d9cadb4df47",
-    "adapter_baseline": "PASS: 10/10",
-    "probe_baseline": "PASS: 3/3 focused failback tests",
-    "repo_mcp": "UNAVAILABLE: no .codex/repo-map.json or registered workspace_id; live source inspection used",
-    "implementation": "PASS: Tasks 1 and 2 complete; fresh Runtime 178/178, Desktop 158/158, Desktop build, adapter 20/20, probe 4/4, syntax, and diff checks passed",
-    "independent_review": "PASS: initial reviewer found two Important adapter validation gaps; both were fixed with RED/GREEN tests; read-only follow-up found no Critical or Important issues",
-    "pull_request": "OPEN: PR #21 targets master; at creation, Runtime and Desktop CI jobs were pending and package jobs skipped"
-  },
-  "capability": {
-    "skills": [
-      "using-superpowers",
-      "awg-workspace-governance",
-      "awg-repo-map",
-      "systematic-debugging",
-      "test-driven-development",
-      "using-git-worktrees",
-      "writing-plans",
-      "executing-plans",
-      "verification-before-completion",
-      "requesting-code-review",
-      "receiving-code-review",
-      "finishing-a-development-branch"
-    ],
-    "repo_mcp": "UNAVAILABLE: no registered workspace_id; live source inspection used",
-    "subagent_review": "AVAILABLE: one read-only reviewer completed initial and follow-up reviews; follow-up found no Critical or Important issues"
-  }
+  "owner_acceptance": "Owner reports the prior 1.1.8 round-trip candidate passed manual testing on 2026-11-24 and explicitly authorizes integration/publication. Local Runtime/Desktop/build and 1.1.8 package smokes pass. Independent reviews of revisions 2 and 3 are BLOCKED by the CC Switch proxy (no review verdict); integration proceeds under the Owner direct authorization and this limitation remains explicit. Real provider requests and same-model latency A/B remain NOT_RUN."
 }
