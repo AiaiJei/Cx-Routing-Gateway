@@ -281,5 +281,6 @@
       "sha256": "7820ceab949369d2bed3aa80579b47158009194b6a4aa31fb7919a58dfa1203a"
     }
   ],
-  "final_state_recorded_at": "2026-11-24T09:53:05.543Z"
+  "final_state_recorded_at": "2026-11-24T09:53:05.543Z",
+  "archive_payload_note": "This manifest records the initial transfer and hash verification. Generated SQLite and .pyc payloads were removed from the task branch after independent review because they contain workstation-specific data; the primary worktree retains the local archive, and preflight.json preserves sizes and hashes."
 }
