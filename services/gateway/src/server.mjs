@@ -74,7 +74,7 @@ function keyFrom(req) {
 }
 
 function reasoningEffortOf(input) {
-  const candidates = [input?.reasoning_effort, input?.reasoning?.effort, input?.thinking?.effort];
+  const candidates = [input?.reasoning_effort, input?.reasoning?.effort, input?.output_config?.effort, input?.thinking?.effort];
   const value = candidates.find((item) => typeof item === 'string' && item.trim());
   if (typeof value !== 'string') return undefined;
   const normalized = value.trim();

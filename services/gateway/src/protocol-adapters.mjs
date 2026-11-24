@@ -279,7 +279,9 @@ export function parseRequest(protocol, body, profile = {}) {
   const tools = normalizeTools(protocol, protocol === 'Res' ? collectResponsesTools(body, direction) : body.tools, direction);
   const parsed = normalizeMessages(protocol, body, direction, tools);
   const responseFormat = protocol === 'Res' ? normalizeResponseFormat(body.text?.format, direction) : normalizeResponseFormat(body.response_format, direction);
-  return { messages: parsed.messages, instructions: parsed.instructions, tools, toolChoice: normalizeToolChoice(protocol, body.tool_choice, direction, tools), responseFormat, maxTokens: protocol === 'Res' ? body.max_output_tokens : protocol === 'Mes' ? body.max_tokens : (body.max_completion_tokens ?? body.max_tokens), stream: body.stream === true, candidateCount };
+  const effort = protocol === 'Res' ? body.reasoning?.effort : protocol === 'Mes' ? body.output_config?.effort : undefined;
+  const reasoningEffort = typeof effort === 'string' && effort.trim().length <= 32 ? effort.trim() || undefined : undefined;
+  return { messages: parsed.messages, instructions: parsed.instructions, tools, toolChoice: normalizeToolChoice(protocol, body.tool_choice, direction, tools), responseFormat, reasoningEffort, maxTokens: protocol === 'Res' ? body.max_output_tokens : protocol === 'Mes' ? body.max_tokens : (body.max_completion_tokens ?? body.max_tokens), stream: body.stream === true, candidateCount };
 }
 
 function serializeTools(protocol, tools) {
@@ -333,7 +335,12 @@ export function serializeRequest(protocol, normalized, model) {
     if (normalized.instructions) payload.system = normalized.instructions;
     const tools = serializeTools(protocol, normalized.tools); if (tools) payload.tools = tools;
     const choice = serializeChoice(protocol, normalized.toolChoice); if (choice) payload.tool_choice = choice;
-    if (normalized.responseFormat) payload.output_config = { format: { type: 'json_schema', schema: normalized.responseFormat.type === 'json_schema' ? normalized.responseFormat.schema : { type: 'object' } } };
+    if (normalized.reasoningEffort || normalized.responseFormat) {
+      payload.output_config = {
+        ...(normalized.reasoningEffort ? { effort: normalized.reasoningEffort } : {}),
+        ...(normalized.responseFormat ? { format: { type: 'json_schema', schema: normalized.responseFormat.type === 'json_schema' ? normalized.responseFormat.schema : { type: 'object' } } } : {}),
+      };
+    }
     return payload;
   }
   const payload = { model, input: messages.map((item) => item.role === 'tool' ? { type: 'function_call_output', call_id: item.id, output: item.content } : item.toolCalls?.length ? item.toolCalls.map((call) => ({ type: 'function_call', call_id: call.id, name: call.name, arguments: call.arguments })) : { role: item.role, content: item.content }).flat() };
@@ -341,6 +348,7 @@ export function serializeRequest(protocol, normalized, model) {
   const tools = serializeTools(protocol, normalized.tools); if (tools) payload.tools = tools;
   const choice = serializeChoice(protocol, normalized.toolChoice); if (choice) payload.tool_choice = choice;
   if (normalized.responseFormat) payload.text = { format: normalized.responseFormat };
+  if (normalized.reasoningEffort) payload.reasoning = { effort: normalized.reasoningEffort };
   if (normalized.maxTokens) payload.max_output_tokens = normalized.maxTokens;
   return payload;
 }

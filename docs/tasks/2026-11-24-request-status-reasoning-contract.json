@@ -1,0 +1,88 @@
+{
+  "contract_version": 1,
+  "task_id": "CXRG-STATUS-REASONING-2026-11-24",
+  "title": "Display HTTP status codes and preserve reasoning effort across Res/Mes conversion",
+  "project": "Cx-Routing Gateway",
+  "repository": "AiaiJei/Cx-Routing-Gateway",
+  "status": "active",
+  "stage": "independent_review_and_pr",
+  "revisions": [
+    {
+      "date": "2026-11-24",
+      "revision": 1,
+      "request": "Include native Messages output_config.effort in the existing sanitized reasoningEffort usage field so the Desktop 推理 column retains it.",
+      "authorization": "This is required to verify and display reasoning effort through Mes→Res; it records only the bounded effort string and does not persist request bodies."
+    }
+  ],
+  "base": "master",
+  "base_sha": "49c9a389d58b2e5bdb02554d559989ed7fb07596",
+  "branch": "codex/request-status-reasoning",
+  "worktree": ".worktree/codex-request-status-reasoning",
+  "authorization": {
+    "source": "Owner request on 2026-11-24: directly display HTTP status codes in request logs, fix reasoning-effort loss in Res→Mes and Mes→Res using request b42fa972-2acb-4339-8fa8-41541fe68aee as the reported case, and create a dedicated PR.",
+    "operations": [
+      "implement the request-log status display and Res/Mes reasoning-effort mapping",
+      "add regression tests and task-scoped verification evidence",
+      "run local Runtime/Desktop tests, Desktop build, syntax and diff checks",
+      "commit and push this task branch and create one open PR against master"
+    ],
+    "not_authorized": [
+      "merge the PR or publish a release",
+      "make real third-party provider requests",
+      "change versions, credentials, or user configuration",
+      "delete existing branches, worktrees, or unrelated files"
+    ]
+  },
+  "scope": {
+    "include": [
+      "display the downstream HTTP status code in the request-log status cell, with existing status text as fallback when no code is available",
+      "preserve stream interruption and upstream/downstream status distinctions in details and styling",
+      "map Responses reasoning.effort to Messages output_config.effort",
+      "map Messages output_config.effort to Responses reasoning.effort",
+      "record a bounded native Messages output_config.effort as reasoningEffort in sanitized usage logs",
+      "focused regression tests and task evidence"
+    ],
+    "exclude": [
+      "provider-specific reasoning-budget conversion or changing thinking mode",
+      "protocol directions other than Res↔Mes",
+      "request/response body persistence or real-provider testing",
+      "release, merge, and Desktop binary replacement"
+    ]
+  },
+  "authorized_paths": [
+    "services/gateway/src/protocol-adapters.mjs",
+    "services/gateway/src/server.mjs",
+    "tests/runtime/protocol-adapters.test.mjs",
+    "tests/runtime/request-logs.test.mjs",
+    "apps/desktop/src/components/RequestLogCells.tsx",
+    "apps/desktop/src/components/RequestLogCells.test.tsx",
+    "docs/tasks/2026-11-24-request-status-reasoning.md",
+    "docs/tasks/2026-11-24-request-status-reasoning-contract.json",
+    "docs/tasks/evidence/request-status-reasoning/verification.md"
+  ],
+  "acceptance": [
+    "request-log status cells show the effective downstream HTTP code (for example 200 or 504), fall back to an available HTTP status, and retain a readable success/failure label when status is unavailable",
+    "failed and interrupted-stream statuses remain visually negative and their tooltip continues to distinguish upstream and downstream responses",
+    "Res→Mes forwards reasoning.effort as output_config.effort",
+    "Mes→Res forwards output_config.effort as reasoning.effort",
+    "Mes native effort is retained in sanitized request-log metadata for the Desktop 推理 column",
+    "focused regressions, Runtime suite, Desktop suite, Desktop production build, syntax checks, and git diff --check pass",
+    "one dedicated open PR targets master; it is not merged"
+  ],
+  "rollback": "Close the task PR and revert its branch commit if the change must be withdrawn; leave all existing branches, worktrees, releases, and Desktop binaries untouched.",
+  "verification": {
+    "request_id": "b42fa972-2acb-4339-8fa8-41541fe68aee",
+    "request_id_lookup": "NOT_FOUND: runtime config was absent at both %APPDATA%/Cx-Routing Gateway/runtime/config.json and %APPDATA%/@cx-routing-gateway/runtime/config.json; no request payload or credentials were accessed",
+    "project_map": "UNAVAILABLE: this repository checkout has no .codex/awg-project.json and no AWG project/map tools are exposed in this session; source inspection and Git state were used",
+    "implementation": "PASS: downstream HTTP status selection and Res↔Mes reasoning effort mapping implemented; Messages effort is retained in sanitized usage metadata",
+    "focused_tests": "PASS: Runtime 50/50; Desktop 37/37",
+    "runtime_full": "PASS: 236/236 after building Desktop dist",
+    "desktop_full": "PASS: 202/202",
+    "desktop_build": "PASS: TypeScript and Vite production build",
+    "syntax_contract_diff": "PASS: Node syntax checks, contract JSON parse, and git diff --check",
+    "independent_review": "PENDING",
+    "provider": "NOT_RUN",
+    "owner_acceptance": "NOT_RUN",
+    "pull_request": "NOT_CREATED"
+  }
+}

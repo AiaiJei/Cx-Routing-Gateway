@@ -16,7 +16,11 @@ function isInterruptedStream(log: CallLog): boolean {
 }
 
 export function requestStatusLabel(log: CallLog): string {
-  return isInterruptedStream(log) ? `${log.status} · 流已中断` : log.status;
+  const code = [log.gatewayStatus, log.httpStatus, log.upstreamStatus].find(
+    (status) => typeof status === "number" && Number.isInteger(status) && status >= 100 && status <= 599,
+  );
+  const status = code === undefined ? log.status : String(code);
+  return isInterruptedStream(log) ? `${status} · 流已中断` : status;
 }
 
 export function requestStatusDetails(log: CallLog): string {
