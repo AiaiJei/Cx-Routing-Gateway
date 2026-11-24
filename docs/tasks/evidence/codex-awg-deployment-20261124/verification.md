@@ -4,7 +4,7 @@ Date: 2026-11-24. Task: CXRG-CODEX-AWG-DEPLOYMENT-2026-11-24.
 
 ## Current result
 
-Local deployment: **PASS**. Overall runtime acceptance: **PARTIAL**. PR #24 remains open pending final independent review; final-head CI passes, while squash merge and primary-worktree sync are pending. Desktop loading, Hook review/trust/delivery and Owner runtime acceptance remain **NOT_RUN**.
+Local deployment: **PASS**. Overall runtime acceptance: **PARTIAL**. PR #24 remains open; final-content checks pass and independent review is READY for squash merge. Merge and primary-worktree sync are pending. Desktop loading, Hook review/trust/delivery and Owner runtime acceptance remain **NOT_RUN**.
 
 - Repository: AiaiJei/Cx-Routing-Gateway. Primary worktree is identified as `<primary-worktree>` in tracked evidence; task worktree is `.tmp/worktrees/codex-awg-deployment-2026-11-24`.
 - Owner-confirmed IDs: project_id=cx-routing-gateway; repo_id=aiaijei-cx-routing-gateway.
@@ -16,13 +16,13 @@ Local deployment: **PASS**. Overall runtime acceptance: **PARTIAL**. PR #24 rema
 - Legacy cleanup: the three old runtime roots are absent. All 14 local rollback payloads match preflight sizes/SHA-256. The final PR tree contains only a README under legacy-deployment; generated SQLite/bytecode payloads are omitted from that tree.
 - Previous active pointer: the byte-for-byte archive matches SHA-256 b998ee30958acfc5996626ee8070052b969b5fdca6b49b1d0783fa82537a9e58.
 - Transfer hashes: copied_files in worktree-transfer-manifest.json describe the initial transfer, before corrections. final_files is a separate current snapshot and excludes the manifest itself to avoid self-reference.
-- Review corrections: final tree removes generated payloads and absolute workstation paths; plan explicitly states Owner revision 2 supersedes the original integration restriction. Final independent tree review is pending after the reviewer requested that the active delete grant be disabled and the CI/path evidence refreshed; see independent-review.json.
+- Review corrections: final tree removes generated payloads and absolute workstation paths; plan explicitly states Owner revision 2 supersedes the original integration restriction. Independent review of content head cb4ae5e is READY for squash merge. The active delete grant is disabled, final-head CI evidence is refreshed, and the final PR tree is sanitized; see independent-review.json.
 
 ## CI investigation and regression checks
 
 The push CI run 45375009198 on cecd2d9 initially failed 1 of 232 runtime tests: `Responses round trip through Messages preserves stream text, tools, and usage`, in waitForUsage (100 reads with 5 ms waits). Stream output assertions had succeeded; the request-log wait timed out. Server inspection confirms the streaming response ends before credential bookkeeping and appendUsage finish; Windows config replacement retries can also delay persistence. This identifies the failing boundary but does not establish the exact timing/storage cause of that CI occurrence.
 
-The same-head pull_request run 45375017141 passed runtime and desktop. Rerunning only the failed job of 45375009198 passed on attempt 2, without a source change. A focused local run of the originally failing test passed. The failure was not reproduced; no Gateway application fix or root-cause completion is claimed. Final-head checks at 5db5882 passed: runtime and desktop succeeded for both push run 45377363835 and pull_request run 45377370947. Package jobs are skipped by the existing workflow for ordinary PR/push runs.
+The same-head pull_request run 45375017141 passed runtime and desktop. Rerunning only the failed job of 45375009198 passed on attempt 2, without a source change. A focused local run of the originally failing test passed. The failure was not reproduced; no Gateway application fix or root-cause completion is claimed. Earlier final-head checks at 5db5882 passed: runtime and desktop succeeded for both push run 45377363835 and pull_request run 45377370947. On content head cb4ae5e, push run 45378607297 passed runtime/desktop; pull_request run 45378616009 passed desktop and runtime on retry attempt 2. Package jobs are skipped by the existing workflow for ordinary PR/push runs.
 
 The first full local `npm test` attempt passed 231/232 and failed because apps/desktop/dist/index.html had not been built in the fresh task worktree. After `npm ci --prefix apps/desktop` and `npm run build --prefix apps/desktop`, a fresh full `npm test` passed 232/232, 0 failed, 0 skipped. The dependency install reported 6 moderate npm audit findings; desktop CI separately runs its configured production dependency audit. This documentation-only deployment change does not modify Gateway application code.
 

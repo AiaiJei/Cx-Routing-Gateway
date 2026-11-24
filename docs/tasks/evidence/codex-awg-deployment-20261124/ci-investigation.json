@@ -18,15 +18,17 @@
     "desktop": "PASS"
   },
   "local_focused_reproduction": "PASS; failure not reproduced",
-  "root_cause": "UNCONFIRMED: bounded asynchronous persistence wait timed out once; same-head retry and independent event run passed; exact cause not demonstrated.",
+  "root_cause": "UNCONFIRMED: the PR runtime job intermittently timed out once waiting for async request-log persistence, then passed on retry attempt 2; push runtime and full local suite passed. Exact cause not demonstrated.",
   "application_source_changed": false,
   "final_head_ci": {
-    "push_run": 45377363835,
-    "pull_request_run": 45377370947,
+    "push_run": 45378607297,
+    "pull_request_run": 45378616009,
+    "pull_request_retry_attempt": 2,
     "runtime": "PASS",
     "desktop": "PASS",
     "package": "SKIPPED"
   },
   "failed_head": "cecd2d982a6baaeef48ba4681f014a531a36e70a",
-  "final_head": "5db58827406104d949222d60e41ffef6db415401"
+  "final_head": "5db58827406104d949222d60e41ffef6db415401",
+  "final_reviewed_content_head": "cb4ae5ed3e61732c1a9e30ac022ae8ec8461f6f0"
 }

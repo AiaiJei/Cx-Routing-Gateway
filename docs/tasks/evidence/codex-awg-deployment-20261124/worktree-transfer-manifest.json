@@ -173,23 +173,23 @@
     },
     {
       "path": "docs/tasks/2026-11-24-codex-awg-deployment-contract.json",
-      "bytes": 15056,
-      "sha256": "c622f39a8a32422c2922327437d0b4a1899847fc46db0314bee53a28cae86721"
+      "bytes": 15272,
+      "sha256": "70d728396a129ceaa4324f8bdef383b13b5fde95505539f1bd436ef74cc4c87a"
     },
     {
       "path": "docs/tasks/2026-11-24-codex-awg-deployment.md",
-      "bytes": 9528,
-      "sha256": "f7fb194820d2c13f989f843c5db568762c63359e2a7e83c145455fa548732b21"
+      "bytes": 9556,
+      "sha256": "eae93188ee4104adb61b1b1d02850ad7c080d76fdd4c791a38f9ac3d40c3a730"
     },
     {
       "path": "docs/tasks/evidence/codex-awg-deployment-20261124/ci-investigation.json",
-      "bytes": 1097,
-      "sha256": "145d642685c7689ebff247d0def046839f991bd7850d690290335d2a328aedee"
+      "bytes": 1273,
+      "sha256": "b791e39cf2a56360ebeef65fe9501562c4602c357017352aa269c91c7427f76d"
     },
     {
       "path": "docs/tasks/evidence/codex-awg-deployment-20261124/independent-review.json",
-      "bytes": 3060,
-      "sha256": "bdbd958c27bd619b7def2599b910a0d77a20ce4e5993244e96a3c323168feeec"
+      "bytes": 3570,
+      "sha256": "bf5e6347f25073af8c584df753dfba4932ed70443a29a2da6b5ebd643e39f281"
     },
     {
       "path": "docs/tasks/evidence/codex-awg-deployment-20261124/legacy-deployment/README.md",
@@ -213,8 +213,8 @@
     },
     {
       "path": "docs/tasks/evidence/codex-awg-deployment-20261124/verification.md",
-      "bytes": 6735,
-      "sha256": "79c06001cc3536970cb6be132739d410713570a83744fbc1e8b1e158394c620d"
+      "bytes": 6930,
+      "sha256": "ec976453d25e6e0b09b8aa6ef2d4300dfdd9195c59c8d8afb30317c524245cac"
     },
     {
       "path": "docs/tasks/evidence/codex-awg-deployment-20261124/worktree-mcp-verification.json",
