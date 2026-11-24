@@ -20,10 +20,11 @@
 - [x] Run focused tests, complete Runtime/Desktop suites, Desktop build, syntax checks, and `git diff --check`.
 - [x] Complete an independent review, correct the successful-request upstream/downstream status ambiguity, and record the follow-up review.
 - [x] Record final test and review evidence.
-- [ ] Commit the review correction and evidence, push the task branch, and open the dedicated PR without merging it.
+- [x] Commit the review correction and evidence, push the task branch, and open dedicated PR #23 against `master`; leave it open and unmerged.
 
 ## Current evidence
 
 - The supplied request ID was not present in the expected `%APPDATA%/Cx-Routing Gateway/runtime/config.json` or `%APPDATA%/@cx-routing-gateway/runtime/config.json` locations. The current source persists only sanitized usage metadata; local fixtures will be used for regression verification.
 - Independent review found and verified a successful JSON logging gap: upstream `httpStatus` was recorded, but downstream `gatewayStatus: 200` was absent. A regression test reproduced the missing status, the log now records both values, and the follow-up independent review confirmed the fix.
+- Dedicated PR: https://github.com/AiaiJei/Cx-Routing-Gateway/pull/23 (OPEN, targets `master`, not merged). Runtime and Desktop GitHub Actions checks were in progress and Package checks were skipped at first inspection.
 - No new provider calls or configuration writes are in scope.

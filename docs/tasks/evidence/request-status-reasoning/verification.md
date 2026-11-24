@@ -26,7 +26,7 @@
 - Dependency setup: `npm ci --ignore-scripts --offline` in `apps/desktop` installed the existing lockfile dependencies; 439 packages added, audit reported 0 vulnerabilities. No dependency or lockfile change was made.
 - Real provider requests: NOT_RUN. Desktop runtime smoke and Owner acceptance: NOT_RUN.
 - Independent review: PASS. The first review identified that a successful non-stream request could show an upstream `201` although the gateway returned `200`. A new local regression test failed before the fix (`gatewayStatus` was absent) and passed after the server began recording downstream `gatewayStatus: 200` separately. Follow-up review confirmed the issue is resolved and found no log-semantic regression; its review scope was the changed status path and request-log tests.
-- GitHub Actions, final evidence commit, push and PR: pending at time of this evidence update.
+- Dedicated PR: [#23](https://github.com/AiaiJei/Cx-Routing-Gateway/pull/23), open against `master` and not merged. At first inspection, Runtime and Desktop GitHub Actions checks were in progress across the push and pull-request events; Package checks were skipped. The branch was pushed and the task evidence was updated with the PR reference.
 
 ## Integration boundary
 

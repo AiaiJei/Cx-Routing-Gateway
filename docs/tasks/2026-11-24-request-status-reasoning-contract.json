@@ -4,8 +4,8 @@
   "title": "Display HTTP status codes and preserve reasoning effort across Res/Mes conversion",
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
-  "status": "active",
-  "stage": "ready_for_pr",
+  "status": "complete",
+  "stage": "pull_request_open",
   "revisions": [
     {
       "date": "2026-11-24",
@@ -89,6 +89,6 @@
     "independent_review": "PASS: independent review identified a P2 status ambiguity; successful JSON logs now record gatewayStatus 200 separately, follow-up review confirmed resolution and found no log-semantic regression",
     "provider": "NOT_RUN",
     "owner_acceptance": "NOT_RUN",
-    "pull_request": "NOT_CREATED"
+    "pull_request": "OPEN: #23 https://github.com/AiaiJei/Cx-Routing-Gateway/pull/23; targets master; not merged. GitHub Actions runtime and desktop checks were IN_PROGRESS and package checks SKIPPED when first inspected."
   }
 }
