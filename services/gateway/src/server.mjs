@@ -362,20 +362,28 @@ async function pipeStream(response, res, metrics, deadline, monotonicNow, sequen
   try {
     while (true) {
       const result = await readBeforeDeadline(reader, deadline, monotonicNow);
-      if (result.done) break;
+      if (result.done) { metrics.endUpstreamBody(); break; }
+      metrics.observeUpstreamChunk(result.value);
       size += result.value.byteLength;
       if (size > maxBytes) throw Object.assign(new Error('Upstream stream too large'), { code: 'upstream_error', statusCode: 502 });
-      metrics.push(result.value);
-      if (sequenceTracker) sequenceTracker.push(result.value);
-      else res.write(Buffer.from(result.value));
+      metrics.measureProcessing(() => {
+        metrics.push(result.value);
+        if (sequenceTracker) sequenceTracker.push(result.value);
+        else res.write(Buffer.from(result.value));
+      });
     }
-    sequenceTracker?.finish(true);
-    metrics.finish();
-    res.end();
+    metrics.measureProcessing(() => {
+      sequenceTracker?.finish(true);
+      metrics.finish();
+      res.end();
+    });
   } catch (error) {
-    try { sequenceTracker?.finish(false); } catch { /* Preserve the original failure. */ }
+    try { metrics.measureProcessing(() => sequenceTracker?.finish(false)); } catch { /* Preserve the original failure. */ }
     throw error;
-  } finally { await reader.cancel().catch(() => {}); }
+  } finally {
+    metrics.endUpstreamBody();
+    await reader.cancel().catch(() => {});
+  }
 }
 
 function sequenceResponsesFrames(wire, responseState) {
@@ -388,15 +396,34 @@ function sequenceResponsesFrames(wire, responseState) {
   }).join('');
 }
 
-async function pipeConvertedStream(response, res, outboundProtocol, inboundProtocol, requestId, metrics, deadline, monotonicNow, toolContext = [], responseState = { nextSequence: 0 }, maxBytes = 4 * 1024 * 1024) {
+function convertedResponsesUsage(tokens) {
+  if (!tokens || tokens.input === undefined || tokens.output === undefined) return undefined;
+  return {
+    input_tokens: tokens.input,
+    output_tokens: tokens.output,
+    total_tokens: tokens.total ?? (tokens.input + tokens.output),
+    ...(tokens.cacheRead !== undefined ? { input_tokens_details: { cached_tokens: tokens.cacheRead } } : {}),
+    ...(tokens.reasoning !== undefined ? { output_tokens_details: { reasoning_tokens: tokens.reasoning } } : {}),
+  };
+}
+
+async function pipeConvertedStream(response, res, outboundProtocol, inboundProtocol, requestId, metrics, deadline, monotonicNow, toolContext, responseState, model, maxBytes = 4 * 1024 * 1024) {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
   let size = 0;
   let terminalEvent;
-  const streamState = { nextToolIndex: 0, toolIndexes: new Map(), toolContext };
+  const streamState = { nextToolIndex: 0, toolContext, model };
   const writeEvent = (event) => {
-    if (event.type === 'ignore' || event.type === 'done') return;
+    if (event.type === 'batch') {
+      for (const item of event.events) writeEvent(item);
+      return;
+    }
+    if (event.type === 'ignore') return;
+    if (event.type === 'done') {
+      if (event.finishReason || !terminalEvent) terminalEvent = event;
+      return;
+    }
     const wire = serializeAdapterStreamEvent(inboundProtocol, event, requestId, streamState);
     if (wire) res.write(inboundProtocol === 'Res' ? sequenceResponsesFrames(wire, responseState) : wire);
   };
@@ -406,29 +433,41 @@ async function pipeConvertedStream(response, res, outboundProtocol, inboundProto
     const data = lines.filter((line) => line.startsWith('data:')).map((line) => line.slice(5).trimStart()).join('\n');
     if (!data) return;
     const payload = data === '[DONE]' ? '[DONE]' : JSON.parse(data);
-    const event = parseAdapterStreamEvent(outboundProtocol, eventName, payload, streamState);
-    if (event.type === 'done') terminalEvent = event;
-    else writeEvent(event);
+    const type = eventName || payload?.type;
+    if (inboundProtocol === 'Res' && (type === 'error' || payload?.error)) {
+      throw Object.assign(new Error('Upstream stream reported an error'), { code: 'upstream_error', statusCode: 502 });
+    }
+    writeEvent(parseAdapterStreamEvent(outboundProtocol, type, payload, streamState));
   };
   try {
     while (true) {
       const result = await readBeforeDeadline(reader, deadline, monotonicNow);
-      if (result.done) break;
+      if (result.done) { metrics.endUpstreamBody(); break; }
+      metrics.observeUpstreamChunk(result.value);
       size += result.value.byteLength;
       if (size > maxBytes) throw Object.assign(new Error('Upstream stream too large'), { code: 'upstream_error', statusCode: 502 });
-      metrics.push(result.value);
-      buffer += decoder.decode(result.value, { stream: true });
-      const frames = buffer.split(/\r?\n\r?\n/);
-      buffer = frames.pop() || '';
-      for (const frame of frames) writeFrame(frame);
+      metrics.measureProcessing(() => {
+        metrics.push(result.value);
+        buffer += decoder.decode(result.value, { stream: true });
+        const frames = buffer.split(/\r?\n\r?\n/);
+        buffer = frames.pop() || '';
+        for (const frame of frames) writeFrame(frame);
+      });
     }
-    if (buffer.trim()) writeFrame(buffer);
-    metrics.finish();
-    if (!terminalEvent) throw Object.assign(new Error('Upstream stream ended before completion'), { code: 'upstream_error', statusCode: 502 });
-    const terminalWire = serializeAdapterStreamEvent(inboundProtocol, terminalEvent, requestId, streamState);
-    if (terminalWire) res.write(inboundProtocol === 'Res' ? sequenceResponsesFrames(terminalWire, responseState) : terminalWire);
-    res.end();
-  } finally { await reader.cancel().catch(() => {}); }
+    metrics.measureProcessing(() => {
+      buffer += decoder.decode();
+      if (buffer.trim()) writeFrame(buffer);
+      metrics.finish();
+      if (!terminalEvent) throw Object.assign(new Error('Upstream stream ended before completion'), { code: 'upstream_error', statusCode: 502 });
+      if (inboundProtocol === 'Res') streamState.usage = convertedResponsesUsage(metrics.snapshot().tokens);
+      const terminalWire = serializeAdapterStreamEvent(inboundProtocol, terminalEvent, requestId, streamState);
+      if (terminalWire) res.write(inboundProtocol === 'Res' ? sequenceResponsesFrames(terminalWire, responseState) : terminalWire);
+      res.end();
+    });
+  } finally {
+    metrics.endUpstreamBody();
+    await reader.cancel().catch(() => {});
+  }
 }
 
 async function appendUsage(store, record) {
@@ -624,6 +663,7 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
       const serializedPayload = JSON.stringify(payload);
       headers['content-length'] = String(Buffer.byteLength(serializedPayload, 'utf8'));
       const upstreamResponse = await fetchWithTimeout(upstreamUrl(upstream.baseUrl, outboundPath), { method: 'POST', headers, body: serializedPayload }, addresses, upstreamHeaderTimeoutMs, requestDeadline, requestController.signal, () => { upstreamTimedOut = true; }, monotonicNow);
+      metrics.markUpstreamHeaders();
       upstreamStatus = upstreamResponse.status;
       if (upstreamResponse.status >= 300) {
         await upstreamResponse.body?.cancel().catch(() => {});
@@ -637,7 +677,7 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
         res.setHeader('content-type', upstreamResponse.headers.get('content-type') || 'text/event-stream');
         res.setHeader('x-request-id', requestId);
         if (route.outboundProtocol === inbound) await pipeStream(upstreamResponse, res, metrics, requestDeadline, monotonicNow, responseSequenceTracker);
-        else await pipeConvertedStream(upstreamResponse, res, route.outboundProtocol, inbound, requestId, metrics, requestDeadline, monotonicNow, normalized?.tools || [], responseState);
+        else await pipeConvertedStream(upstreamResponse, res, route.outboundProtocol, inbound, requestId, metrics, requestDeadline, monotonicNow, normalized?.tools || [], responseState, route.modelId);
         recordOutcome(false);
         const credentialUsageUpdateFailed = await markCredentialUsed(store, credential);
         await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Math.max(0, monotonicNow() - requestStartedMonotonic), ...metrics?.snapshot(), ...(reasoningEffort ? { reasoningEffort } : {}), httpStatus: upstreamResponse.status, inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, upstreamName: upstream.name, modelId: route.modelId, status: 'completed', ...(credentialUsageUpdateFailed ? { credentialUsageUpdateFailed: true } : {}) });
@@ -650,6 +690,9 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
         try {
           const normalizedResponse = parseAdapterResponse(route.outboundProtocol, upstreamBody, normalized?.tools || []);
           clientBody = serializeAdapterResponse(inbound, normalizedResponse, requestId);
+          if (inbound === 'Res' && (upstreamBody.error || !clientBody.output.length)) {
+            throw new Error('Converted response has no deliverable output');
+          }
         } catch {
           throw Object.assign(new Error('Invalid upstream response'), { code: 'upstream_error', statusCode: 502 });
         }

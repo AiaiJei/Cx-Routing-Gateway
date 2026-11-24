@@ -50,6 +50,7 @@ function normalizeToolChoice(protocol, value, direction, tools = []) {
   if (value === 'auto' || value === 'none' || value === 'required') return { mode: value };
   if (protocol === 'Mes' && value.type === 'auto') return { mode: 'auto' };
   if (protocol === 'Mes' && value.type === 'any') return { mode: 'required' };
+  if (protocol === 'Mes' && value.type === 'none') return { mode: 'none' };
   if (protocol === 'Res' && value.type === 'tool_search') {
     const matches = tools.filter((tool) => tool.kind === 'tool_search');
     if (matches.length !== 1) throw featureError('tool_choice', direction);
@@ -227,13 +228,17 @@ function normalizeMessages(protocol, body, direction, tools = []) {
         if (kind === 'tool_search' && !tool) throw featureError('input.tool_search_call', direction);
         if (kind === 'tool_search' && item.execution !== undefined && item.execution !== 'client') throw featureError('input.execution', direction);
         const input = typeof item.input === 'string' ? item.input : JSON.stringify(item.input ?? '');
-        messages.push({ role: 'assistant', toolCalls: [{
+        const previous = messages.at(-1);
+        const assistant = previous?.role === 'assistant' ? previous : { role: 'assistant' };
+        if (assistant !== previous) messages.push(assistant);
+        assistant.toolCalls ??= [];
+        assistant.toolCalls.push({
           id: item.call_id || item.id,
           name: tool ? targetToolName(tool) : item.name,
           ...(item.namespace ? { namespace: item.namespace } : {}),
           ...(kind === 'custom' ? { kind, input, arguments: JSON.stringify({ input }) } : { arguments: serializedToolValue(kind === 'tool_search' ? searchArguments(item.arguments, direction) : item.arguments) }),
-          index: 0,
-        }] });
+          index: assistant.toolCalls.length,
+        });
       }
       else {
         if (Array.isArray(item.content) && item.content.some((part) => !['input_text', 'output_text', 'text'].includes(part?.type))) throw featureError('input.content', direction);
@@ -286,7 +291,11 @@ function serializeTools(protocol, tools) {
 
 function serializeChoice(protocol, choice) {
   if (!choice) return undefined;
-  if (choice.mode === 'function') return protocol === 'Mes' ? { type: 'tool', name: choice.name } : protocol === 'Chat' ? { type: 'function', function: { name: choice.name } } : { type: 'function', name: choice.name };
+  if (protocol === 'Mes') {
+    if (choice.mode === 'function') return { type: 'tool', name: choice.name };
+    return { type: choice.mode === 'required' ? 'any' : choice.mode };
+  }
+  if (choice.mode === 'function') return protocol === 'Chat' ? { type: 'function', function: { name: choice.name } } : { type: 'function', name: choice.name };
   return choice.mode;
 }
 
@@ -313,7 +322,9 @@ export function serializeRequest(protocol, normalized, model) {
           mesMessages.push({ role: 'user', content: [{ type: 'tool_result', tool_use_id: item.id, content: item.content }] });
         }
       } else if (item.toolCalls?.length) {
-        mesMessages.push({ role: 'assistant', content: item.toolCalls.map((call) => ({ type: 'tool_use', id: call.id, name: call.name, input: JSON.parse(call.arguments || '{}') })) });
+        const content = item.content ? [{ type: 'text', text: item.content }] : [];
+        content.push(...item.toolCalls.map((call) => ({ type: 'tool_use', id: call.id, name: call.name, input: JSON.parse(call.arguments || '{}') })));
+        mesMessages.push({ role: 'assistant', content });
       } else {
         mesMessages.push({ role: item.role, content: item.content });
       }
@@ -356,6 +367,12 @@ function parseResponseToolCalls(calls, toolContext) {
   return calls.map((call) => restoreToolCall(call, toolContext));
 }
 
+function incompleteReason(finishReason) {
+  if (finishReason === 'length' || finishReason === 'max_tokens') return 'max_output_tokens';
+  if (finishReason === 'content_filter') return 'content_filter';
+  return null;
+}
+
 export function parseResponse(protocol, body, toolContext = []) {
   if (protocol === 'Chat') {
     const message = body.choices?.[0]?.message || {};
@@ -368,11 +385,28 @@ export function parseResponse(protocol, body, toolContext = []) {
 export function serializeResponse(protocol, normalized, requestId) {
   if (protocol === 'Chat') return { id: normalized.id || 'chatcmpl_' + requestId, object: 'chat.completion', choices: [{ index: 0, message: normalized.toolCalls?.length ? { role: 'assistant', content: null, tool_calls: normalized.toolCalls.map((call) => ({ id: call.id, type: 'function', function: { name: targetToolName(call), arguments: call.kind === 'custom' ? JSON.stringify({ input: call.input ?? customInputFromArguments(call.arguments) }) : call.arguments } })) } : { role: 'assistant', content: normalized.text }, finish_reason: normalized.toolCalls?.length ? 'tool_calls' : 'stop' }], usage: normalized.usage };
   if (protocol === 'Mes') return { id: normalized.id || 'msg_' + requestId, type: 'message', role: 'assistant', content: normalized.toolCalls?.length ? normalized.toolCalls.map((call) => ({ type: 'tool_use', id: call.id, name: targetToolName(call), input: call.kind === 'custom' ? { input: call.input ?? customInputFromArguments(call.arguments) } : JSON.parse(call.arguments || '{}') })) : [{ type: 'text', text: normalized.text }], stop_reason: normalized.toolCalls?.length ? 'tool_use' : 'end_turn', usage: normalized.usage };
-  return { id: normalized.id || 'resp_' + requestId, object: 'response', output: normalized.toolCalls?.length ? normalized.toolCalls.map((call) => call.kind === 'tool_search'
-    ? { type: 'tool_search_call', id: call.id || 'tsc_' + requestId + '_' + call.index, call_id: call.id || 'call_' + requestId + '_' + call.index, status: 'completed', execution: 'client', arguments: searchArguments(call.arguments, 'Chat->Res') }
-    : call.kind === 'custom'
-    ? { type: 'custom_tool_call', call_id: call.id, name: call.name, ...(call.namespace ? { namespace: call.namespace } : {}), input: call.input ?? customInputFromArguments(call.arguments) }
-    : { type: 'function_call', call_id: call.id, name: call.name, ...(call.namespace ? { namespace: call.namespace } : {}), arguments: call.arguments }) : [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: normalized.text }] }], status: 'completed', usage: normalized.usage };
+  const reason = incompleteReason(normalized.finishReason);
+  const status = reason ? 'incomplete' : 'completed';
+  const output = [];
+  if (normalized.text) {
+    output.push({
+      type: 'message', id: 'msg_' + requestId + '_0', role: 'assistant', status,
+      content: [{ type: 'output_text', text: normalized.text, annotations: [], logprobs: [] }],
+    });
+  }
+  for (const call of normalized.toolCalls || []) {
+    const suffix = requestId + '_' + output.length;
+    const call_id = call.id || 'call_' + suffix;
+    const named = { name: call.name, ...(call.namespace ? { namespace: call.namespace } : {}) };
+    if (call.kind === 'tool_search') {
+      output.push({ type: 'tool_search_call', id: call.id || 'tsc_' + suffix, call_id, status: 'completed', execution: 'client', arguments: searchArguments(call.arguments, 'Chat->Res') });
+    } else if (call.kind === 'custom') {
+      output.push({ type: 'custom_tool_call', id: 'ctc_' + suffix, call_id, ...named, input: call.input ?? customInputFromArguments(call.arguments) });
+    } else {
+      output.push({ type: 'function_call', id: 'fc_' + suffix, call_id, ...named, status, arguments: call.arguments });
+    }
+  }
+  return { id: normalized.id || 'resp_' + requestId, object: 'response', output, status, incomplete_details: reason ? { reason } : null, usage: normalized.usage };
 }
 
 export function parseStreamEvent(protocol, eventName, payload, state = {}) {
@@ -380,10 +414,18 @@ export function parseStreamEvent(protocol, eventName, payload, state = {}) {
   if (protocol === 'Chat') {
     const choice = payload.choices?.[0];
     const delta = choice?.delta || {};
-    if (Array.isArray(delta.tool_calls) && delta.tool_calls.length) { state.sawTool = true; return { type: 'tools', tools: delta.tool_calls.map((call) => ({ index: call.index ?? 0, id: call.id, name: call.function?.name, arguments: call.function?.arguments || '' })) }; }
-    if (typeof delta.content === 'string' && delta.content) return { type: 'text', text: delta.content };
-    if (choice?.finish_reason) return { type: 'done', finishReason: choice.finish_reason };
-    return { type: 'ignore' };
+    const events = [];
+    const text = textParts(delta.content) || (typeof delta.refusal === 'string' ? delta.refusal : '');
+    if (text) events.push({ type: 'text', text });
+    if (Array.isArray(delta.tool_calls) && delta.tool_calls.length) {
+      state.sawTool = true;
+      events.push({ type: 'tools', tools: delta.tool_calls.map((call) => ({
+        index: call.index ?? 0, id: call.id, name: call.function?.name, arguments: call.function?.arguments || '',
+      })) });
+    }
+    if (choice?.finish_reason) events.push({ type: 'done', finishReason: choice.finish_reason });
+    if (events.length > 1) return { type: 'batch', events };
+    return events[0] || { type: 'ignore' };
   }
   if (protocol === 'Mes') {
     if (eventName === 'content_block_start' && payload.content_block?.type === 'tool_use') {
@@ -398,7 +440,8 @@ export function parseStreamEvent(protocol, eventName, payload, state = {}) {
       return { type: 'tools', tools: [{ index, arguments: payload.delta.partial_json || '' }] };
     }
     if (payload.delta?.type === 'text_delta' && payload.delta.text) return { type: 'text', text: payload.delta.text };
-    if (eventName === 'message_stop') return { type: 'done', finishReason: state.sawTool ? 'tool_use' : 'end_turn' };
+    if (eventName === 'message_delta' && typeof payload.delta?.stop_reason === 'string') state.messagesStopReason = payload.delta.stop_reason;
+    if (eventName === 'message_stop') return { type: 'done', finishReason: state.messagesStopReason || (state.sawTool ? 'tool_use' : 'end_turn') };
     return { type: 'ignore' };
   }
   if (eventName === 'response.output_item.added' && payload.item?.type === 'function_call') {
@@ -417,28 +460,151 @@ function responseFrame(eventName, payload) {
   return 'event: ' + eventName + '\ndata: ' + JSON.stringify(payload) + '\n\n';
 }
 
-function customCallFrames(call, requestId) {
-  const input = customInputFromArguments(call.arguments);
-  const callId = call.id || 'call_' + requestId + '_' + call.index;
-  const itemId = 'ctc_' + requestId + '_' + call.index;
-  const item = { type: 'custom_tool_call', id: itemId, call_id: callId, name: call.tool.name, ...(call.tool.namespace ? { namespace: call.tool.namespace } : {}) };
-  return responseFrame('response.output_item.added', { type: 'response.output_item.added', output_index: call.index, item: { ...item, input: '' } })
-    + responseFrame('response.custom_tool_call_input.delta', { type: 'response.custom_tool_call_input.delta', item_id: itemId, output_index: call.index, delta: input })
-    + responseFrame('response.custom_tool_call_input.done', { type: 'response.custom_tool_call_input.done', item_id: itemId, output_index: call.index, input })
-    + responseFrame('response.output_item.done', { type: 'response.output_item.done', output_index: call.index, item: { ...item, input } });
+function convertedResponseFrame(type, fields) {
+  return responseFrame(type, { type, ...fields });
 }
 
-function searchCallFrames(call, requestId) {
-  const item = {
-    type: 'tool_search_call', id: call.id || 'tsc_' + requestId + '_' + call.index,
-    call_id: call.id || 'call_' + requestId + '_' + call.index,
-    execution: 'client', arguments: searchArguments(call.arguments, 'Chat->Res'),
+function responseEnvelope(requestId, state, status, output, reason = null) {
+  return {
+    id: 'resp_' + requestId, object: 'response', created_at: state.createdAt,
+    status, ...(state.model ? { model: state.model } : {}), output,
+    error: null, incomplete_details: reason ? { reason } : null, usage: status === 'in_progress' ? null : (state.usage ?? null),
   };
-  return responseFrame('response.output_item.added', { type: 'response.output_item.added', output_index: call.index, item: { ...item, status: 'in_progress' } })
-    + responseFrame('response.output_item.done', { type: 'response.output_item.done', output_index: call.index, item: { ...item, status: 'completed' } });
+}
+
+function writeResponseStart(requestId, state) {
+  if (state.responseStarted) return '';
+  state.responseStarted = true;
+  state.createdAt ??= Math.floor(Date.now() / 1000);
+  const response = responseEnvelope(requestId, state, 'in_progress', []);
+  return convertedResponseFrame('response.created', { response })
+    + convertedResponseFrame('response.in_progress', { response });
+}
+
+function streamResponsesText(text, requestId, state) {
+  if (!text) return '';
+  let message = state.responseMessage;
+  let wire = writeResponseStart(requestId, state);
+  if (!message) {
+    const outputIndex = state.responseItems.length;
+    const item = { type: 'message', id: 'msg_' + requestId + '_' + outputIndex, role: 'assistant', status: 'in_progress', content: [] };
+    message = { item, outputIndex, text: '' };
+    state.responseMessage = message;
+    state.responseItems.push(message);
+    wire += convertedResponseFrame('response.output_item.added', { output_index: outputIndex, item });
+    wire += convertedResponseFrame('response.content_part.added', {
+      item_id: item.id, output_index: outputIndex, content_index: 0,
+      part: { type: 'output_text', text: '', annotations: [], logprobs: [] },
+    });
+  }
+  message.text += text;
+  return wire + convertedResponseFrame('response.output_text.delta', {
+    item_id: message.item.id, output_index: message.outputIndex, content_index: 0, delta: text, logprobs: [],
+  });
+}
+
+function streamResponsesTools(tools, requestId, state) {
+  const frames = [];
+  for (const tool of tools) {
+    const index = Number.isInteger(tool.index) ? tool.index : 0;
+    let call = state.responseCalls.get(index);
+    if (!call) {
+      call = { arguments: '' };
+      state.responseCalls.set(index, call);
+    }
+    call.callId ??= tool.id;
+    call.name ??= tool.name;
+    call.arguments += tool.arguments || '';
+    if (!call.name) continue;
+    const descriptor = state.toolContext?.find(item => targetToolName(item) === call.name);
+    call.kind = descriptor?.kind || 'function';
+    call.originalName = descriptor?.name || call.name;
+    call.namespace = descriptor?.namespace;
+    if (call.kind !== 'function') continue;
+    const first = !call.item;
+    if (first) {
+      call.outputIndex = state.responseItems.length;
+      state.responseItems.push(call);
+      const suffix = requestId + '_' + call.outputIndex;
+      call.callId ||= 'call_' + suffix;
+      call.item = {
+        type: 'function_call', id: 'fc_' + suffix, call_id: call.callId, name: call.originalName,
+        ...(call.namespace ? { namespace: call.namespace } : {}), status: 'in_progress', arguments: '',
+      };
+      frames.push(writeResponseStart(requestId, state));
+      frames.push(convertedResponseFrame('response.output_item.added', { output_index: call.outputIndex, item: call.item }));
+    }
+    const delta = first ? call.arguments : tool.arguments;
+    if (delta) frames.push(convertedResponseFrame('response.function_call_arguments.delta', {
+      output_index: call.outputIndex, delta, item_id: call.item.id,
+    }));
+  }
+  return frames.join('');
+}
+
+function finishResponsesItem(entry, requestId, status) {
+  const output_index = entry.outputIndex;
+  if (entry.text !== undefined) {
+    const part = { type: 'output_text', text: entry.text, annotations: [], logprobs: [] };
+    const item = { ...entry.item, status, content: [part] };
+    const position = { item_id: item.id, output_index, content_index: 0 };
+    return { item, wire: convertedResponseFrame('response.output_text.done', { ...position, text: entry.text, logprobs: [] })
+      + convertedResponseFrame('response.content_part.done', { ...position, part })
+      + convertedResponseFrame('response.output_item.done', { output_index, item }) };
+  }
+  const suffix = requestId + '_' + output_index;
+  const call_id = entry.callId || 'call_' + suffix;
+  const named = { name: entry.originalName, ...(entry.namespace ? { namespace: entry.namespace } : {}) };
+  let item;
+  let wire;
+  if (entry.kind === 'custom') {
+    const input = customInputFromArguments(entry.arguments);
+    item = { type: 'custom_tool_call', id: 'ctc_' + suffix, call_id, ...named, input };
+    const position = { item_id: item.id, output_index };
+    wire = convertedResponseFrame('response.output_item.added', { output_index, item: { ...item, input: '' } })
+      + convertedResponseFrame('response.custom_tool_call_input.delta', { ...position, delta: input })
+      + convertedResponseFrame('response.custom_tool_call_input.done', { ...position, input });
+  } else if (entry.kind === 'tool_search') {
+    item = { type: 'tool_search_call', id: 'tsc_' + suffix, call_id, status, execution: 'client', arguments: searchArguments(entry.arguments, 'Chat->Res') };
+    wire = convertedResponseFrame('response.output_item.added', { output_index, item: { ...item, status: 'in_progress' } });
+  } else {
+    const args = status === 'completed' ? (entry.arguments || '{}') : entry.arguments;
+    item = { ...entry.item, status, arguments: args };
+    wire = convertedResponseFrame('response.function_call_arguments.done', {
+      output_index, item_id: item.id, name: item.name, arguments: item.arguments,
+    });
+  }
+  return { item, wire: wire + convertedResponseFrame('response.output_item.done', { output_index, item }) };
+}
+
+function serializeResponsesStreamEvent(event, requestId, state) {
+  if (state.responseCompleted) return '';
+  state.responseItems ??= [];
+  state.responseCalls ??= new Map();
+  if (event.type === 'text') return streamResponsesText(event.text, requestId, state);
+  if (event.type === 'tools') return streamResponsesTools(event.tools, requestId, state);
+  if (event.type !== 'done') return '';
+  const pending = [...state.responseCalls.values()].filter(call => !call.item);
+  if ((!state.responseItems.length && !pending.length) || pending.some(call => !call.name)) {
+    throw Object.assign(new Error('Converted stream has no complete output items'), { code: 'upstream_error', statusCode: 502 });
+  }
+  // Buffered custom and search calls receive their index when their added event is emitted.
+  for (const call of pending) {
+    call.outputIndex = state.responseItems.length;
+    state.responseItems.push(call);
+  }
+  const reason = incompleteReason(event.finishReason);
+  const status = reason ? 'incomplete' : 'completed';
+  const result = state.responseItems.map(entry => finishResponsesItem(entry, requestId, status));
+  const start = writeResponseStart(requestId, state);
+  state.responseCompleted = true;
+  return start + result.map(entry => entry.wire).join('') + convertedResponseFrame('response.' + status, {
+    response: responseEnvelope(requestId, state, status, result.map(entry => entry.item), reason),
+  });
 }
 
 export function serializeStreamEvent(protocol, event, requestId, state = {}) {
+  if (event.type === 'batch') return event.events.map(item => serializeStreamEvent(protocol, item, requestId, state)).join('');
   if (protocol === 'Chat') {
     if (event.type === 'done') return 'data: ' + JSON.stringify({ id: 'chatcmpl_' + requestId, object: 'chat.completion.chunk', choices: [{ index: 0, delta: {}, finish_reason: event.finishReason === 'end_turn' ? 'stop' : event.finishReason === 'tool_use' || event.finishReason === 'tool_calls' ? 'tool_calls' : event.finishReason || 'stop' }] }) + '\n\ndata: [DONE]\n\n';
     if (event.type === 'text') return 'data: ' + JSON.stringify({ id: 'chatcmpl_' + requestId, object: 'chat.completion.chunk', choices: [{ index: 0, delta: { content: event.text }, finish_reason: null }] }) + '\n\n';
@@ -451,42 +617,7 @@ export function serializeStreamEvent(protocol, event, requestId, state = {}) {
     if (event.type === 'tools') return event.tools.map((tool) => (tool.id || tool.name ? 'event: content_block_start\ndata: ' + JSON.stringify({ type: 'content_block_start', index: tool.index, content_block: { type: 'tool_use', id: tool.id || 'tool_' + requestId + '_' + tool.index, name: tool.name || '', input: {} } }) + '\n\n' : '') + (tool.arguments ? 'event: content_block_delta\ndata: ' + JSON.stringify({ type: 'content_block_delta', index: tool.index, delta: { type: 'input_json_delta', partial_json: tool.arguments } }) + '\n\n' : '')).join('');
     return '';
   }
-  if (event.type === 'done') {
-    if (state.responseCompleted) return '';
-    state.responseCompleted = true;
-    const pending = [...(state.customToolCalls?.values() || []), ...(state.searchToolCalls?.values() || [])].sort((left, right) => left.index - right.index);
-    state.customToolCalls?.clear();
-    state.searchToolCalls?.clear();
-    return pending.map((call) => call.tool.kind === 'tool_search' ? searchCallFrames(call, requestId) : customCallFrames(call, requestId)).join('')
-      + 'event: response.completed\ndata: ' + JSON.stringify({ type: 'response.completed', response: { id: 'resp_' + requestId, status: 'completed' } }) + '\n\n';
-  }
-  if (event.type === 'text') return 'event: response.output_text.delta\ndata: ' + JSON.stringify({ type: 'response.output_text.delta', delta: event.text }) + '\n\n';
-  if (event.type === 'tools') {
-    const output = [];
-    for (const tool of event.tools) {
-      const index = Number.isInteger(tool.index) ? tool.index : 0;
-      const existing = state.customToolCalls?.get(index) || state.searchToolCalls?.get(index);
-      const descriptor = state.toolContext?.find((item) => targetToolName(item) === tool.name) || existing?.tool;
-      if (descriptor?.kind === 'custom' || descriptor?.kind === 'tool_search') {
-        const calls = descriptor.kind === 'custom' ? (state.customToolCalls ||= new Map()) : (state.searchToolCalls ||= new Map());
-        const call = calls.get(index) || { index, id: undefined, tool: descriptor, arguments: '' };
-        if (tool.id) call.id = tool.id;
-        call.arguments += tool.arguments || '';
-        calls.set(index, call);
-        continue;
-      }
-      const name = descriptor?.name || tool.name;
-      const namespace = descriptor?.namespace;
-      const hasIdentity = Boolean(tool.id || tool.name);
-      if (hasIdentity) {
-        const item = { type: 'function_call', id: tool.id || 'fc_' + requestId + '_' + index, call_id: tool.id || 'call_' + requestId + '_' + index, name: name || '', ...(namespace ? { namespace } : {}), arguments: '' };
-        output.push(responseFrame('response.output_item.added', { type: 'response.output_item.added', output_index: index, item }));
-      }
-      if (tool.arguments) output.push(responseFrame('response.function_call_arguments.delta', { type: 'response.function_call_arguments.delta', output_index: index, delta: tool.arguments }));
-    }
-    return output.join('');
-  }
-  return '';
+  return serializeResponsesStreamEvent(event, requestId, state);
 }
 
 export { featureError };

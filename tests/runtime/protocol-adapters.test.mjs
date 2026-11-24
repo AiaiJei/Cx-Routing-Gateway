@@ -110,6 +110,7 @@ test('round-trips namespaced custom tools and their follow-up history through Ch
   const responses = serializeResponse('Res', chatResponse, 'req-custom');
   assert.deepEqual(responses.output[0], {
     type: 'custom_tool_call',
+    id: 'ctc_req-custom_0',
     call_id: 'call-custom-1',
     name: 'apply_patch',
     namespace: 'mcp__patch',
@@ -122,6 +123,7 @@ test('round-trips namespaced custom tools and their follow-up history through Ch
   const responsesFromMes = serializeResponse('Res', mesResponse, 'req-mes-custom');
   assert.deepEqual(responsesFromMes.output[0], {
     type: 'custom_tool_call',
+    id: 'ctc_req-mes-custom_0',
     call_id: 'call-mes-custom',
     name: 'apply_patch',
     namespace: 'mcp__patch',
@@ -351,6 +353,9 @@ test('completes fragmented Chat tool_search calls using descriptors without conf
     assert.ok(data, 'each Responses frame must have a JSON payload');
     return JSON.parse(data.slice(6));
   });
+  const opened = events.filter(event => event.type === 'response.output_item.added');
+  assert.deepEqual(opened.map(event => event.output_index), [0, 1], 'clients must see items open in output order');
+  assert.deepEqual(events.at(-1).response.output.map(item => item.id), opened.map(event => event.item.id));
   const completedSearchCalls = events.filter((event) => event.type === 'response.output_item.done' && event.item?.type === 'tool_search_call');
   assert.equal(completedSearchCalls.length, 1);
   const searchCall = completedSearchCalls[0].item;
@@ -405,7 +410,7 @@ test('deduplicates loaded definitions by kind and namespace while keeping collid
   const custom = request.tools.find((tool) => tool.kind === 'custom');
   assert.equal(chat.messages[2].tool_calls[0].function.name, func.targetName);
   assert.equal(chat.messages[2].tool_calls[0].function.arguments, '{"key":"x"}');
-  assert.equal(chat.messages[3].tool_calls[0].function.name, custom.targetName);
+  assert.equal(chat.messages[2].tool_calls[1].function.name, custom.targetName);
   const restored = serializeResponse('Res', parseResponse('Chat', { choices: [{ message: { tool_calls: [
     { id: 'f', function: { name: func.targetName, arguments: '{}' } },
     { id: 'c', function: { name: custom.targetName, arguments: '{"input":"raw input"}' } },
@@ -683,6 +688,11 @@ test('normalizes Anthropic tool_choice auto, any and named tool controls', () =>
   assert.deepEqual(parseRequest('Mes', { messages: [], tool_choice: { type: 'auto' } }).toolChoice, { mode: 'auto' });
   assert.deepEqual(parseRequest('Mes', { messages: [], tool_choice: { type: 'any' } }).toolChoice, { mode: 'required' });
   assert.deepEqual(parseRequest('Mes', { messages: [], tool_choice: { type: 'tool', name: 'lookup' } }).toolChoice, { mode: 'function', name: 'lookup' });
+  assert.deepEqual(parseRequest('Mes', { messages: [], tool_choice: { type: 'none' } }).toolChoice, { mode: 'none' });
+  for (const [mode, type] of [['auto', 'auto'], ['none', 'none'], ['required', 'any']]) {
+    const request = parseRequest('Res', { input: 'hello', tool_choice: mode });
+    assert.deepEqual(serializeRequest('Mes', request, 'messages-model').tool_choice, { type });
+  }
 });
 
 test('rejects non-text Res content with a safe field and direction instead of dropping it', () => {

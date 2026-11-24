@@ -13,7 +13,7 @@ import { createGatewayServer, validateDestination } from '../../services/gateway
 
 function listen(server, host = '127.0.0.1') { return new Promise((resolve) => server.listen(0, host, () => resolve(server.address().port))); }
 
-async function createTimeoutFixture(t, upstream, gatewayOptions = {}, upstreamHost = '127.0.0.1') {
+async function createTimeoutFixture(t, upstream, gatewayOptions = {}, upstreamHost = '127.0.0.1', responsesUpstream = 'Chat') {
   const upstreamPort = await listen(upstream, upstreamHost);
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-deadline-'));
   const store = new ConfigStore(path.join(dir, 'config.json'));
@@ -24,7 +24,7 @@ async function createTimeoutFixture(t, upstream, gatewayOptions = {}, upstreamHo
     upstreams: [{ id: 'deadline-upstream', name: 'Deadline', baseUrl: `http://127.0.0.1:${upstreamPort}`, protocol: 'Chat', trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'], enabled: true }],
     routes: [
       { id: 'deadline-chat-route', alias: 'deadline-chat', inboundProtocol: 'Chat', outboundProtocol: 'Chat', upstreamId: 'deadline-upstream', modelId: 'mock-chat', enabled: true },
-      { id: 'deadline-res-route', alias: 'deadline-res', inboundProtocol: 'Res', outboundProtocol: 'Chat', upstreamId: 'deadline-upstream', modelId: 'mock-chat', enabled: true },
+      { id: 'deadline-res-route', alias: 'deadline-res', inboundProtocol: 'Res', outboundProtocol: responsesUpstream, upstreamId: 'deadline-upstream', modelId: responsesUpstream === 'Mes' ? 'mock-mes' : 'mock-chat', enabled: true },
     ],
     clientKeys: [{ id: 'deadline-key', keyHash, scope: [], createdAt: new Date().toISOString(), enabled: true, name: 'deadline' }],
   }));
@@ -733,11 +733,17 @@ test('gateway converts parallel streamed tool calls from Chat to Responses', asy
   t.after(() => gateway.close());
   const response = await fetch(`http://127.0.0.1:${gateway.address().port}/v1/responses`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${clientKey}` }, body: JSON.stringify({ model: 'parallel-responses', stream: true, input: 'lookup a and b', tools: [{ type: 'function', name: 'lookup', parameters: { type: 'object' } }] }) });
   assert.equal(response.status, 200);
-  const text = await response.text();
-  assert.match(text, /"output_index":0,"item":\{"type":"function_call","id":"call-a"/);
-  assert.match(text, /"output_index":1,"item":\{"type":"function_call","id":"call-b"/);
-  assert.match(text, /"output_index":0,"delta":"\{\\"key\\":\\"a\\"\}"/);
-  assert.match(text, /"output_index":1,"delta":"\{\\"key\\":\\"b\\"\}"/);
+  const frames = responsesFrames(await response.text());
+  const finished = frames.filter(frame => frame.type === 'response.output_item.done');
+  assert.deepEqual(finished.map(({ output_index, item }) => [output_index, item.call_id, JSON.parse(item.arguments)]),
+    [[0, 'call-a', { key: 'a' }], [1, 'call-b', { key: 'b' }]]);
+  for (const { output_index, item } of finished) {
+    const added = frames.find(frame => frame.type === 'response.output_item.added' && frame.output_index === output_index);
+    const delta = frames.find(frame => frame.type === 'response.function_call_arguments.delta' && frame.output_index === output_index);
+    assert.equal(added.item.id, item.id);
+    assert.equal(delta.item_id, item.id);
+    assert.equal(delta.delta, item.arguments);
+  }
 });
 
 test('gateway converts one function tool definition and tool call from Chat to Messages', async (t) => {
@@ -1561,6 +1567,311 @@ async function waitForUsage(store, count = 1) {
   throw new Error('Expected request log was not persisted');
 }
 
+test('Chat to Responses streams complete assistant text and function output items', async t => {
+  let posted;
+  const upstream = http.createServer(async (req, res) => {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    posted = { path: req.url, body: JSON.parse(Buffer.concat(chunks)) };
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    const chat = (delta, finish_reason = null) => ({ choices: [{ index: 0, delta, finish_reason }] });
+    const chunksOut = [
+      chat({ role: 'assistant', reasoning_content: 'fixture reasoning' }),
+      chat({ content: '已找到' }),
+      chat({ content: '文档', tool_calls: [{ index: 0, id: 'call_fixture', type: 'function', function: { name: 'lookup', arguments: '{"key":' } }] }),
+      chat({ tool_calls: [{ index: 0, function: { arguments: '"doc"}' } }] }, 'tool_calls'),
+      { choices: [], usage: { prompt_tokens: 8, completion_tokens: 4, total_tokens: 12 } },
+    ];
+    res.end(chunksOut.map(chunk => 'data: ' + JSON.stringify(chunk) + '\n\n').join('') + 'data: [DONE]\n\n');
+  });
+  const app = await createTimeoutFixture(t, upstream);
+  const response = await app.request('Res', true, 'find doc', {
+    tools: [{ type: 'function', name: 'lookup', parameters: { type: 'object' } }],
+  });
+  assert.equal(response.status, 200);
+  const wire = await response.text();
+  assert.equal(posted.path, '/v1/chat/completions');
+  assert.equal(posted.body.tools[0].function.name, 'lookup');
+  assert.equal(posted.body.messages.at(-1).content, 'find doc');
+  assert.doesNotMatch(wire, /fixture reasoning/);
+  const frames = responsesFrames(wire);
+  const created = frames[0];
+  const completed = frames.at(-1);
+  assert.equal(created.type, 'response.created');
+  assert.equal(completed.type, 'response.completed');
+  assert.equal(completed.response.id, created.response.id);
+  assert.deepEqual(frames.map(frame => frame.sequence_number), frames.map((_, index) => index));
+  const opened = frames.filter(frame => frame.type === 'response.output_item.added');
+  const closed = frames.filter(frame => frame.type === 'response.output_item.done');
+  const message = closed.find(frame => frame.item.type === 'message');
+  const call = closed.find(frame => frame.item.type === 'function_call');
+  assert.ok(message);
+  assert.ok(call);
+  assert.equal(message.item.content[0].text, '已找到文档');
+  assert.equal(call.item.call_id, 'call_fixture');
+  assert.equal(call.item.name, 'lookup');
+  assert.equal(call.item.arguments, '{"key":"doc"}');
+  assert.notEqual(message.output_index, call.output_index);
+  assert.equal(opened.find(frame => frame.output_index === message.output_index).item.id, message.item.id);
+  assert.equal(opened.find(frame => frame.output_index === call.output_index).item.id, call.item.id);
+  const textDeltas = frames.filter(frame => frame.type === 'response.output_text.delta');
+  assert.equal(textDeltas.map(frame => frame.delta).join(''), '已找到文档');
+  assert.ok(textDeltas.every(frame => frame.item_id === message.item.id && frame.output_index === message.output_index && frame.content_index === 0));
+  const argumentDeltas = frames.filter(frame => frame.type === 'response.function_call_arguments.delta');
+  assert.equal(argumentDeltas.map(frame => frame.delta).join(''), call.item.arguments);
+  assert.ok(argumentDeltas.every(frame => frame.item_id === call.item.id && frame.output_index === call.output_index));
+  assert.ok(frames.some(frame => frame.type === 'response.content_part.added' && frame.item_id === message.item.id));
+  assert.ok(frames.some(frame => frame.type === 'response.output_text.done' && frame.item_id === message.item.id && frame.text === '已找到文档'));
+  assert.ok(frames.some(frame => frame.type === 'response.content_part.done' && frame.item_id === message.item.id));
+  assert.ok(frames.some(frame => frame.type === 'response.function_call_arguments.done' && frame.item_id === call.item.id));
+  assert.deepEqual(completed.response.output, closed.map(frame => frame.item));
+  assert.equal(completed.response.usage.output_tokens, 4);
+  assert.equal((await waitForUsage(app.store)).status, 'completed');
+});
+
+test('Chat to Responses with only reasoning and usage fails before a downstream completion', async t => {
+  const upstream = http.createServer((_req, res) => {
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.end('data: {"choices":[{"delta":{"reasoning_content":"fixture private reasoning"}}]}\n\n'
+      + 'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\n'
+      + 'data: {"choices":[],"usage":{"prompt_tokens":8,"completion_tokens":4,"total_tokens":12}}\n\n'
+      + 'data: [DONE]\n\n');
+  });
+  const app = await createTimeoutFixture(t, upstream);
+  const response = await app.request('Res', true);
+  const wire = await response.text();
+  assert.equal(response.status, 502, wire);
+  assert.doesNotMatch(wire, /response\.completed|fixture private reasoning/);
+  const log = await waitForUsage(app.store);
+  assert.equal(log.status, 'failed');
+  assert.equal(log.gatewayStatus, 502);
+  assert.equal(log.upstreamStatus, 200);
+  assert.equal(log.tokens.output, 4);
+});
+
+function messagesEvent(type, fields = {}) {
+  return 'event: ' + type + '\ndata: ' + JSON.stringify({ type, ...fields }) + '\n\n';
+}
+
+test('Responses round trip through Messages preserves stream text, tools, and usage', async t => {
+  let posted;
+  const schema = { type: 'object', properties: { key: { type: 'string' } } };
+  const upstream = http.createServer(async (req, res) => {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    const body = JSON.parse(Buffer.concat(chunks));
+    posted = { path: req.url, body };
+    if (body.tool_choice?.type !== 'auto') {
+      res.writeHead(400, { 'content-type': 'application/json' });
+      res.end('{}');
+      return;
+    }
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.end(
+      messagesEvent('message_start', { message: { id: 'msg_fixture', content: [], usage: { input_tokens: 8, output_tokens: 1 } } })
+      + messagesEvent('content_block_start', { index: 0, content_block: { type: 'text', text: '' } })
+      + messagesEvent('content_block_delta', { index: 0, delta: { type: 'text_delta', text: 'Found ' } })
+      + messagesEvent('content_block_delta', { index: 0, delta: { type: 'text_delta', text: 'doc' } })
+      + messagesEvent('content_block_stop', { index: 0 })
+      + messagesEvent('content_block_start', { index: 1, content_block: { type: 'tool_use', id: 'toolu_fixture', name: 'lookup', input: {} } })
+      + messagesEvent('content_block_delta', { index: 1, delta: { type: 'input_json_delta', partial_json: '{"key":' } })
+      + messagesEvent('content_block_delta', { index: 1, delta: { type: 'input_json_delta', partial_json: '"doc"}' } })
+      + messagesEvent('content_block_stop', { index: 1 })
+      + messagesEvent('message_delta', { delta: { stop_reason: 'tool_use' }, usage: { output_tokens: 6 } })
+      + messagesEvent('message_stop'),
+    );
+  });
+  const app = await createTimeoutFixture(t, upstream, {}, '127.0.0.1', 'Mes');
+  const response = await app.request('Res', true, 'Find doc', {
+    instructions: 'Be concise', tool_choice: 'auto', max_output_tokens: 64,
+    tools: [{ type: 'function', name: 'lookup', parameters: schema }],
+  });
+  const wire = await response.text();
+  assert.equal(posted.path, '/v1/messages');
+  assert.deepEqual(posted.body, {
+    model: 'mock-mes', stream: true, messages: [{ role: 'user', content: 'Find doc' }], system: 'Be concise',
+    max_tokens: 64, tools: [{ name: 'lookup', input_schema: schema }], tool_choice: { type: 'auto' },
+  });
+  assert.equal(response.status, 200, wire);
+  const frames = responsesFrames(wire);
+  assert.equal(frames[0].type, 'response.created');
+  assert.deepEqual(frames.map(frame => frame.sequence_number), frames.map((_, index) => index));
+  const closed = frames.filter(frame => frame.type === 'response.output_item.done');
+  assert.deepEqual(closed.map(frame => frame.output_index), [0, 1]);
+  assert.deepEqual(closed.map(frame => frame.item.type), ['message', 'function_call']);
+  for (const { output_index, item } of closed) {
+    assert.equal(frames.find(frame => frame.type === 'response.output_item.added' && frame.output_index === output_index).item.id, item.id);
+  }
+  const [message, call] = closed.map(frame => frame.item);
+  const text = frames.filter(frame => frame.type === 'response.output_text.delta');
+  const args = frames.filter(frame => frame.type === 'response.function_call_arguments.delta');
+  assert.ok(text.every(frame => frame.item_id === message.id && frame.output_index === 0 && frame.content_index === 0));
+  assert.ok(args.every(frame => frame.item_id === call.id && frame.output_index === 1));
+  assert.equal(text.map(frame => frame.delta).join(''), 'Found doc');
+  assert.equal(message.content[0].text, 'Found doc');
+  assert.equal(call.call_id, 'toolu_fixture');
+  assert.equal(call.name, 'lookup');
+  assert.equal(args.map(frame => frame.delta).join(''), call.arguments);
+  assert.deepEqual(JSON.parse(call.arguments), { key: 'doc' });
+  assert.equal(frames.at(-1).type, 'response.completed');
+  assert.equal(frames.at(-1).response.id, frames[0].response.id);
+  assert.deepEqual(frames.at(-1).response.output, [message, call]);
+  assert.equal(frames.at(-1).response.usage.output_tokens, 6);
+  assert.equal((await waitForUsage(app.store)).status, 'completed');
+});
+
+for (const protocol of ['Chat', 'Mes']) {
+  test(`Responses round trip through ${protocol} retains text next to a non-streaming tool call`, async t => {
+    const upstream = http.createServer((_req, res) => {
+      const chat = { choices: [{ finish_reason: 'tool_calls', message: {
+        content: 'Looking up doc', tool_calls: [{ id: 'call_json', function: { name: 'lookup', arguments: '{"key":"doc"}' } }],
+      } }] };
+      const mes = { stop_reason: 'tool_use', content: [
+        { type: 'text', text: 'Looking up doc' }, { type: 'tool_use', id: 'call_json', name: 'lookup', input: { key: 'doc' } },
+      ] };
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify(protocol === 'Chat' ? chat : mes));
+    });
+    const app = await createTimeoutFixture(t, upstream, {}, '127.0.0.1', protocol);
+    const response = await app.request('Res', false, 'Find doc', {
+      tools: [{ type: 'function', name: 'lookup', parameters: { type: 'object' } }],
+    });
+    assert.equal(response.status, 200);
+    const { output } = await response.json();
+    assert.deepEqual(output.map(item => item.type), ['message', 'function_call']);
+    assert.equal(output[0].content[0].text, 'Looking up doc');
+    assert.deepEqual([output[1].call_id, output[1].name, JSON.parse(output[1].arguments)], ['call_json', 'lookup', { key: 'doc' }]);
+  });
+
+  test(`Responses follow-up through ${protocol} groups assistant text and parallel calls before their results`, async t => {
+    let body;
+    const upstream = http.createServer(async (req, res) => {
+      const chunks = [];
+      for await (const chunk of req) chunks.push(chunk);
+      body = JSON.parse(Buffer.concat(chunks));
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify(protocol === 'Chat'
+        ? { choices: [{ message: { content: 'Done' } }] }
+        : { content: [{ type: 'text', text: 'Done' }] }));
+    });
+    const app = await createTimeoutFixture(t, upstream, {}, '127.0.0.1', protocol);
+    const keys = ['a', 'b'];
+    const response = await app.request('Res', false, [
+      { role: 'user', content: 'Find both' },
+      { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Looking up both' }] },
+      ...keys.map(key => ({ type: 'function_call', name: 'lookup', call_id: 'call_' + key, arguments: JSON.stringify({ key }) })),
+      ...keys.map(key => ({ type: 'function_call_output', call_id: 'call_' + key, output: 'value ' + key })),
+    ]);
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).output[0].content[0].text, 'Done');
+    if (protocol === 'Chat') {
+      assert.deepEqual(body.messages.map(message => message.role), ['user', 'assistant', 'tool', 'tool']);
+      assert.equal(body.messages[1].content, 'Looking up both');
+      assert.deepEqual(body.messages[1].tool_calls.map(call => call.id), ['call_a', 'call_b']);
+      assert.deepEqual(body.messages.slice(2).map(result => result.tool_call_id), ['call_a', 'call_b']);
+    } else {
+      assert.deepEqual(body.messages.map(message => message.role), ['user', 'assistant', 'user']);
+      assert.deepEqual(body.messages[1].content, [
+        { type: 'text', text: 'Looking up both' },
+        ...keys.map(key => ({ type: 'tool_use', id: 'call_' + key, name: 'lookup', input: { key } })),
+      ]);
+      assert.deepEqual(body.messages[2].content.map(result => result.tool_use_id), ['call_a', 'call_b']);
+    }
+  });
+}
+
+test('Messages to Responses rejects a thinking-only stream with HTTP 502', async t => {
+  const upstream = http.createServer((_req, res) => {
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.end(messagesEvent('message_start', { message: { usage: { input_tokens: 8, output_tokens: 1 } } })
+      + messagesEvent('content_block_start', { index: 0, content_block: { type: 'thinking', thinking: '' } })
+      + messagesEvent('content_block_delta', { index: 0, delta: { type: 'thinking_delta', thinking: 'private fixture thought' } })
+      + messagesEvent('content_block_stop', { index: 0 })
+      + messagesEvent('message_delta', { delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 4 } })
+      + messagesEvent('message_stop'));
+  });
+  const app = await createTimeoutFixture(t, upstream, {}, '127.0.0.1', 'Mes');
+  const response = await app.request('Res', true);
+  assert.equal(response.status, 502);
+  assert.doesNotMatch(await response.text(), /private fixture thought|response\.completed/);
+  const log = await waitForUsage(app.store);
+  assert.equal(log.status, 'failed');
+  assert.equal(log.upstreamStatus, 200);
+});
+
+test('Messages SSE error cannot complete a Responses stream after partial text', async t => {
+  const upstream = http.createServer((_req, res) => {
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.end(messagesEvent('content_block_delta', { index: 0, delta: { type: 'text_delta', text: 'partial' } })
+      + messagesEvent('error', { error: { type: 'overloaded_error', message: 'private fixture error' } })
+      + messagesEvent('message_stop'));
+  });
+  const app = await createTimeoutFixture(t, upstream, {}, '127.0.0.1', 'Mes');
+  const response = await app.request('Res', true);
+  assert.equal(response.status, 200);
+  const wire = await response.text();
+  assert.doesNotMatch(wire, /private fixture error|response\.completed/);
+  const frames = responsesFrames(wire);
+  assert.equal(frames.find(frame => frame.type === 'response.output_text.delta').delta, 'partial');
+  assert.equal(frames.at(-1).type, 'error');
+  assert.deepEqual(frames.map(frame => frame.sequence_number), frames.map((_, index) => index));
+  const log = await waitForUsage(app.store);
+  assert.equal(log.status, 'failed');
+  assert.equal(log.gatewayStatus, 200);
+  assert.equal(log.upstreamStatus, 200);
+});
+
+test('Messages end of stream without message_stop fails after partial text', async t => {
+  const upstream = http.createServer((_req, res) => {
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.end(messagesEvent('content_block_delta', { index: 0, delta: { type: 'text_delta', text: 'partial' } }));
+  });
+  const app = await createTimeoutFixture(t, upstream, {}, '127.0.0.1', 'Mes');
+  const response = await app.request('Res', true);
+  assert.equal(response.status, 200);
+  assert.equal(responsesFrames(await response.text()).at(-1).type, 'error');
+  assert.equal((await waitForUsage(app.store)).status, 'failed');
+});
+
+for (const protocol of ['Chat', 'Mes']) {
+  test(`Responses reports incomplete when ${protocol} stops at its output limit`, async t => {
+    const upstream = http.createServer((_req, res) => {
+      res.writeHead(200, { 'content-type': 'text/event-stream' });
+      res.end(protocol === 'Chat'
+        ? 'data: {"choices":[{"delta":{"content":"partial"},"finish_reason":"length"}]}\n\ndata: [DONE]\n\n'
+        : messagesEvent('content_block_delta', { index: 0, delta: { type: 'text_delta', text: 'partial' } })
+          + messagesEvent('message_delta', { delta: { stop_reason: 'max_tokens' } })
+          + messagesEvent('message_stop'));
+    });
+    const app = await createTimeoutFixture(t, upstream, {}, '127.0.0.1', protocol);
+    const response = await app.request('Res', true);
+    assert.equal(response.status, 200);
+    const frames = responsesFrames(await response.text());
+    assert.equal(frames.at(-1).type, 'response.incomplete');
+    assert.equal(frames.at(-1).response.status, 'incomplete');
+    assert.equal(frames.at(-1).response.incomplete_details.reason, 'max_output_tokens');
+    assert.equal(frames.at(-1).response.output[0].content[0].text, 'partial');
+    assert.equal(frames.at(-1).response.output[0].status, 'incomplete');
+    assert.ok(!frames.some(frame => frame.type === 'response.completed'));
+  });
+}
+
+test('Messages tool use without argument deltas returns an empty object to Responses', async t => {
+  const upstream = http.createServer((_req, res) => {
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.end(messagesEvent('content_block_start', { index: 0, content_block: { type: 'tool_use', id: 'toolu_empty', name: 'lookup', input: {} } })
+      + messagesEvent('content_block_stop', { index: 0 })
+      + messagesEvent('message_delta', { delta: { stop_reason: 'tool_use' } })
+      + messagesEvent('message_stop'));
+  });
+  const app = await createTimeoutFixture(t, upstream, {}, '127.0.0.1', 'Mes');
+  const response = await app.request('Res', true);
+  assert.equal(response.status, 200);
+  const frames = responsesFrames(await response.text());
+  assert.equal(frames.at(-1).response.output[0].arguments, '{}');
+  assert.equal(frames.find(frame => frame.type === 'response.function_call_arguments.done').arguments, '{}');
+});
+
 test('Responses stream reset before headers stays a sanitized 502 without retry', async t => {
   let attempts = 0;
   let fallbackAttempts = 0;
@@ -1635,6 +1946,11 @@ for (const converted of [false, true]) {
     assert.equal(log.gatewayStatus, 200);
     assert.equal(log.streamFailurePhase, 'upstream_body');
     assert.ok(log.firstTokenMs >= 0);
+    assert.ok(Number.isFinite(log.upstreamHeadersMs));
+    assert.ok(Number.isFinite(log.upstreamFirstByteMs));
+    assert.ok(Number.isFinite(log.upstreamBodyMs));
+    assert.ok(log.upstreamChunkCount >= 1);
+    assert.ok(Number.isFinite(log.gatewayProcessingMs));
     assert.equal(attempts, 1);
     assert.doesNotMatch(JSON.stringify(log), /private-reset-prompt|private-partial-output|Bearer|socket hang up/);
   });

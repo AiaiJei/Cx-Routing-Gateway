@@ -95,6 +95,38 @@ test('passthrough and converted streams preserve responses and persist first-gen
   }
 });
 
+test('paced Responses-to-Chat stream logs separate upstream stages without retaining payload data', async t => {
+  const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
+  const app = await setup(t, async (_req, res) => {
+    await pause(60);
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.flushHeaders();
+    await pause(60);
+    res.write(': first-upstream-byte\n\n');
+    await pause(60);
+    res.write(event({ choices: [{ delta: { content: 'private-response-marker' } }] }));
+    await pause(60);
+    res.end(event({ choices: [{ delta: {}, finish_reason: 'stop' }], usage: { prompt_tokens: 3, completion_tokens: 2, total_tokens: 5 } }) + 'data: [DONE]\n\n');
+  }, 'Chat');
+
+  const response = await app.request('Res', true);
+  assert.equal(response.status, 200);
+  const responseBody = await response.text();
+  assert.match(responseBody, /private-response-marker/);
+  assert.ok(responseBody.indexOf('private-response-marker') < responseBody.indexOf('response.completed'));
+  const [log] = await app.logs(1);
+
+  assert.ok(log.upstreamHeadersMs >= 35);
+  assert.ok(log.upstreamFirstByteMs - log.upstreamHeadersMs >= 35);
+  assert.ok(log.upstreamBodyMs >= 90);
+  assert.ok(log.upstreamChunkCount >= 3);
+  assert.ok(log.gatewayProcessingMs > 0);
+  assert.ok(log.firstTokenMs >= log.upstreamFirstByteMs);
+  const [persisted] = await app.persistedLogs();
+  assert.deepEqual(persisted, log);
+  assert.doesNotMatch(JSON.stringify(persisted), /private-prompt|private-response-marker|data:|event:|test-key|authorization|responseBody|requestBody/);
+});
+
 test('request logs measure elapsed time monotonically across wall-clock changes', async t => {
   const startedWall = Date.parse('2026-11-21T08:00:00.000Z');
   let wallTime = startedWall;
@@ -201,6 +233,11 @@ test('interrupted Responses stream persists actual statuses and bounded failure 
   assert.equal(log.streamFailurePhase, 'upstream_body');
   assert.equal(log.stream, true);
   assert.ok(Number.isFinite(log.firstTokenMs));
+  assert.ok(Number.isFinite(log.upstreamHeadersMs));
+  assert.ok(Number.isFinite(log.upstreamFirstByteMs));
+  assert.ok(Number.isFinite(log.upstreamBodyMs));
+  assert.ok(log.upstreamChunkCount >= 1);
+  assert.ok(Number.isFinite(log.gatewayProcessingMs));
   assert.equal(requests, 1);
   const [persisted] = await app.persistedLogs();
   assert.deepEqual(persisted, log);

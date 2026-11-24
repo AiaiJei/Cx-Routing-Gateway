@@ -66,6 +66,36 @@ it("shows a wire 502 after upstream headers as failure without claiming a partia
   }
 });
 
+it("shows stream-stage timings and keeps historical request details readable", async () => {
+  const snapshot = mapRuntimeState({
+    settings: { gatewayHost: "127.0.0.1", gatewayPort: 4318 }, upstreams: [], routes: [], clientKeys: [],
+    usage: [
+      { requestId: "timed", createdAt: "2026-11-24T10:00:00.000Z", inboundProtocol: "Res", outboundProtocol: "Chat", status: "completed", stream: true, durationMs: 400, firstTokenMs: 120, upstreamHeadersMs: 45, upstreamFirstByteMs: 95, upstreamBodyMs: 150, upstreamChunkCount: 4, gatewayProcessingMs: 3.5 },
+      { requestId: "legacy-timing", createdAt: "2026-11-23T10:00:00.000Z", inboundProtocol: "Res", outboundProtocol: "Res", status: "completed", stream: true, durationMs: 220, firstTokenMs: 80 },
+    ],
+  });
+  const getWorkspace = vi.spyOn(defaultWorkspaceClient, "getWorkspace").mockResolvedValue(snapshot);
+  try {
+    const user = userEvent.setup();
+    render(<LogsPage />);
+    await user.click(await screen.findByRole("button", { name: "查看 timed" }));
+    let dialog = screen.getByRole("dialog");
+    for (const [label, value] of [["上游响应头", "45 ms"], ["上游首字节", "95 ms"], ["上游响应体", "150 ms"], ["上游数据块", "4"], ["网关处理", "4 ms"]]) {
+      const term = within(dialog).getByText(label);
+      expect(term.parentElement?.querySelector("dd")).toHaveTextContent(value);
+    }
+    await user.keyboard("{Escape}");
+    await user.click(screen.getByRole("button", { name: "查看 legacy-timing" }));
+    dialog = screen.getByRole("dialog");
+    for (const label of ["上游响应头", "上游首字节", "上游响应体", "上游数据块", "网关处理"]) {
+      const term = within(dialog).getByText(label);
+      expect(term.parentElement?.querySelector("dd")).toHaveTextContent("—");
+    }
+  } finally {
+    getWorkspace.mockRestore();
+  }
+});
+
 describe("LogsPage", () => {
   it("filters sample logs and resets the filter", async () => {
     const user = userEvent.setup();

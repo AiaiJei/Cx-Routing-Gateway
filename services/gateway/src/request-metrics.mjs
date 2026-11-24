@@ -24,10 +24,17 @@ function hasGeneration(protocol, event, payload) {
 export function createRequestMetrics({ protocol, stream, startedAt, clock = () => performance.now() }) {
   const tokens = {};
   let firstTokenMs;
+  let upstreamHeadersMs;
+  let upstreamFirstByteMs;
+  let upstreamBodyStartedAt;
+  let upstreamBodyMs;
+  let upstreamChunkCount;
+  let gatewayProcessingMs;
   let reportedTotal;
   let buffer = '';
   let discarding = false;
   const decoder = new TextDecoder();
+  const elapsed = value => Number.isFinite(value) && value >= 0 ? value : undefined;
   const put = (name, value) => {
     if (!count(value)) return;
     const affectsTotal = name === 'input' || name === 'output' || (protocol === 'Mes' && ['cacheRead', 'cacheWrite'].includes(name));
@@ -74,8 +81,44 @@ export function createRequestMetrics({ protocol, stream, startedAt, clock = () =
       if (buffer.length > MAX_FRAME) { buffer = buffer.slice(-3); discarding = true; }
     }
   }
+  function measureProcessing(work) {
+    if (!stream) return work();
+    const before = clock();
+    try { return work(); }
+    finally {
+      const duration = elapsed(clock() - before);
+      if (duration !== undefined) {
+        const total = (gatewayProcessingMs ?? 0) + duration;
+        if (Number.isFinite(total)) gatewayProcessingMs = total;
+      }
+    }
+  }
   return {
     observeJson(body) { observeUsage(body?.usage); },
+    markUpstreamHeaders() {
+      if (!stream || upstreamHeadersMs !== undefined) return;
+      upstreamHeadersMs = elapsed(clock() - startedAt);
+      upstreamChunkCount = 0;
+      gatewayProcessingMs = 0;
+    },
+    observeUpstreamChunk(chunk) {
+      const byteLength = chunk?.byteLength ?? chunk?.length;
+      if (!stream || !Number.isSafeInteger(byteLength) || byteLength <= 0) return;
+      if (upstreamChunkCount !== undefined && upstreamChunkCount < Number.MAX_SAFE_INTEGER) upstreamChunkCount += 1;
+      if (upstreamFirstByteMs === undefined) {
+        const at = clock();
+        const duration = elapsed(at - startedAt);
+        if (duration !== undefined) {
+          upstreamFirstByteMs = duration;
+          upstreamBodyStartedAt = at;
+        }
+      }
+    },
+    endUpstreamBody() {
+      if (!stream || upstreamBodyStartedAt === undefined || upstreamBodyMs !== undefined) return;
+      upstreamBodyMs = elapsed(clock() - upstreamBodyStartedAt);
+    },
+    measureProcessing,
     push(chunk) { if (stream) consume(decoder.decode(chunk, { stream: true })); },
     finish() {
       if (!stream) return;
@@ -91,7 +134,16 @@ export function createRequestMetrics({ protocol, stream, startedAt, clock = () =
         : undefined;
       const total = reportedTotal ?? derivedTotal;
       if (count(total)) result.total = total;
-      return { stream, ...(firstTokenMs === undefined ? {} : { firstTokenMs }), ...(Object.keys(result).length ? { tokens: result } : {}) };
+      return {
+        stream,
+        ...(firstTokenMs === undefined ? {} : { firstTokenMs }),
+        ...(upstreamHeadersMs === undefined ? {} : { upstreamHeadersMs }),
+        ...(upstreamFirstByteMs === undefined ? {} : { upstreamFirstByteMs }),
+        ...(upstreamBodyMs === undefined ? {} : { upstreamBodyMs }),
+        ...(upstreamChunkCount === undefined ? {} : { upstreamChunkCount }),
+        ...(gatewayProcessingMs === undefined ? {} : { gatewayProcessingMs }),
+        ...(Object.keys(result).length ? { tokens: result } : {}),
+      };
     },
   };
 }

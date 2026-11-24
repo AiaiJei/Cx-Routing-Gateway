@@ -50,6 +50,11 @@ export type CallLog = {
   durationMs: number | null;
   stream?: boolean;
   firstTokenMs?: number;
+  upstreamHeadersMs?: number;
+  upstreamFirstByteMs?: number;
+  upstreamBodyMs?: number;
+  upstreamChunkCount?: number;
+  gatewayProcessingMs?: number;
   tokens?: RequestTokens;
   error?: string;
 };

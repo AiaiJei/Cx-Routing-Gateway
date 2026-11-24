@@ -94,6 +94,11 @@ export function LogsPage() {
           <div><dt>类型</dt><dd>{requestType(selectedLog)}</dd></div>
           <div><dt>首字</dt><dd>{formatDuration(selectedLog.stream ? selectedLog.firstTokenMs : undefined)}</dd></div>
           <div><dt>总耗时</dt><dd>{formatDuration(selectedLog.durationMs)}</dd></div>
+          <div><dt>上游响应头</dt><dd>{formatDuration(selectedLog.upstreamHeadersMs)}</dd></div>
+          <div><dt>上游首字节</dt><dd>{formatDuration(selectedLog.upstreamFirstByteMs)}</dd></div>
+          <div><dt>上游响应体</dt><dd>{formatDuration(selectedLog.upstreamBodyMs)}</dd></div>
+          <div><dt>上游数据块</dt><dd>{selectedLog.upstreamChunkCount ?? "—"}</dd></div>
+          <div><dt>网关处理</dt><dd>{formatDuration(selectedLog.gatewayProcessingMs)}</dd></div>
           <div><dt>错误信息</dt><dd>{requestStatusDetails(selectedLog)}</dd></div>
         </dl>
         <section className="log-detail-tokens" aria-label="Token 用量"><h3 className="tooltip-heading">Token 用量</h3><TokenDetails tokens={selectedLog.tokens} /></section>
@@ -106,7 +111,7 @@ export function LogsPage() {
           <Button variant="danger" disabled={clearingLogs} onClick={() => void clearLogs()}>{clearingLogs ? "清空中…" : "确认清空"}</Button>
         </div>
       </Modal>}
-      <p className="helper-text page-footnote">{data.meta.live ? "请求和响应正文未记录；运行时日志字段已脱敏。" : "示例字段已脱敏。"} 首字为首次生成内容的等待时间；非流请求或未采集的指标显示 —。</p>
+      <p className="helper-text page-footnote">{data.meta.live ? "请求和响应正文未记录；运行时日志字段已脱敏。" : "示例字段已脱敏。"} 首字为首次生成内容的等待时间；响应头和首字节从网关收到请求开始计时；响应体为首个字节到流结束或中断；数据块是上游读取块数，不等于 SSE 事件数；网关处理只计解析、转换和写出的同步耗时。未采集的指标显示 —。</p>
     </div>
   );
 }
