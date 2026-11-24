@@ -65,6 +65,19 @@ test('JSON request logs carry real usage, request start and type through control
   assert.doesNotMatch(JSON.stringify(log), /private-|test-key/);
 });
 
+test('successful JSON request logs separate upstream 201 from downstream 200', async t => {
+  const app = await setup(t, (_req, res) => {
+    res.writeHead(201);
+    res.end(JSON.stringify({ choices: [{ message: { content: 'ok' } }] }));
+  });
+  const response = await app.request('Chat', false);
+  assert.equal(response.status, 200);
+  await response.text();
+  const [log] = await app.logs(1);
+  assert.equal(log.httpStatus, 201);
+  assert.equal(log.gatewayStatus, 200);
+});
+
 test('passthrough and converted streams preserve responses and persist first-generation timing and usage', async t => {
   let firstSent = 0;
   let monotonicTime = 100;

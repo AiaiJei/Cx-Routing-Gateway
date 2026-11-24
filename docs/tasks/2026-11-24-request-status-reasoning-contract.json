@@ -5,13 +5,19 @@
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
   "status": "active",
-  "stage": "independent_review_and_pr",
+  "stage": "ready_for_pr",
   "revisions": [
     {
       "date": "2026-11-24",
       "revision": 1,
       "request": "Include native Messages output_config.effort in the existing sanitized reasoningEffort usage field so the Desktop 推理 column retains it.",
       "authorization": "This is required to verify and display reasoning effort through Mes→Res; it records only the bounded effort string and does not persist request bodies."
+    },
+    {
+      "date": "2026-11-24",
+      "revision": 2,
+      "request": "Record the downstream HTTP 200 separately from the upstream httpStatus on successful JSON requests, after independent review found that an upstream 201 could otherwise be displayed as the returned status.",
+      "authorization": "This closes the accepted requirement to display the effective downstream status while preserving upstream status details; a local regression fixture verifies upstream 201 and downstream 200 without provider calls."
     }
   ],
   "base": "master",
@@ -76,11 +82,11 @@
     "project_map": "UNAVAILABLE: this repository checkout has no .codex/awg-project.json and no AWG project/map tools are exposed in this session; source inspection and Git state were used",
     "implementation": "PASS: downstream HTTP status selection and Res↔Mes reasoning effort mapping implemented; Messages effort is retained in sanitized usage metadata",
     "focused_tests": "PASS: Runtime 50/50; Desktop 37/37",
-    "runtime_full": "PASS: 236/236 after building Desktop dist",
+    "runtime_full": "PASS: 237/237 after building Desktop dist",
     "desktop_full": "PASS: 202/202",
     "desktop_build": "PASS: TypeScript and Vite production build",
     "syntax_contract_diff": "PASS: Node syntax checks, contract JSON parse, and git diff --check",
-    "independent_review": "PENDING",
+    "independent_review": "PASS: independent review identified a P2 status ambiguity; successful JSON logs now record gatewayStatus 200 separately, follow-up review confirmed resolution and found no log-semantic regression",
     "provider": "NOT_RUN",
     "owner_acceptance": "NOT_RUN",
     "pull_request": "NOT_CREATED"
