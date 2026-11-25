@@ -15,6 +15,7 @@ const require = createRequire(import.meta.url);
 const { createCodexRuntimeClient } = require('../../apps/desktop/electron/codex-runtime-client.cjs');
 const { createCodexConfigService } = require('../../apps/desktop/electron/codex-config-service.cjs');
 const { registerCodexIpc } = require('../../apps/desktop/electron/codex-ipc.cjs');
+const { fail } = require('../../apps/desktop/electron/codex-errors.cjs');
 const fixtureRoot = path.resolve('.tmp/codex-route-management-20261125');
 const clientKey = 'cxrg_local_ipc_key';
 async function listen(t, server) {
@@ -91,6 +92,35 @@ test('Codex native IPC rejects untrusted senders and unknown fields before readi
   }
   assert.equal(accessed, false);
   await assert.rejects(handlers.get('runtime:codex-status')({ trusted: true }), error => error.code === 'CODEX_IO_FAILED' && !error.message.includes('sensitive-native-detail'));
+});
+
+test('Codex IPC stable errors survive Electron message-only transport without leaking unknown failures', async () => {
+  const handlers = new Map();
+  let failure = fail('CODEX_CONFIG_CHANGED');
+  registerCodexIpc({
+    ipcMain: { handle: (name, handler) => handlers.set(name, handler) },
+    isTrustedSender: () => true,
+    getService: () => ({ apply: async () => { throw failure; } }),
+  });
+  const handler = handlers.get('runtime:codex-apply');
+  for (const code of ['CODEX_CONFIG_CHANGED', 'CODEX_KEY_REJECTED', 'CODEX_CONFIG_UNSUPPORTED']) {
+    failure = fail(code);
+    await assert.rejects(handler({}, {}), error => {
+      // ipcRenderer.invoke reconstructs an Error from message only; custom
+      // properties such as code are absent on the renderer-side exception.
+      const rendererError = new Error("Error invoking remote method 'runtime:codex-apply': " + error.message);
+      assert.equal(rendererError.code, undefined);
+      assert.equal(rendererError.message.match(/\bCODEX_[A-Z_]+\b/)?.[0], code);
+      return true;
+    });
+  }
+  failure = new Error('private-key-and-parser-source');
+  await assert.rejects(handler({}, {}), error => {
+    const rendererError = new Error(error.message);
+    assert.match(rendererError.message, /\bCODEX_IO_FAILED\b/);
+    assert.ok(!rendererError.message.includes('private-key-and-parser-source'));
+    return true;
+  });
 });
 
 test('Codex native runtime client fails closed for unavailable runtime, redirects, invalid JSON and oversized replies', async t => {

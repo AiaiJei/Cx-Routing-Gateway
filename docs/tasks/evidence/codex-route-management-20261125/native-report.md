@@ -67,3 +67,9 @@ Safe errors: CODEX_INPUT_INVALID, CONFIG_CHANGED, CONFIG_INVALID, CONFIG_UNSUPPO
 - Accepts http://127.0.0.1:80/v1 normalized to http://127.0.0.1/v1, while rejecting credential-bearing or query-bearing URLs.
 - Focused native verification after fixes: 28/28 PASS, 0 skipped. Full npm test after fixes: 281/281 PASS, 0 failures/skips. Scoped diff whitespace and editor syntax checks PASS.
 - No commit/push or actual user configuration/provider access was performed in this fix round. Coordinator owns final review and integration evidence.
+
+## Final IPC error-transport fix
+- Whole-branch review reproduced that Electron drops custom Error.code properties, leaving the renderer with only Error.message. Previous Chinese-only messages therefore fell back to a generic notification despite a known safe service error.
+- Added a failing native IPC regression that reconstructs a renderer-side Error from message only. Known conflict/Key/unsupported codes were missing before the fix.
+- The IPC catch boundary now sanitizes first and prefixes the stable code to the fixed safe message. Service error behavior is unchanged. Unknown errors become CODEX_IO_FAILED and never include original token/parser/IO details.
+- Focused verification: node --test tests/runtime/codex-config.test.mjs tests/runtime/codex-ipc.test.mjs -> 29/29 PASS. Native IPC syntax and scoped diff check PASS. Full-suite rerun and actual Electron UI smoke are coordinator-owned for this final fix.

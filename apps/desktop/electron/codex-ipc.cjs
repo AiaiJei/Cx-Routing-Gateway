@@ -10,7 +10,13 @@ function registerCodexIpc({ ipcMain, isTrustedSender, getService } = {}) {
         const service = getService();
         if (!service || typeof service[method] !== "function") throw fail("CODEX_IO_FAILED");
         return await service[method](input);
-      } catch (error) { throw sanitize(error); }
+      } catch (error) {
+        const safe = sanitize(error);
+        // Electron transports only Error.message across invoke(), so include the
+        // allowlisted code after sanitizing; never format the original failure.
+        safe.message = "[" + safe.code + "] " + safe.message;
+        throw safe;
+      }
     });
   }
 }
