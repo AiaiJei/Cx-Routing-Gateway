@@ -1,35 +1,41 @@
 {
-  "contract_version": 1,
-  "task_id": "CXRG-CODEX-GATEWAY-FORWARDING-RESILIENCE-2026-11-23",
-  "title": "Codex forwarding, safe upstream address selection, stream reset handling, and frontend placeholder",
+  "schema_version": 1,
+  "project_id": "cx-routing-gateway",
+  "repo_id": "aiaijei-cx-routing-gateway",
+  "task_id": "CXRG-CODEX-AWG-DEPLOYMENT-2026-11-24",
+  "contract_revision": 2,
+  "contract_path": "docs/tasks/2026-11-24-codex-awg-deployment-contract.json",
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
-  "status": "active",
-  "stage": "release_and_primary_integration_authorized",
-  "base": "master",
-  "base_sha": "451d40f3f621a635afc093bc50070feb2a58fa59",
-  "branch": "codex/codex-routing-forwarding",
-  "worktree": ".worktree/codex-codex-routing-forwarding",
-  "contract": "docs/tasks/2026-11-23-codex-gateway-forwarding-resilience-contract.json",
+  "state": "active",
+  "scope_paths": [
+    ".codex/awg-task.json",
+    ".codex/awg-project.json",
+    ".codex/config.toml",
+    "AGENTS.md",
+    ".awg/**",
+    "docs/tasks/2026-11-24-codex-awg-deployment.md",
+    "docs/tasks/2026-11-24-codex-awg-deployment-contract.json",
+    "docs/tasks/evidence/codex-awg-deployment-20261124/**",
+    ".agent-workspace-governance/**",
+    ".agents/skills/ui-ux-pro-max/**",
+    "plugins/awg-codex/**",
+    ".tmp-codex-awg-source/**",
+    ".tmp/worktrees/**"
+  ],
+  "worktree_directory": ".tmp/worktrees",
   "authorization": {
-    "operations": [
-      "write plan and acceptance checklist",
-      "implement authorized gateway and desktop paths",
-      "use another validated address only for a connection failure proven to occur before HTTP request bytes can be sent",
-      "run local-only verification and independent review",
-      "commit, push, and create one open PR against master for the original forwarding work",
-      "2026-11-24 revision 1: bump patch version 1.1.7 to 1.1.8, build and smoke an isolated local Windows x64 Portable, and copy it beside the existing Desktop executable for Owner testing",
-      "2026-11-24 revision 2: repair and verify Res round trips through Chat and Messages with local fixtures, and deliver a distinctly named local 1.1.8 Portable candidate for Owner re-test",
-      "2026-11-24 revision 3: add privacy-preserving stream-stage timing diagnostics and display them in request details; use local SSE fixtures only; do not change protocol conversion or reasoning controls",
-      "2026-11-24 revision 4: commit the task-scoped 1.1.8 version, Res round-trip, and stream-timing changes; push/update PR #22, wait for current checks, merge to master, synchronize the primary master worktree, and publish GitHub Release v1.1.8 with locally verified Windows assets. Preserve existing Desktop binaries/processes and all task worktrees; do not make live provider requests."
-    ],
-    "not_authorized": [
-      "real provider calls by Codex",
-      "ambiguous retries",
-      "Codex config/auth file writes",
-      "overwrite/delete existing v1.1.7 Desktop executable or stop its running process",
-      "deletion of worktrees/branches/unrelated files"
-    ]
+    "implementation": true,
+    "delete": false,
+    "evidence_append": true,
+    "create_worktree": true,
+    "commit": true,
+    "push": true,
+    "pull_request": true,
+    "merge": true,
+    "sync_main_worktree": true
   },
-  "owner_acceptance": "Owner reports the prior 1.1.8 round-trip candidate passed manual testing on 2026-11-24 and explicitly authorizes integration/publication. Local Runtime/Desktop/build and 1.1.8 package smokes pass. Independent reviews of revisions 2 and 3 are BLOCKED by the CC Switch proxy (no review verdict); integration proceeds under the Owner direct authorization and this limitation remains explicit. Real provider requests and same-model latency A/B remain NOT_RUN."
+  "acceptance_result": "PARTIAL",
+  "deployment_result": "PASS",
+  "acceptance_note": "Owner revision 2 authorizes dedicated worktree, commit, push, PR, merge, and primary worktree sync. Desktop loading and Hook trust/delivery remain NOT_RUN."
 }

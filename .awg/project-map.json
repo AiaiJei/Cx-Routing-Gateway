@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "entries": [
+    {
+      "path": "README.md",
+      "role": "项目能力、运行命令、协议边界和安全说明；版本说明需与源码及发布证据交叉核对。"
+    },
+    {
+      "path": "apps/desktop/electron/main.cjs",
+      "role": "Electron 主进程、IPC 组装及桌面到本机服务的调用入口。"
+    },
+    {
+      "path": "apps/desktop/electron/runtime-supervisor.cjs",
+      "role": "启动和监督 loopback Local Control 与 Gateway，并组装配置存储和 SecretVault。"
+    },
+    {
+      "path": "apps/desktop/electron/security.cjs",
+      "role": "Electron IPC 与窗口来源的安全校验边界。"
+    },
+    {
+      "path": "services/local-control/src/server.mjs",
+      "role": "本机配置 API；维护上游、路由和客户端 Key，通过 Bearer 控制令牌鉴权并将上游密钥交给 SecretVault。"
+    },
+    {
+      "path": "services/gateway/src/server.mjs",
+      "role": "Gateway HTTP 入口；校验客户端 Key、选择路由/上游、转发请求并记录脱敏用量。"
+    },
+    {
+      "path": "services/gateway/src/protocol-adapters.mjs",
+      "role": "Chat、Responses、Messages 请求、响应与流事件的协议转换。"
+    },
+    {
+      "path": "packages/shared/src/config-store.mjs",
+      "role": "共享配置的本地持久化实现；与 SecretVault 一起构成运行时状态存储。"
+    },
+    {
+      "path": "packages/shared/src/secret-vault.mjs",
+      "role": "上游密钥的加密保存与读取；避免将密钥写入普通配置或任务证据。"
+    },
+    {
+      "path": "tests/runtime/control-server.test.mjs",
+      "role": "Local Control API、配置与鉴权回归测试。"
+    },
+    {
+      "path": "tests/runtime/gateway-server.test.mjs",
+      "role": "Gateway 路由、鉴权、转发和异常路径回归测试。"
+    },
+    {
+      "path": "tests/runtime/protocol-adapters.test.mjs",
+      "role": "跨协议请求/响应转换与流事件回归测试。"
+    }
+  ]
+}

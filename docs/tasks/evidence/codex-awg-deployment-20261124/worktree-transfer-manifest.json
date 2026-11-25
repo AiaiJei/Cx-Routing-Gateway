@@ -1,0 +1,230 @@
+{
+  "schema_version": 1,
+  "task_id": "CXRG-CODEX-AWG-DEPLOYMENT-2026-11-24",
+  "contract_revision": 2,
+  "source": "<primary-worktree>",
+  "target": ".tmp/worktrees/codex-awg-deployment-2026-11-24",
+  "base_commit": "49c9a389d58b2e5bdb02554d559989ed7fb07596",
+  "copied_files": [
+    {
+      "path": ".codex/awg-task.json",
+      "bytes": 1379,
+      "sha256": "cc79797faecbf527ae74b2440a725f9c03984f1a0c172741a22d5a88d4fa12a4",
+      "replaced_from_sha256": "b998ee30958acfc5996626ee8070052b969b5fdca6b49b1d0783fa82537a9e58"
+    },
+    {
+      "path": ".codex/awg-project.json",
+      "bytes": 107,
+      "sha256": "304005d5f4b9a26a4b6e130a58363b5eadea7f2dbafc8dccdd716c18d74e9e0c"
+    },
+    {
+      "path": "AGENTS.md",
+      "bytes": 3933,
+      "sha256": "f9bf1e4af2b0d1103a35d2b6aceeffe3628c5191480119c42ae534111ad3b3a1"
+    },
+    {
+      "path": ".awg/project-map.json",
+      "bytes": 2071,
+      "sha256": "99a642599469f2a775ece638bfd810a7dbe264fae9b3a5a974bad78eb86faf07"
+    },
+    {
+      "path": ".awg/context.md",
+      "bytes": 2287,
+      "sha256": "15995ed5d17475402ae9ff24d6092033d0dac2176c2975ba3aea2468c09cbd2f"
+    },
+    {
+      "path": "docs/tasks/2026-11-24-codex-awg-deployment-contract.json",
+      "bytes": 12391,
+      "sha256": "31aa6c7a842c7d9506d3fd3bd49cd0e49b0043aa813f6860f974050160fe0631"
+    },
+    {
+      "path": "docs/tasks/2026-11-24-codex-awg-deployment.md",
+      "bytes": 7250,
+      "sha256": "123248ee60aecc738a17d428ff9d93a783e2e51f132c305270398b591ac9605f"
+    },
+    {
+      "path": "docs/tasks/evidence/codex-awg-deployment-20261124/independent-review.json",
+      "bytes": 430,
+      "sha256": "7aa07391329c48d2d3eedff50ec5ac3618d2c52753c61a786518a434c503f778"
+    },
+    {
+      "path": "docs/tasks/evidence/codex-awg-deployment-20261124/legacy-deployment/.agent-workspace-governance/repo-map-awg-cache/repo-map.sqlite3",
+      "bytes": 16384,
+      "sha256": "86d4f2f2a5086cd48f024f313d10b60eaad67226b03afdc71365d914a9563c5c"
+    },
+    {
+      "path": "docs/tasks/evidence/codex-awg-deployment-20261124/legacy-deployment/.agent-workspace-governance/repo-map-awg-cache/repo-map.sqlite3-shm",
+      "bytes": 32768,
+      "sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb"
+    },
+    {
+      "path": "docs/tasks/evidence/codex-awg-deployment-20261124/legacy-deployment/.agent-workspace-governance/repo-map-awg-cache/repo-map.sqlite3-wal",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/tasks/evidence/codex-awg-deployment-20261124/legacy-deployment/.agents/skills/ui-ux-pro-max/scripts/__pycache__/core.cpython-312.pyc",
+      "bytes": 47348,
+      "sha256": "74cbc11d227f71d6fa758af20da988e747e5c9bb8869054a6481b320f3473ab0"
+    },
+    {
+      "path": "docs/tasks/evidence/codex-awg-deployment-20261124/legacy-deployment/.agents/skills/ui-ux-pro-max/scripts/__pycache__/reasoning_contract.cpython-312.pyc",
+      "bytes": 7867,
+      "sha256": "e6044f169aff64ca8cb57efe789abdbb010db233e4bd48a08ec52f94f099f9ff"
+    },
+    {
+      "path": "docs/tasks/evidence/codex-awg-deployment-20261124/legacy-deployment/plugins/awg-codex/mcp/repo_map/__pycache__/backend.cpython-312.pyc",
+      "bytes": 8724,
+      "sha256": "e2505d949d301ae30607dcfe04313a0d629fa0a7e81e826f3870d52aa59caacf"
+    },
+    {
+      "path": "docs/tasks/evidence/codex-awg-deployment-20261124/legacy-deployment/plugins/awg-codex/mcp/repo_map/__pycache__/cache.cpython-312.pyc",
+      "bytes": 6000,
+      "sha256": "374704dd68c0f6b7d9b3c0f613feebdcc2260fa3d5a8e31a6bcb380540c78668"
+    },
+    {
+      "path": "docs/tasks/evidence/codex-awg-deployment-20261124/legacy-deployment/plugins/awg-codex/mcp/repo_map/__pycache__/errors.cpython-312.pyc",
+      "bytes": 1199,
+      "sha256": "ff345c8cca1b37c850cf686bbb20f4c1df56f2aef4ef9f2d4102b13d17d1f334"
+    },
+    {
+      "path": "docs/tasks/evidence/codex-awg-deployment-20261124/legacy-deployment/plugins/awg-codex/mcp/repo_map/__pycache__/plugin_service.cpython-312.pyc",
+      "bytes": 7260,
+      "sha256": "beda726b4e717f58187b513a294e85c09e19407866a6f3a8645f1f158a86a179"
+    },
+    {
+      "path": "docs/tasks/evidence/codex-awg-deployment-20261124/legacy-deployment/plugins/awg-codex/mcp/repo_map/__pycache__/protocol.cpython-312.pyc",
+      "bytes": 4888,
+      "sha256": "b5ba8d9f9c7edb35e0eea74469e3961b0617c1aeb2f0f8cd13dc5ebbd56415c9"
+    },
+    {
+      "path": "docs/tasks/evidence/codex-awg-deployment-20261124/legacy-deployment/plugins/awg-codex/mcp/repo_map/__pycache__/schema.cpython-312.pyc",
+      "bytes": 2665,
+      "sha256": "98bf8217fb8697fd344e783fc3c5ae2518a587fccb515ab43113f3e54ef7ad59"
+    },
+    {
+      "path": "docs/tasks/evidence/codex-awg-deployment-20261124/legacy-deployment/plugins/awg-codex/mcp/repo_map/__pycache__/service.cpython-312.pyc",
+      "bytes": 22412,
+      "sha256": "6805d2e5ade9ff8c3d072151f067c0eb196119dc51f77d6eea141d978715b66b"
+    },
+    {
+      "path": "docs/tasks/evidence/codex-awg-deployment-20261124/legacy-deployment/plugins/awg-codex/mcp/repo_map/__pycache__/source.cpython-312.pyc",
+      "bytes": 14908,
+      "sha256": "605bd33b867c953bc22c74cc44edcea469a2285f42c6a89a18090cf6410b3657"
+    },
+    {
+      "path": "docs/tasks/evidence/codex-awg-deployment-20261124/legacy-deployment/plugins/awg-codex/mcp/repo_map/__pycache__/__init__.cpython-312.pyc",
+      "bytes": 245,
+      "sha256": "30562cd1e35270751b2e3ae68145e17ecd7cf5a8b205986f7f616ecfeda55b6f"
+    },
+    {
+      "path": "docs/tasks/evidence/codex-awg-deployment-20261124/mcp-verification.json",
+      "bytes": 1369,
+      "sha256": "b05ebf56559e647548a224a09f0984e014bc1c1cae9e3a140f6669dd241ece5b"
+    },
+    {
+      "path": "docs/tasks/evidence/codex-awg-deployment-20261124/preflight.json",
+      "bytes": 5167,
+      "sha256": "9399126f161879a3fe0636cdb6b10ff7cbb78a62fdba6c1146cf5155125246b4"
+    },
+    {
+      "path": "docs/tasks/evidence/codex-awg-deployment-20261124/previous-active-awg-task.json",
+      "bytes": 2816,
+      "sha256": "b998ee30958acfc5996626ee8070052b969b5fdca6b49b1d0783fa82537a9e58"
+    },
+    {
+      "path": "docs/tasks/evidence/codex-awg-deployment-20261124/verification.md",
+      "bytes": 4617,
+      "sha256": "1389ba7ba340a3ca0d96766c1e930eaa1d949ce4b4bbda559be3c998e1688ca6"
+    }
+  ],
+  "excluded_local_paths": [
+    ".codex/config.toml",
+    ".awg/install.json",
+    ".tmp-codex-awg-source",
+    ".tmp-awg-source",
+    "docs/tasks/evidence/codex-awg-deployment-20261124/legacy-deployment/** except README.md"
+  ],
+  "final_files": [
+    {
+      "path": ".awg/context.md",
+      "bytes": 2287,
+      "sha256": "15995ed5d17475402ae9ff24d6092033d0dac2176c2975ba3aea2468c09cbd2f"
+    },
+    {
+      "path": ".awg/project-map.json",
+      "bytes": 2071,
+      "sha256": "99a642599469f2a775ece638bfd810a7dbe264fae9b3a5a974bad78eb86faf07"
+    },
+    {
+      "path": ".codex/awg-project.json",
+      "bytes": 107,
+      "sha256": "304005d5f4b9a26a4b6e130a58363b5eadea7f2dbafc8dccdd716c18d74e9e0c"
+    },
+    {
+      "path": ".codex/awg-task.json",
+      "bytes": 1380,
+      "sha256": "197374a7869a541a1b2064e32a839e4500e731ac97283a559a240d226b771c75"
+    },
+    {
+      "path": "AGENTS.md",
+      "bytes": 3933,
+      "sha256": "f9bf1e4af2b0d1103a35d2b6aceeffe3628c5191480119c42ae534111ad3b3a1"
+    },
+    {
+      "path": "docs/tasks/2026-11-24-codex-awg-deployment-contract.json",
+      "bytes": 15272,
+      "sha256": "70d728396a129ceaa4324f8bdef383b13b5fde95505539f1bd436ef74cc4c87a"
+    },
+    {
+      "path": "docs/tasks/2026-11-24-codex-awg-deployment.md",
+      "bytes": 9556,
+      "sha256": "eae93188ee4104adb61b1b1d02850ad7c080d76fdd4c791a38f9ac3d40c3a730"
+    },
+    {
+      "path": "docs/tasks/evidence/codex-awg-deployment-20261124/ci-investigation.json",
+      "bytes": 1273,
+      "sha256": "b791e39cf2a56360ebeef65fe9501562c4602c357017352aa269c91c7427f76d"
+    },
+    {
+      "path": "docs/tasks/evidence/codex-awg-deployment-20261124/independent-review.json",
+      "bytes": 3570,
+      "sha256": "bf5e6347f25073af8c584df753dfba4932ed70443a29a2da6b5ebd643e39f281"
+    },
+    {
+      "path": "docs/tasks/evidence/codex-awg-deployment-20261124/legacy-deployment/README.md",
+      "bytes": 672,
+      "sha256": "dae6504f096d4d29ec8b9dd10b6134098104814f437649f295115c6c7f5b7742"
+    },
+    {
+      "path": "docs/tasks/evidence/codex-awg-deployment-20261124/mcp-verification.json",
+      "bytes": 1369,
+      "sha256": "b05ebf56559e647548a224a09f0984e014bc1c1cae9e3a140f6669dd241ece5b"
+    },
+    {
+      "path": "docs/tasks/evidence/codex-awg-deployment-20261124/preflight.json",
+      "bytes": 5025,
+      "sha256": "6204e1b7e14cebf01f740fcec7e4a16af2090310cd445d4d6c2b39a77d79cb8b"
+    },
+    {
+      "path": "docs/tasks/evidence/codex-awg-deployment-20261124/previous-active-awg-task.json",
+      "bytes": 2816,
+      "sha256": "b998ee30958acfc5996626ee8070052b969b5fdca6b49b1d0783fa82537a9e58"
+    },
+    {
+      "path": "docs/tasks/evidence/codex-awg-deployment-20261124/verification.md",
+      "bytes": 6930,
+      "sha256": "ec976453d25e6e0b09b8aa6ef2d4300dfdd9195c59c8d8afb30317c524245cac"
+    },
+    {
+      "path": "docs/tasks/evidence/codex-awg-deployment-20261124/worktree-mcp-verification.json",
+      "bytes": 1244,
+      "sha256": "65855b6dce9062e0361fde58584e84d0ffc053ac1167ed7e5795e315d09ce5e8"
+    }
+  ],
+  "final_state_recorded_at": "2026-11-24T09:53:05.543Z",
+  "archive_payload_note": "This manifest records the initial transfer and hash verification. Generated SQLite and .pyc payloads were removed from the task branch after independent review because they contain workstation-specific data; the primary worktree retains the local archive, and preflight.json preserves sizes and hashes.",
+  "copied_files_note": "Historical byte counts and hashes at initial transfer, before review corrections; not current file hashes. Generated payloads were subsequently removed from the final PR tree.",
+  "final_files_note": "Snapshot after text sanitization; excludes this manifest to avoid self-reference. Rebuilt whenever tracked evidence changes. Earlier copied_files describe initial transfer only.",
+  "integration_method": "squash merge; earlier task commits will not become master ancestors; retained task/PR references can still expose old commits"
+}
