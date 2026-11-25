@@ -30,5 +30,5 @@ Owner: coordinator; README, task contract/docs/evidence and repository ignore en
 - [x] Full npm test; npm --prefix apps/desktop test; npm --prefix apps/desktop run build; git diff --check.
 - [x] Real browser wide/minimum/narrow screenshots and keyboard/state checks. Isolated Electron/local HTTP smoke verifies the native composition when possible.
 - [x] Independent whole-branch review, resolve blocking findings, rerun affected checks.
-- [ ] Write acceptance matrix and risk/runtime limitations; commit task paths, push dedicated branch, create and attach one PR against master, verify CI and open state.
+- [x] Write acceptance matrix and risk/runtime limitations; commit task paths, push dedicated branch, create and attach one PR against master, verify CI and open state.
 No merge/release. Owner installed-client acceptance remains explicitly NOT_RUN.
