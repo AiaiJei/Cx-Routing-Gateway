@@ -1,0 +1,46 @@
+.codex-page { gap: 20px; }
+.codex-page .fixture-notice { margin: -6px 0 0; }
+.codex-page .geist-button:disabled, .codex-page .custom-select-trigger:disabled { opacity: 1; color: var(--muted); background: var(--raised); border-color: var(--control); }
+.codex-page .geist-input:disabled { opacity: 1; color: var(--muted); background: var(--raised); }
+.codex-page .geist-input:disabled::placeholder { color: var(--muted); }
+.codex-current { display: grid; gap: 12px; padding: 18px 20px; background: var(--raised); border-radius: var(--radius-card); min-width: 0; }
+.codex-current-heading, .codex-preview-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; }
+.codex-current .section-title, .codex-setup .section-title, .codex-preview .section-title { margin: 0; }
+.codex-path { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin: 0; color: var(--muted); font-size: 13px; }
+.codex-path code, .codex-preview-path { overflow-wrap: anywhere; word-break: break-word; font-size: 12px; color: var(--text); }
+.codex-current-values { display: flex; flex-wrap: wrap; gap: 12px 40px; margin: 0; }
+.codex-current-values div { display: grid; gap: 2px; min-width: 0; }
+.codex-current-values dt { color: var(--muted); font-size: 12px; }
+.codex-current-values dd { margin: 0; font-size: 14px; overflow-wrap: anywhere; }
+.codex-backup { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding-top: 10px; border-top: 1px solid var(--border); }
+.codex-backup p { margin: 0; color: var(--muted); font-size: 12px; }
+.codex-workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.codex-setup, .codex-preview { min-width: 0; }
+.codex-setup > .helper-text { margin: 7px 0 16px; display: block; }
+.codex-fields { display: grid; gap: 16px; border: 0; min-width: 0; margin: 0; padding: 0; }
+.codex-route-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; padding: 10px 12px; border-radius: var(--radius-control); background: var(--raised); font-size: 12px; }
+.codex-route-summary strong { font-weight: 500; overflow-wrap: anywhere; }
+.codex-route-summary span { color: var(--muted); white-space: nowrap; }
+.codex-route-summary code { flex-basis: 100%; overflow-wrap: anywhere; color: var(--muted); }
+.codex-route-empty { margin: 0; color: var(--muted); font-size: 13px; }
+.codex-key-action { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: -6px; }
+.codex-preview { display: grid; gap: 12px; }
+.codex-preview-target { font-size: 13px; margin: 0; }
+.codex-preview-path { display: block; }
+.codex-preview pre { min-width: 0; max-height: 320px; overflow: auto; margin: 0; padding: 16px; background: var(--raised); border-radius: var(--radius-card); font-size: 12px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
+.codex-preview-empty { padding: 26px 20px; background: var(--raised); border-radius: var(--radius-card); }
+.codex-preview-empty p { margin: 0 0 8px; font-size: 14px; font-weight: 500; }
+.codex-preview-empty span { color: var(--muted); font-size: 13px; line-height: 1.6; }
+.codex-preview-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.codex-preview > .helper-text { margin: 0; }
+.codex-feedback { margin: 0; padding: 12px 16px; background: var(--positive-soft); color: var(--positive); border-radius: var(--radius-control); font-size: 13px; overflow-wrap: anywhere; }
+.codex-feedback-error { background: var(--negative-soft); color: var(--negative); }
+.codex-help { display: grid; gap: 10px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
+.codex-help p { margin: 0; line-height: 1.7; }
+.codex-help summary { width: fit-content; cursor: pointer; color: var(--text); }
+.codex-help details p { margin-top: 10px; max-width: 86ch; }
+.codex-management-links { display: flex; flex-wrap: wrap; gap: 4px 20px; }
+.codex-management-links a { display: inline-flex; align-items: center; min-height: 36px; color: var(--accent); text-decoration: none; }
+.codex-management-links a:hover { text-decoration: underline; }
+@media (max-width: 1000px) { .codex-workspace { grid-template-columns: minmax(0, 1fr); } .codex-current-values { gap: 12px 24px; } }
+@media (max-width: 600px) { .codex-current { padding: 16px; } .codex-backup { align-items: flex-start; } .codex-preview-actions > button { flex: 1; } .codex-management-links a { min-height: 44px; } }

@@ -23,6 +23,10 @@ declare global {
       deleteRoute: (id: string) => Promise<unknown>;
       updateRoute: (id: string, input: { alias?: string; inboundProtocol?: string; outboundProtocol?: string; upstreamId?: string; modelId?: string; enabled?: boolean }) => Promise<unknown>;
       updateSettings: (input: { usageRetentionCount: number }) => Promise<unknown>;
+      getCodexStatus?: () => Promise<import("./domain/codex-management").CodexStatus>;
+      previewCodexConfig?: (input: import("./domain/codex-management").CodexSelection) => Promise<import("./domain/codex-management").CodexPreview>;
+      applyCodexConfig?: (input: import("./domain/codex-management").CodexApplyInput) => Promise<import("./domain/codex-management").CodexStatus>;
+      restoreCodexConfig?: (input: import("./domain/codex-management").CodexRestoreInput) => Promise<import("./domain/codex-management").CodexStatus>;
       getUpdateTokenStatus?: () => Promise<{ configured: boolean; secureStorageAvailable: boolean }>;
       saveUpdateToken?: (token: string) => Promise<{ configured: boolean }>;
       removeUpdateToken?: () => Promise<{ configured: boolean }>;
