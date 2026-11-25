@@ -9,6 +9,9 @@ const { createGitHubTokenService } = require("./github-token-service.cjs");
 const { registerGitHubUpdateIpc } = require("./github-update-ipc.cjs");
 const { registerUpstreamEditIpc } = require("./upstream-edit-ipc.cjs");
 const { registerUpstreamTestIpc } = require("./upstream-test-ipc.cjs");
+const { createCodexConfigService } = require("./codex-config-service.cjs");
+const { createCodexRuntimeClient } = require("./codex-runtime-client.cjs");
+const { registerCodexIpc } = require("./codex-ipc.cjs");
 const { loadOrCreateRuntimeMasterKey } = require("./runtime-master-key.cjs");
 const { cxrgProductVersion } = require("../package.json");
 const { installTrayLifecycle, registerActivateHandler, registerSecondInstanceHandler } = require("./tray-lifecycle.cjs");
@@ -22,6 +25,20 @@ let quitting = false;
 let githubTokenStore;
 let githubTokenService;
 let trayLifecycle;
+let codexConfigService;
+
+function getCodexConfigService() {
+  if (!codexConfigService) {
+    const runtimeClient = createCodexRuntimeClient({
+      getControlPort: () => controlPort,
+      getGatewayPort: () => gatewayPort,
+      getControlToken: () => runtime?.controlToken || "",
+      isRuntimeReady: () => startupState === "running" && runtime?.getStatus?.().state === "running",
+    });
+    codexConfigService = createCodexConfigService(runtimeClient);
+  }
+  return codexConfigService;
+}
 
 function updateScriptPath() {
   return process.resourcesPath && !process.defaultApp
@@ -136,6 +153,8 @@ registerUpstreamTestIpc({
   getControlPort: () => controlPort,
   getControlToken: () => runtime?.controlToken || "",
 });
+
+registerCodexIpc({ ipcMain, isTrustedSender: trustedSender, getService: getCodexConfigService });
 
 ipcMain.handle("runtime:test-route", async (event, routeId, prompt) => {
   if (!trustedSender(event) || typeof routeId !== "string" || routeId.length > 100 || typeof prompt !== "string" || prompt.trim().length < 1 || prompt.length > 2000) throw new Error("Invalid route test request");
