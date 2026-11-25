@@ -101,6 +101,7 @@ export function UpstreamsPage() {
       setFeedback(result.message);
     } catch (caught) {
       setFeedback(caught instanceof Error ? caught.message : "连通测试失败");
+      setFeedbackIsError(true);
     } finally {
       setTestingId(null);
     }

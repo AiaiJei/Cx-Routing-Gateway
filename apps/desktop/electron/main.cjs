@@ -8,6 +8,7 @@ const { createGitHubTokenStore } = require("./github-token-store.cjs");
 const { createGitHubTokenService } = require("./github-token-service.cjs");
 const { registerGitHubUpdateIpc } = require("./github-update-ipc.cjs");
 const { registerUpstreamEditIpc } = require("./upstream-edit-ipc.cjs");
+const { registerUpstreamTestIpc } = require("./upstream-test-ipc.cjs");
 const { loadOrCreateRuntimeMasterKey } = require("./runtime-master-key.cjs");
 const { cxrgProductVersion } = require("../package.json");
 const { installTrayLifecycle, registerActivateHandler, registerSecondInstanceHandler } = require("./tray-lifecycle.cjs");
@@ -129,11 +130,11 @@ ipcMain.handle("runtime:get-status", async (event) => {
   return runtime?.getStatus?.() || { state: startupState };
 });
 
-ipcMain.handle("runtime:test-upstream", async (event, upstreamId) => {
-  if (!trustedSender(event) || typeof upstreamId !== "string" || upstreamId.length > 100) throw new Error("Untrusted runtime request");
-  const response = await fetch(`http://127.0.0.1:${controlPort}/v1/control/upstreams/${encodeURIComponent(upstreamId)}/test`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${runtime?.controlToken || ""}` }, body: "{}" });
-  if (!response.ok) throw new Error(`Connectivity test returned ${response.status}`);
-  return response.json();
+registerUpstreamTestIpc({
+  ipcMain,
+  isTrustedSender: trustedSender,
+  getControlPort: () => controlPort,
+  getControlToken: () => runtime?.controlToken || "",
 });
 
 ipcMain.handle("runtime:test-route", async (event, routeId, prompt) => {

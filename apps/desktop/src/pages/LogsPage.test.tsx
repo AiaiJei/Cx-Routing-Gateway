@@ -31,7 +31,7 @@ it.each([200, 201])("keeps a partially delivered HTTP %s stream failed and expla
     await user.keyboard("{Escape}");
     await user.click(detail);
     const dialog = screen.getByRole("dialog");
-    expect(dialog).toHaveTextContent("失败 · 流已中断");
+    expect(dialog).toHaveTextContent(`${gatewayStatus} · 流已中断`);
     expect(dialog).toHaveTextContent("上游 HTTP 200");
     expect(dialog).toHaveTextContent(`下游 HTTP ${gatewayStatus}`);
     expect(dialog).toHaveTextContent(`HTTP ${gatewayStatus} 不代表流完整完成`);
@@ -54,7 +54,7 @@ it("shows a wire 502 after upstream headers as failure without claiming a partia
     render(<LogsPage />);
     const detail = await screen.findByRole("button", { name: "查看 before-downstream" });
     const row = detail.closest("tr")!;
-    expect(within(row).getByRole("button", { name: /状态/ })).toHaveTextContent(/^失败$/);
+    expect(within(row).getByRole("button", { name: /状态/ })).toHaveTextContent(/^502$/);
     await user.click(detail);
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveTextContent("上游 HTTP 200");
@@ -113,7 +113,7 @@ describe("LogsPage", () => {
     const user = userEvent.setup();
     render(<LogsPage />);
     await screen.findByRole("searchbox", { name: "搜索请求日志" });
-    expect(screen.getByText("失败（模拟）")).toHaveClass("status-badge", "status-negative");
+    expect(screen.getByText("504")).toHaveClass("status-badge", "status-negative");
     const failed = screen.getByRole("button", { name: "失败" });
     expect(failed).toHaveAttribute("aria-pressed", "false");
     await user.click(failed);
@@ -193,7 +193,7 @@ describe("LogsPage", () => {
     const table = within(screen.getByRole("region", { name: "请求日志列表" })).getByRole("table");
     expect(within(table).getByRole("columnheader", { name: "状态" })).toBeVisible();
     expect(within(table).queryByRole("columnheader", { name: "结果" })).not.toBeInTheDocument();
-    const failed = within(table).getByRole("button", { name: /失败/ });
+    const failed = within(table).getByRole("button", { name: /状态 504/ });
     await user.hover(failed);
     expect(screen.getByRole("tooltip")).toHaveTextContent("HTTP");
     await user.unhover(failed);

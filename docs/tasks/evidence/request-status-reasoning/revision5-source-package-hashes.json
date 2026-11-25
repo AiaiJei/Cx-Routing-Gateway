@@ -1,0 +1,34 @@
+[
+  {
+    "file": "packages/shared/src/config-store.mjs",
+    "sha256": "36f85cf9ab52a9b6227923300076d797fd517d63709e5f95da89396e43dca420"
+  },
+  {
+    "file": "packages/shared/src/config-lock.mjs",
+    "sha256": "75d261da3857d31a9fce44fb8f380123c4057514da1318f13f98b5472de9c620"
+  },
+  {
+    "file": "packages/shared/src/destination-policy.mjs",
+    "sha256": "1f9883390032c7556a6dff619248a323b2e722d3632e8194feef535c1f8b04c4"
+  },
+  {
+    "file": "services/local-control/src/server.mjs",
+    "sha256": "ddced1cc6592e01afb10dee7c9052ad291f8591ea2e6c870b291798eb0602eb0"
+  },
+  {
+    "file": "services/gateway/src/server.mjs",
+    "sha256": "a45beffe9ff90e5fdfdf8a48c2f5056a8c404e3766aa2d6ca186d135e19bd6a3"
+  },
+  {
+    "file": "electron/main.cjs",
+    "sha256": "839a405d6a0c016ad61bd08c3fd5c8cdc0d055023b22aac9afd8e0bfea8df19f"
+  },
+  {
+    "file": "electron/runtime-supervisor.cjs",
+    "sha256": "36aff12820a30d3d630815eb765b3323c26ff2f72a32d5704bf24f94d2e510a2"
+  },
+  {
+    "file": "electron/upstream-test-ipc.cjs",
+    "sha256": "621540aef14f3ddeb8897c6196306212fa194d94d086743a337962a3f9589672"
+  }
+]

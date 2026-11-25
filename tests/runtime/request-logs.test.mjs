@@ -65,6 +65,19 @@ test('JSON request logs carry real usage, request start and type through control
   assert.doesNotMatch(JSON.stringify(log), /private-|test-key/);
 });
 
+test('successful JSON request logs separate upstream 201 from downstream 200', async t => {
+  const app = await setup(t, (_req, res) => {
+    res.writeHead(201);
+    res.end(JSON.stringify({ choices: [{ message: { content: 'ok' } }] }));
+  });
+  const response = await app.request('Chat', false);
+  assert.equal(response.status, 200);
+  await response.text();
+  const [log] = await app.logs(1);
+  assert.equal(log.httpStatus, 201);
+  assert.equal(log.gatewayStatus, 200);
+});
+
 test('passthrough and converted streams preserve responses and persist first-generation timing and usage', async t => {
   let firstSent = 0;
   let monotonicTime = 100;
@@ -187,6 +200,40 @@ test('request logs retain only the transmitted reasoning level and prefer the pr
   await nested.text();
   const second = (await app.logs(2)).at(-1);
   assert.equal(second.reasoningEffort, 'medium');
+});
+
+test('Mes-to-Res requests forward and log the native Messages reasoning effort', async t => {
+  let upstreamPayload;
+  const app = await setup(t, async (req, res) => {
+    let body = '';
+    for await (const chunk of req) body += chunk;
+    upstreamPayload = JSON.parse(body);
+    res.end(JSON.stringify({ id: 'response-1', status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: 'ok' }] }] }));
+  }, 'Res');
+
+  const response = await app.request('Mes', false, { output_config: { effort: 'high' } });
+  assert.equal(response.status, 200);
+  await response.text();
+  assert.equal(upstreamPayload.reasoning.effort, 'high');
+  const [log] = await app.logs(1);
+  assert.equal(log.reasoningEffort, 'high');
+});
+
+test('Res-to-Mes requests forward and log Responses reasoning effort', async t => {
+  let upstreamPayload;
+  const app = await setup(t, async (req, res) => {
+    let body = '';
+    for await (const chunk of req) body += chunk;
+    upstreamPayload = JSON.parse(body);
+    res.end(JSON.stringify({ type: 'message', id: 'message-1', role: 'assistant', content: [{ type: 'text', text: 'ok' }], stop_reason: 'end_turn', usage: { input_tokens: 1, output_tokens: 1 } }));
+  }, 'Mes');
+
+  const response = await app.request('Res', false, { reasoning: { effort: 'xhigh' } });
+  assert.equal(response.status, 200);
+  await response.text();
+  assert.equal(upstreamPayload.output_config.effort, 'xhigh');
+  const [log] = await app.logs(1);
+  assert.equal(log.reasoningEffort, 'xhigh');
 });
 
 test('request logs omit missing, oversized, and non-string reasoning levels', async t => {

@@ -6,7 +6,7 @@ const releaseDir = path.resolve(process.argv[2] || 'apps/desktop/release');
 const { version, cxrgProductVersion } = JSON.parse(await fs.readFile(new URL('../apps/desktop/package.json', import.meta.url), 'utf8'));
 const builderConfig = await fs.readFile(new URL('../apps/desktop/electron-builder.yml', import.meta.url), 'utf8');
 if (!builderConfig.split(/\r?\n/).some((line) => line.trim() === `buildVersion: ${cxrgProductVersion}`)) throw new Error('electron-builder buildVersion does not match cxrgProductVersion');
-if (version !== '1.1.8' || cxrgProductVersion !== '1.1.8') throw new Error('Invalid Cx-Routing Gateway package/product version metadata');
+if (version !== '1.1.9' || cxrgProductVersion !== '1.1.9') throw new Error('Invalid Cx-Routing Gateway package/product version metadata');
 const productVersion = cxrgProductVersion;
 const required = [
   'win-unpacked/Cx-Routing Gateway.exe',
@@ -14,7 +14,7 @@ const required = [
   'win-unpacked/resources/runtime/services/local-control/src/server.mjs',
   'win-unpacked/resources/runtime/services/gateway/src/server.mjs',
   'win-unpacked/resources/runtime/services/gateway/src/request-metrics.mjs',
-  'win-unpacked/resources/runtime/packages/shared/src/config-store.mjs',
+  'win-unpacked/resources/runtime/packages/shared/src/config-store.mjs', 'win-unpacked/resources/runtime/packages/shared/src/config-lock.mjs', 'win-unpacked/resources/runtime/packages/shared/src/destination-policy.mjs',
   'win-unpacked/resources/runtime/packages/shared/src/secret-vault.mjs',
   'win-unpacked/resources/runtime/scripts/check-update.mjs',
   `Cx-Routing Gateway Setup ${productVersion}.exe`,

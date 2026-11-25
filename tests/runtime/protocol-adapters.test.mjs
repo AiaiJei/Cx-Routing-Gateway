@@ -35,6 +35,31 @@ test('normalizes Responses text, tools, tool choice and response format', () => 
   assert.equal(normalized.maxTokens, 128);
 });
 
+test('forwards Responses reasoning effort to Messages output_config without replacing response format', () => {
+  const responsesRequest = parseRequest('Res', {
+    input: 'Think carefully',
+    reasoning: { effort: 'xhigh' },
+    text: { format: { type: 'json_schema', name: 'answer', schema: { type: 'object' } } },
+  }, { direction: 'Res->Mes' });
+  const messagesRequest = serializeRequest('Mes', responsesRequest, 'messages-model');
+
+  assert.deepEqual(messagesRequest.output_config, {
+    effort: 'xhigh',
+    format: { type: 'json_schema', schema: { type: 'object' } },
+  });
+});
+
+test('forwards Messages output_config effort to Responses reasoning', () => {
+  const messagesInput = parseRequest('Mes', {
+    messages: [{ role: 'user', content: 'Think carefully' }],
+    max_tokens: 64,
+    output_config: { effort: 'high' },
+  }, { direction: 'Mes->Res' });
+  const responsesOutput = serializeRequest('Res', messagesInput, 'responses-model');
+
+  assert.deepEqual(responsesOutput.reasoning, { effort: 'high' });
+});
+
 test('round-trips a namespaced Responses function tool through Chat', () => {
   const normalized = parseRequest('Res', {
     input: 'What time is it?',

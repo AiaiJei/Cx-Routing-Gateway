@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dns from 'node:dns/promises';
-import net from 'node:net';
+import { validateUpstreamDestination } from '../../../packages/shared/src/destination-policy.mjs';
 
 const MAX_BODY = 1024 * 1024;
 const protocols = new Set(['Res', 'Mes', 'Chat']);
@@ -47,37 +47,8 @@ function profileFor(protocol, input = {}) {
   return { providerId, apiProfile };
 }
 
-function classifyAddress(raw) {
-  const address = String(raw).toLowerCase().replace(/^::ffff:/, '');
-  if (net.isIP(address) === 4) {
-    const octets = address.split('.').map(Number);
-    const [first, second] = octets;
-    const privateNetwork = first === 10 || first === 127 || (first === 172 && second >= 16 && second <= 31) || (first === 192 && second === 168) || (first === 100 && second >= 64 && second <= 127);
-    const linkLocal = first === 169 && second === 254;
-    const unspecified = first === 0;
-    return { privateNetwork, linkLocal, metadata: address === '169.254.169.254', unspecified };
-  }
-  const privateNetwork = address === '::1' || address.startsWith('fc') || address.startsWith('fd');
-  const linkLocal = address.startsWith('fe80:');
-  const unspecified = address === '::';
-  return { privateNetwork, linkLocal, metadata: address === 'fd00:ec2::254', unspecified };
-}
-
-async function validateBaseUrl(raw, allowPrivateNetwork = false, lookup = dns.lookup) {
-  const value = new URL(raw);
-  if (!['http:', 'https:'].includes(value.protocol) || value.username || value.password || value.hash) throw Object.assign(new Error('Invalid upstream URL'), { statusCode: 400 });
-  const host = value.hostname.replace(/^\[|\]$/g, '').toLowerCase();
-  const hostClass = host === 'localhost' ? { privateNetwork: true, linkLocal: false, metadata: false, unspecified: false } : classifyAddress(host);
-  if (hostClass.metadata || hostClass.linkLocal || hostClass.unspecified || (hostClass.privateNetwork && !allowPrivateNetwork)) throw Object.assign(new Error('Private or metadata upstream requires explicit trust'), { statusCode: 400 });
-  const addresses = (await lookup(host, { all: true })).map((record) => record.address.toLowerCase()).sort();
-  if (!addresses.length) throw Object.assign(new Error('Upstream host did not resolve'), { statusCode: 400 });
-  const classes = addresses.map((address) => classifyAddress(address));
-  if (classes.some((addressClass) => addressClass.metadata || addressClass.linkLocal || addressClass.unspecified)) throw Object.assign(new Error('Resolved upstream address is not trusted'), { statusCode: 400 });
-  const hasPrivate = classes.some((addressClass) => addressClass.privateNetwork);
-  const hasPublic = classes.some((addressClass) => !addressClass.privateNetwork);
-  if (hasPrivate && hasPublic) throw Object.assign(new Error('Mixed public and private DNS answers are not trusted'), { statusCode: 400 });
-  if (hasPrivate && !allowPrivateNetwork) throw Object.assign(new Error('Resolved upstream address is not trusted'), { statusCode: 400 });
-  return { value, addresses };
+async function validateBaseUrl(raw, allowPrivateNetwork = false, lookup = dns.lookup, approvedAddresses = []) {
+  return validateUpstreamDestination(raw, { trustedPrivateNetwork: allowPrivateNetwork, lookup, approvedAddresses });
 }
 
 function requestJsonAtApprovedAddress(rawUrl, headers, approvedAddresses, timeoutMs = 5000) {
@@ -319,9 +290,12 @@ export function createControlServer({ store, vault, controlToken = process.env.C
         const config = await store.read();
         const upstream = config.upstreams.find((item) => item.id === parts[3]);
         if (!upstream) return send(res, 404, { error: 'not_found' });
-        const destination = await validateBaseUrl(upstream.baseUrl, upstream.trustedPrivateNetwork === true, dnsLookup);
-        const approved = upstream.approvedAddresses || [];
-        if (approved.length && (approved.length !== destination.addresses.length || approved.some((address, index) => address !== destination.addresses[index]))) return send(res, 502, { ok: false, error: 'destination_changed' });
+        let destination;
+        try {
+          destination = await validateBaseUrl(upstream.baseUrl, upstream.trustedPrivateNetwork === true, dnsLookup, upstream.approvedAddresses || []);
+        } catch (error) {
+          return send(res, 502, { ok: false, error: error.code === 'destination_changed' ? 'destination_changed' : 'destination_untrusted' });
+        }
         try {
           const headers = {};
           const secret = upstream.credentialRef ? await vault.get(upstream.credentialRef) : undefined;

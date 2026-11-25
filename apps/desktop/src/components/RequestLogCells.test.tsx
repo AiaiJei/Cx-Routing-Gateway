@@ -17,6 +17,22 @@ const log: CallLog = {
   firstTokenMs: 25,
 };
 
+it.each([
+  [{ ...log, httpStatus: 200 }, "200", "status-positive"],
+  [{ ...log, status: "失败" as const, gatewayStatus: 504, upstreamStatus: 504 }, "504", "status-negative"],
+  [{ ...log, status: "失败" as const, httpStatus: 200, gatewayStatus: 502, upstreamStatus: 504 }, "502", "status-negative"],
+  [{ ...log, status: "失败" as const, upstreamStatus: 429 }, "429", "status-negative"],
+] as const)("shows the effective HTTP status code", (request, code, statusClass) => {
+  render(<RequestStatus log={request} />);
+  expect(screen.getByRole("button", { name: new RegExp(`状态 ${code}`) })).toHaveTextContent(code);
+  expect(screen.getByText(code)).toHaveClass(statusClass);
+});
+
+it("keeps a readable status label when a historical record has no HTTP code", () => {
+  render(<RequestStatus log={{ ...log, status: "失败" }} />);
+  expect(screen.getByText("失败")).toHaveClass("status-negative");
+});
+
 it("explains first-content and full-request timing from the keyboard", async () => {
   const user = userEvent.setup();
   render(<RequestDuration log={log} />);
@@ -32,9 +48,9 @@ it("explains first-content and full-request timing from the keyboard", async () 
 });
 
 it.each([
-  ["upstream_body", "失败 · 流已中断", "读取上游响应体时"],
-  ["downstream_closed", "失败 · 流已中断", "下游客户端已断开"],
-  ["upstream_headers", "失败", "收到上游响应头前"],
+  ["upstream_body", "200 · 流已中断", "读取上游响应体时"],
+  ["downstream_closed", "200 · 流已中断", "下游客户端已断开"],
+  ["upstream_headers", "502", "收到上游响应头前"],
 ] as const)("explains %s without marking a failed stream successful", async (phase, label, explanation) => {
   const user = userEvent.setup();
   const failedLog = { ...log, status: "失败" as const, upstreamStatus: phase === "upstream_headers" ? undefined : 200, gatewayStatus: phase === "upstream_headers" ? 502 : 200, streamFailurePhase: phase };
@@ -53,7 +69,7 @@ it.each([
 it("preserves a legacy failed 502 record without inventing an upstream status or failure phase", async () => {
   const user = userEvent.setup();
   render(<RequestStatus log={{ ...log, status: "失败", gatewayStatus: 502 }} />);
-  expect(screen.getByText("失败")).toHaveClass("status-negative");
+  expect(screen.getByText("502")).toHaveClass("status-negative");
   expect(screen.queryByText(/流已中断/)).not.toBeInTheDocument();
   await user.tab();
   const tooltip = screen.getByRole("tooltip");
@@ -65,7 +81,7 @@ it("preserves a legacy failed 502 record without inventing an upstream status or
 it("keeps a completed stream successful without an interruption warning", async () => {
   const user = userEvent.setup();
   render(<RequestStatus log={{ ...log, httpStatus: 200 }} />);
-  expect(screen.getByText("成功")).toHaveClass("status-positive");
+  expect(screen.getByText("200")).toHaveClass("status-positive");
   await user.tab();
   expect(screen.getByRole("tooltip")).toHaveTextContent("HTTP 200");
   expect(screen.getByRole("tooltip")).not.toHaveTextContent("流已中断");
@@ -74,7 +90,7 @@ it("keeps a completed stream successful without an interruption warning", async 
 it("does not infer a partial downstream stream from upstream headers followed by a wire 502", async () => {
   const user = userEvent.setup();
   render(<RequestStatus log={{ ...log, status: "失败", upstreamStatus: 200, gatewayStatus: 502, streamFailurePhase: "upstream_body", firstTokenMs: undefined }} />);
-  expect(screen.getByRole("button", { name: /状态/ })).toHaveTextContent(/^失败$/);
+  expect(screen.getByRole("button", { name: /状态/ })).toHaveTextContent(/^502$/);
   await user.tab();
   const tooltip = screen.getByRole("tooltip");
   expect(tooltip).toHaveTextContent("上游 HTTP 200");
@@ -85,7 +101,7 @@ it("does not infer a partial downstream stream from upstream headers followed by
 it("uses the actual downstream 201 in a partial-stream clarification", async () => {
   const user = userEvent.setup();
   render(<RequestStatus log={{ ...log, status: "失败", upstreamStatus: 201, gatewayStatus: 201, streamFailurePhase: "upstream_body" }} />);
-  expect(screen.getByRole("button", { name: /状态/ })).toHaveTextContent("失败 · 流已中断");
+  expect(screen.getByRole("button", { name: /状态/ })).toHaveTextContent("201 · 流已中断");
   await user.tab();
   const tooltip = screen.getByRole("tooltip");
   expect(tooltip).toHaveTextContent("下游 HTTP 201");

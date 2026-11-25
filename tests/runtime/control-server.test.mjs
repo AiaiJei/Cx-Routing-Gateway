@@ -196,6 +196,25 @@ test('control API rejects an empty upstream Base URL without changing configurat
   assert.equal((await store.read()).upstreams[0].baseUrl, 'https://api.example/v1');
 });
 
+test('re-saving the same upstream Base URL refreshes its validated DNS approval', async t => {
+  let resolvedAddress = '8.8.8.8';
+  const { base, store } = await controlFixture(t, 'cxrg-control-upstream-refresh-dns-', {
+    dnsLookup: async () => [{ address: resolvedAddress, family: 4 }],
+  });
+  const baseUrl = 'https://api.example/v1';
+  await store.update(config => ({
+    ...config,
+    upstreams: [{ id: 'refresh-dns', name: 'Refresh DNS', baseUrl, protocol: 'Chat', trustedPrivateNetwork: false, approvedAddresses: ['8.8.8.8'], enabled: true }],
+  }));
+  resolvedAddress = '1.1.1.1';
+
+  const updated = await jsonRequest(`${base}/v1/control/upstreams/refresh-dns`, { method: 'PATCH', body: JSON.stringify({ baseUrl }) });
+
+  assert.equal(updated.response.status, 200);
+  assert.equal(updated.body.baseUrl, baseUrl);
+  assert.deepEqual(updated.body.approvedAddresses, ['1.1.1.1']);
+});
+
 test('control API validates the existing destination when private-network trust is revoked', async (t) => {
   const { base, store } = await controlFixture(t, 'cxrg-control-upstream-revoke-trust-', {
     dnsLookup: async () => [{ address: '127.0.0.1', family: 4 }],

@@ -23,15 +23,15 @@ test('release manifest includes packaged runtime resources', async (t) => {
   const { version, cxrgProductVersion } = JSON.parse(await fs.readFile(new URL('../../apps/desktop/package.json', import.meta.url), 'utf8'));
   const lock = JSON.parse(await fs.readFile(new URL('../../apps/desktop/package-lock.json', import.meta.url), 'utf8'));
   const builderConfig = await fs.readFile(new URL('../../apps/desktop/electron-builder.yml', import.meta.url), 'utf8');
-  assert.equal(version, '1.1.8');
-  assert.equal(cxrgProductVersion, '1.1.8');
-  assert.equal(lock.version, '1.1.8');
-  assert.equal(lock.packages[''].version, '1.1.8');
-  assert.equal(lock.packages[''].cxrgProductVersion, '1.1.8');
+  assert.equal(version, '1.1.9');
+  assert.equal(cxrgProductVersion, '1.1.9');
+  assert.equal(lock.version, '1.1.9');
+  assert.equal(lock.packages[''].version, '1.1.9');
+  assert.equal(lock.packages[''].cxrgProductVersion, '1.1.9');
   assert.equal(builderConfig.split(/\r?\n/).some((line) => line.trim() === `buildVersion: ${cxrgProductVersion}`), true);
   const portableAsset = `Cx-Routing Gateway Portable ${cxrgProductVersion}.exe`;
   const installerAsset = `Cx-Routing Gateway Setup ${cxrgProductVersion}.exe`;
-  for (const relative of ['win-unpacked/Cx-Routing Gateway.exe', 'win-unpacked/resources/app.asar', 'win-unpacked/resources/runtime/services/local-control/src/server.mjs', 'win-unpacked/resources/runtime/services/gateway/src/server.mjs', 'win-unpacked/resources/runtime/services/gateway/src/request-metrics.mjs', 'win-unpacked/resources/runtime/packages/shared/src/config-store.mjs', 'win-unpacked/resources/runtime/packages/shared/src/secret-vault.mjs', 'win-unpacked/resources/runtime/scripts/check-update.mjs', installerAsset, `${installerAsset}.blockmap`, portableAsset]) {
+  for (const relative of ['win-unpacked/Cx-Routing Gateway.exe', 'win-unpacked/resources/app.asar', 'win-unpacked/resources/runtime/services/local-control/src/server.mjs', 'win-unpacked/resources/runtime/services/gateway/src/server.mjs', 'win-unpacked/resources/runtime/services/gateway/src/request-metrics.mjs', 'win-unpacked/resources/runtime/packages/shared/src/config-store.mjs', 'win-unpacked/resources/runtime/packages/shared/src/config-lock.mjs', 'win-unpacked/resources/runtime/packages/shared/src/destination-policy.mjs', 'win-unpacked/resources/runtime/packages/shared/src/secret-vault.mjs', 'win-unpacked/resources/runtime/scripts/check-update.mjs', installerAsset, `${installerAsset}.blockmap`, portableAsset]) {
     const file = path.join(releaseDir, relative);
     await fs.mkdir(path.dirname(file), { recursive: true });
     await fs.writeFile(file, 'test artifact');
@@ -45,7 +45,7 @@ test('release manifest includes packaged runtime resources', async (t) => {
   await fs.rename(`${metricsModule}.omitted`, metricsModule);
   const pkg = JSON.parse(await fs.readFile(new URL('../../apps/desktop/package.json', import.meta.url), 'utf8'));
   assert.equal(manifest.version, pkg.cxrgProductVersion);
-  assert.equal(pkg.version, '1.1.8');
+  assert.equal(pkg.version, '1.1.9');
   assert.equal(manifest.artifacts.some((item) => item.path === 'win-unpacked/resources/runtime/services/local-control/src/server.mjs'), true);
   assert.equal(manifest.artifacts.some((item) => item.path === 'win-unpacked/resources/runtime/packages/shared/src/config-store.mjs'), true);
   assert.equal(manifest.artifacts.some((item) => item.path === portableAsset), true);

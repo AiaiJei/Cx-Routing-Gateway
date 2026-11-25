@@ -85,6 +85,30 @@ describe("UpstreamsPage", () => {
     }
   });
 
+  it("shows upstream test failures as actionable alerts", async () => {
+    const original = { ...defaultWorkspaceClient };
+    const liveWorkspace = {
+      meta: { source: "runtime", live: true },
+      gateway: { state: "运行中", url: "http://127.0.0.1:4318", metrics: undefined },
+      upstreams: [{ id: "up-live", name: "Live API", baseUrl: "https://api.example/v1", credentialLabel: "未配置", status: "待测试", models: [] }],
+      routes: [], logs: [], credentials: [], settings: [],
+    } as any;
+    Object.assign(defaultWorkspaceClient, {
+      getWorkspace: async () => liveWorkspace,
+      simulateUpstreamTest: async () => { throw new Error("上游 DNS 地址已变化；请编辑并重新保存 Base URL 后再次测试。"); },
+    });
+    try {
+      const user = userEvent.setup();
+      render(<UpstreamsPage />);
+      await user.click(await screen.findByRole("button", { name: "测试 Live API" }));
+      expect(await screen.findByRole("alert")).toHaveTextContent("上游 DNS 地址已变化");
+      expect(screen.getByRole("alert")).toHaveTextContent("重新保存 Base URL");
+    } finally {
+      for (const key of Object.keys(defaultWorkspaceClient)) if (!(key in original)) delete (defaultWorkspaceClient as any)[key];
+      Object.assign(defaultWorkspaceClient, original);
+    }
+  });
+
   it("confirms deletion and lists dependent routes when the runtime blocks it", async () => {
     const original = { ...defaultWorkspaceClient };
     const liveWorkspace = {
