@@ -48,7 +48,7 @@
     "delete": false
   },
   "authorization_source": "Owner requests completing Codex routing management and creating a dedicated PR. Implementation, isolated worktree and task commits/push to a dedicated branch are necessary for that requested PR. No authority is inherited from the previous deployment task.",
-  "acceptance_result": "NOT_RUN",
+  "acceptance_result": "PARTIAL",
   "runtime_user_config_access": "NOT_RUN: development and tests use isolated temporary homes; no access to the Owner's actual Codex configuration/authentication files.",
   "base_commit": "effdfb0ab67dde3d64b118a15c0ca450074587d1",
   "branch": "codex/codex-route-management-20261125",
@@ -74,5 +74,9 @@
     "Full Runtime tests and Desktop tests/build pass; independent review resolves blocking findings.",
     "Task changes committed/pushed only to dedicated branch; one PR against master remains open."
   ],
-  "rollback": "Before merge, retain primary master and installed applications. End users can restore the pre-apply config when its revision matches. Repository changes can be reverted by a subsequent authorized commit; no branches/worktrees or backups deleted by this task."
+  "rollback": "Before merge, retain primary master and installed applications. End users can restore the pre-apply config when its revision matches. Repository changes can be reverted by a subsequent authorized commit; no branches/worktrees or backups deleted by this task.",
+  "implementation_result": "PASS",
+  "independent_review": "PASS: native, renderer and whole-branch reviews; all blocking findings fixed and re-reviewed through 6776c8f.",
+  "pull_request": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/25",
+  "owner_acceptance": "NOT_RUN: installed Codex/client and provider use are for Owner acceptance; development/local native behavior is verified."
 }

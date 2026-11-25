@@ -48,6 +48,8 @@
     "delete": false
   },
   "authorization_source": "Owner requests completing Codex routing management and creating a dedicated PR. Implementation, isolated worktree and task commits/push to a dedicated branch are necessary for that requested PR. No authority is inherited from the previous deployment task.",
-  "acceptance_result": "NOT_RUN",
-  "runtime_user_config_access": "NOT_RUN: development and tests use isolated temporary homes; no access to the Owner's actual Codex configuration/authentication files."
+  "acceptance_result": "PARTIAL",
+  "runtime_user_config_access": "NOT_RUN: development and tests use isolated temporary homes; no access to the Owner's actual Codex configuration/authentication files.",
+  "implementation_result": "PASS",
+  "acceptance_note": "Local implementation/tests/review PASS; Owner installed-client acceptance NOT_RUN. Dedicated PR25 delivered; no merge/release."
 }

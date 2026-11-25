@@ -15,3 +15,14 @@ Ruling: Direct Gateway bearer Key storage is explicit in the UI, redacted everyw
 Task 1: pending
 Task 2: pending
 Task 3: pending
+Task 1: complete (28f849c,2070197,6776c8f; native review and final IPC re-review clean)
+Task 2: complete (6a8b3d9,e9a639e; renderer review clean)
+Task 3: local validation complete; current-head GitHub CI and ready state verified by coordinator after delivery commit.
+Task 1: fix round 1/5 — native review found TOML unrelated-value loss and default-port80 rejection; source-span editor and regressions in progress.
+Task 2: fix round 1/5 — renderer review found mutation-result loss during late workspace refresh; lifecycle separation and refresh gating in progress.
+Ruling: Preserve unrelated TOML source ranges using a maintained AST parser rather than whole-file serialization — fixes verified numeric/timestamp changes — adds a focused editor and one parser dependency; no expanded product scope.
+
+## Delivery checkpoint
+- 889f8d7: task contract, design, plan, baseline and worktree ignore committed; no implementation staged.
+- Dedicated Draft PR #25 created and attached: https://github.com/AiaiJei/Cx-Routing-Gateway/pull/25 (OPEN, base master).
+- Native worker restarted on inherited parent route after unavailable explicit model. Native and renderer ownership are disjoint; fixed method/result contracts permit implementation overlap. Each will receive independent review before final integration.
