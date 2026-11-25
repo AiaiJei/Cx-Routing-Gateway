@@ -2,6 +2,7 @@ const messages = Object.freeze({
   CODEX_INPUT_INVALID: "Codex 接入参数无效，请检查路由、Key 和配置版本。",
   CODEX_CONFIG_CHANGED: "Codex 配置已被其他程序修改，请刷新并重新预览。",
   CODEX_CONFIG_INVALID: "Codex 配置不是可读取的 TOML，请先修正原文件。",
+  CODEX_CONFIG_UNSUPPORTED: "Codex 配置的表结构暂不支持安全修改，请手动整理后重新预览。",
   CODEX_CONFIG_TOO_LARGE: "Codex 配置文件过大，暂时无法安全处理。",
   CODEX_PATH_UNSAFE: "Codex 配置或备份位置不是普通文件目录，已停止操作。",
   CODEX_BACKUP_INVALID: "Codex 备份缺失或校验失败，已停止恢复。",

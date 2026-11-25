@@ -6,10 +6,10 @@ Status: implementation and native verification PASS; independent review and inst
 
 ## Changes and ownership
 - codex-config-store.cjs owns bounded fixed-path IO, content revisions, immutable content-addressed original snapshots, write-ahead recovery state and atomic configuration replacement.
-- codex-config-service.cjs owns TOML parsing/serialization, managed provider changes, redacted status/preview, input validation and apply/restore orchestration.
+- codex-config-service.cjs owns TOML validation, managed provider changes, redacted status/preview, input validation and apply/restore orchestration. codex-toml-editor.cjs uses AST source ranges to patch only managed fields; it never reserializes existing scalar values.
 - codex-runtime-client.cjs owns authenticated loopback Control/Gateway reads, enabled Responses-route eligibility and scoped client-Key catalogue validation. Redirects, oversized/invalid responses and unavailable runtime fail closed; it never generates model requests.
 - codex-ipc.cjs owns trusted-sender gate and sanitized native error boundary. main.cjs lazily composes the service; preload exposes four fixed channels.
-- Added smol-toml 1.9.1 as an exact runtime dependency. npm reports its CommonJS export, Node >=18 and BSD-3-Clause license. Existing package/product version remains 1.1.9.
+- Added smol-toml 1.9.1 and toml-eslint-parser 1.0.3 as exact runtime dependencies. smol-toml validates with integersAsBigInt:true; toml-eslint-parser supplies source ranges (its value conversion is never used). Existing package/product version remains 1.1.9.
 - Tests are tests/runtime/codex-config.test.mjs and codex-ipc.test.mjs. Only temporary homes under the task worktree .tmp/codex-route-management-20261125 are used.
 
 ## Interface
@@ -23,7 +23,7 @@ Channels: runtime:codex-status / preview / apply / restore.
 revision is 'missing' or a 64-character SHA-256 hex digest. backup.id is a SHA-256 digest of the immutable backup JSON, not a path or UUID.
 CodexStatus: configPath, exists, revision, configured, credentialConfigured; optional model, baseUrl, reasoningEffort, backup:{id,createdAt}.
 CodexPreview: configPath, revision, model, baseUrl, configPreview, replacesCurrentProvider.
-Safe errors: CODEX_INPUT_INVALID, CONFIG_CHANGED, CONFIG_INVALID, CONFIG_TOO_LARGE, PATH_UNSAFE, BACKUP_INVALID, IO_FAILED, ROUTE_UNAVAILABLE, RUNTIME_UNAVAILABLE, KEY_REJECTED (all prefixed CODEX_). Each has a fixed Chinese message; raw filesystem/parser/network errors are discarded.
+Safe errors: CODEX_INPUT_INVALID, CONFIG_CHANGED, CONFIG_INVALID, CONFIG_UNSUPPORTED, CONFIG_TOO_LARGE, PATH_UNSAFE, BACKUP_INVALID, IO_FAILED, ROUTE_UNAVAILABLE, RUNTIME_UNAVAILABLE, KEY_REJECTED (all prefixed CODEX_). Each has a fixed Chinese message; raw filesystem/parser/network errors are discarded.
 
 ## Behavior and safety evidence
 - Status/preview do not initialize a missing home/config and never return direct keys, existing headers, unrelated provider URLs or unredacted existing configuration.
@@ -51,9 +51,19 @@ Safe errors: CODEX_INPUT_INVALID, CONFIG_CHANGED, CONFIG_INVALID, CONFIG_TOO_LAR
 ## Limitations and handoff
 - Windows runtime smoke/renderer UI and whole-branch review are coordinator-owned and not claimed by this report.
 - No Owner Codex home/config/auth file was read or modified. No real provider/model traffic, version bump, installed binary replacement, commit, push, merge, release or unrelated cleanup was performed by this worker.
-- TOML serialization normalizes formatting/comments; exact original bytes live in the backup.
+- Unrelated TOML source remains intact, including numeric types, signed zero, 64-bit integers, precise timestamps and comments. Spacing within an affected inline provider table may be normalized. Unsupported or ambiguous table shapes are refused during preview before any write, using CODEX_CONFIG_UNSUPPORTED: “Codex 配置的表结构暂不支持安全修改，请手动整理后重新预览。” The source-range editor supports TOML 1.0 syntax; a document accepted by the validation parser but unsupported by that AST grammar is safely refused. Exact original bytes remain recoverable from backup.
 - Direct client Keys and original configs/backups are plaintext at the fixed local Codex location. On Windows, inherited ACLs govern access; POSIX mode arguments do not encrypt files or guarantee Windows ACL isolation.
 - Writes are serialized within this Electron process, including multiple service instances. Source checks reduce lost updates from outside editors, but no OS-wide lock or race elimination against a noncooperating filesystem writer is claimed.
 - File bytes are flushed before rename. Directory-entry durability under sudden power loss is platform dependent and was not physically crash-tested; restart behavior is tested via actual persisted write-ahead state and injected IO failures.
 - Old backup files are retained. The UI exposes the current applicable backup; backup deletion/pruning is outside this task.
 - Native edits were performed using repository file/terminal tools after coordinator scope verification; individual writes were not executed through AWG MCP.
+
+## Independent-review fix round
+- Confirmed original full stringify behavior changed 1.0 to integer 1, -0.0 to 0, truncated high-precision timestamps and rejected valid 64-bit integers. This was a correctness bug.
+- Added three regressions first: typed/precise scalar preservation through full apply/restore, dotted/quoted/inline managed providers with unrelated multiline content, and default HTTP port 80. All three failed against the prior implementation.
+- Replaced full config serialization with a separate maintained-AST source-range editor. BigInt parsing admits all signed 64-bit integers; existing values are copied from source and never encoded from JS Number/Date. Managed values are strings/booleans and are safely encoded. The resulting document is revalidated structurally and semantically before backup/write.
+- Added a fourth failing regression for ambiguous provider shapes in preview; preview now validates the actual edit before Key entry/confirmation.
+- Expanded source tests cover 1 vs 1.0, -0.0, signed 64-bit extremes, timestamp fractions beyond nanoseconds, local/offset datetime, local date/time, nested arrays/inline tables/array-of-tables, quoted dotted keys, nested managed OAuth removal, auth-header removal and multiline strings/comments.
+- Accepts http://127.0.0.1:80/v1 normalized to http://127.0.0.1/v1, while rejecting credential-bearing or query-bearing URLs.
+- Focused native verification after fixes: 28/28 PASS, 0 skipped. Full npm test after fixes: 281/281 PASS, 0 failures/skips. Scoped diff whitespace and editor syntax checks PASS.
+- No commit/push or actual user configuration/provider access was performed in this fix round. Coordinator owns final review and integration evidence.

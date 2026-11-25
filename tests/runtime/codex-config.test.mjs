@@ -248,3 +248,95 @@ test('Codex successful rename is not reported failed by temporary cleanup after 
   assert.equal(status.configured, true);
   assert.match(await fs.readFile(configPath, 'utf8'), /coding-model/);
 });
+
+test('Codex apply preserves unrelated numeric types, signed zero, 64-bit integers and precise date/time source across nested tables', async () => {
+  const preserved = [
+    '# Keep every unrelated scalar literal and nested container exactly',
+    'float = 1.0',
+    'integer = 1',
+    'negative_zero = -0.0',
+    'biggest = 9223372036854775807',
+    'smallest = -9223372036854775808',
+    'offset = 1979-05-27T07:32:00.123456789123-07:30',
+    'local = 1979-05-27T07:32:00.987654321',
+    'date = 1979-05-27',
+    'time = 07:32:00.123456789',
+    'array = [1, 1.0, -0.0, 9223372036854775807, 07:32:00.987654321]',
+    'inline = { count = 9223372036854775807, ratio = 1.0, stamp = 1979-05-27T07:32:00.123456789+08:00 }',
+    '[nested.table]',
+    'ratio = 1.0',
+    'time = 07:32:00.123456789',
+    '[[nested.items]]',
+    'weight = -0.0',
+    'counter = 9223372036854775807',
+    '',
+  ].join('\r\n');
+  const original = 'model = "old"\r\n' + preserved;
+  const { service, configPath } = await fixture({ original });
+  const status = await apply(service);
+  const saved = await fs.readFile(configPath, 'utf8');
+  assert.ok(saved.includes(preserved), 'unrelated TOML source must survive without serializer coercion');
+  const { parse } = require('../../apps/desktop/node_modules/smol-toml');
+  const parsed = parse(saved, { integersAsBigInt: true });
+  assert.equal(parsed.integer, 1n);
+  assert.equal(parsed.float, 1);
+  assert.equal(typeof parsed.float, 'number');
+  assert.equal(Object.is(parsed.negative_zero, -0), true);
+  assert.equal(parsed.biggest, 9223372036854775807n);
+  assert.equal(parsed.smallest, -9223372036854775808n);
+  await service.restore({ backupId: status.backup.id, expectedRevision: status.revision });
+  assert.equal(await fs.readFile(configPath, 'utf8'), original);
+});
+
+test('Codex edits quoted dotted and inline managed provider fields without changing neighbouring source', async () => {
+  const cases = [
+    'model = "old"\n"model_provider" = "other"\n"model_providers"."cx_routing_gateway".name = "Old"\n"model_providers"."cx_routing_gateway".env_key = "OLD"\n"model_providers"."cx_routing_gateway".custom = 1.0\n',
+    'model = "old"\nmodel_providers = { other = { custom = 1.0 }, cx_routing_gateway = { name = "Old", env_key = "OLD", http_headers = { Authorization = "secret", "X-Trace" = "keep" }, custom = 1979-05-27T07:32:00.123456789Z } }\n',
+    'model = "old"\n[model_providers]\ncx_routing_gateway = { name = "Old", gateway_oauth = { command = "old" }, custom = -0.0 }\n[unrelated]\ntext = """model_provider = \\"leave alone\\"\n[model_providers.cx_routing_gateway]""" # untouched\n',
+    'model = "old"\n["model_providers"."cx_routing_gateway"]\nname = "Old"\ncustom = [1, 1.0, -0.0]\n["model_providers"."cx_routing_gateway"."gateway_oauth".credential_export]\ncommand = "remove"\n["model_providers"."cx_routing_gateway"."http_headers"]\nAUTHORIZATION = "secret"\n"X-Trace" = "keep"\n',
+  ];
+  for (const original of cases) {
+    const { service, configPath } = await fixture({ original });
+    const status = await apply(service);
+    const saved = await fs.readFile(configPath, 'utf8');
+    const { parse } = require('../../apps/desktop/node_modules/smol-toml');
+    const parsed = parse(saved, { integersAsBigInt: true });
+    const managed = parsed.model_providers.cx_routing_gateway;
+    assert.equal(managed.name, 'Cx-Routing Gateway');
+    assert.equal(managed.experimental_bearer_token, key);
+    assert.equal(managed.env_key, undefined);
+    assert.equal(managed.gateway_oauth, undefined);
+    assert.equal(managed.http_headers?.Authorization, undefined);
+    assert.equal(managed.http_headers?.AUTHORIZATION, undefined);
+    if (original.includes('"X-Trace"')) assert.equal(managed.http_headers['X-Trace'], 'keep');
+    for (const literal of ['custom = 1.0', 'custom = -0.0', 'custom = 1979-05-27T07:32:00.123456789Z', 'custom = [1, 1.0, -0.0]']) {
+      if (original.includes(literal)) assert.ok(saved.includes(literal));
+    }
+    if (original.includes('text = """')) assert.ok(saved.includes(original.slice(original.indexOf('[unrelated]'))));
+    await service.restore({ backupId: status.backup.id, expectedRevision: status.revision });
+    assert.equal(await fs.readFile(configPath, 'utf8'), original);
+  }
+});
+
+test('Codex gateway URL permits explicit default HTTP port 80 and still rejects credentials or query parameters', async () => {
+  const data = await fixture({ getRoute: async () => ({ model: 'coding-model', baseUrl: 'http://127.0.0.1:80/v1' }) });
+  const preview = await data.service.preview({ routeId: 'route-1' });
+  assert.equal(preview.baseUrl, 'http://127.0.0.1/v1');
+  const status = await apply(data.service);
+  assert.equal(status.configured, true);
+  assert.equal(status.baseUrl, 'http://127.0.0.1/v1');
+  for (const baseUrl of ['http://user:secret@127.0.0.1:80/v1', 'http://127.0.0.1:80/v1?secret=key']) {
+    const unsafe = await fixture({ getRoute: async () => ({ model: 'coding-model', baseUrl }) });
+    await assert.rejects(unsafe.service.preview({ routeId: 'route-1' }), { code: 'CODEX_ROUTE_UNAVAILABLE' });
+  }
+});
+
+test('Codex refuses ambiguous provider shapes during preview and writes nothing', async () => {
+  const original = 'model = "old"\nmodel_providers = [{ name = "not-a-provider-table" }]\n';
+  const { service, configPath, codexHome } = await fixture({ original });
+  await assert.rejects(service.preview({ routeId: 'route-1' }), error => ['CODEX_CONFIG_INVALID', 'CODEX_CONFIG_UNSUPPORTED'].includes(error.code));
+  assert.equal(await fs.readFile(configPath, 'utf8'), original);
+  assert.deepEqual(await fs.readdir(codexHome), ['config.toml']);
+  const scalarProvider = await fixture({ original: 'model_providers.cx_routing_gateway = 3\n' });
+  await assert.rejects(scalarProvider.service.preview({ routeId: 'route-1' }), { code: 'CODEX_CONFIG_UNSUPPORTED' });
+});
