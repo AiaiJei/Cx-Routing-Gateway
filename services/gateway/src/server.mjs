@@ -6,6 +6,7 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dns from 'node:dns/promises';
+import { validateUpstreamDestination } from '../../../packages/shared/src/destination-policy.mjs';
 import net from 'node:net';
 import { Readable } from 'node:stream';
 import { performance } from 'node:perf_hooks';
@@ -81,28 +82,12 @@ function reasoningEffortOf(input) {
   return normalized.length <= 32 ? normalized : undefined;
 }
 
-function classifyAddress(raw) {
-  const address = String(raw).toLowerCase().replace(/^::ffff:/, '');
-  if (net.isIP(address) === 4) {
-    const [first, second] = address.split('.').map(Number);
-    return { privateNetwork: first === 10 || first === 127 || (first === 172 && second >= 16 && second <= 31) || (first === 192 && second === 168) || (first === 100 && second >= 64 && second <= 127), linkLocal: first === 169 && second === 254, metadata: address === '169.254.169.254', unspecified: first === 0 };
-  }
-  return { privateNetwork: address === '::1' || address.startsWith('fc') || address.startsWith('fd'), linkLocal: address.startsWith('fe80:'), metadata: address === 'fd00:ec2::254', unspecified: address === '::' };
-}
-
 export async function validateDestination(baseUrl, trustedPrivateNetwork, approvedAddresses = [], lookup = dns.lookup) {
-  const value = new URL(baseUrl);
-  const records = await lookup(value.hostname, { all: true });
-  const currentAddresses = records.map((record) => record.address.toLowerCase()).sort();
-  if (!currentAddresses.length || currentAddresses.some((address) => !net.isIP(address))) throw Object.assign(new Error('Invalid upstream DNS result'), { code: 'upstream_error', statusCode: 502 });
-  if (approvedAddresses.length && (currentAddresses.length !== approvedAddresses.length || currentAddresses.some((address, index) => address !== approvedAddresses[index]))) throw Object.assign(new Error('Upstream DNS result changed'), { code: 'upstream_error', statusCode: 502 });
-  const classes = currentAddresses.map((address) => classifyAddress(address));
-  if (classes.some((addressClass) => addressClass.metadata || addressClass.linkLocal || addressClass.unspecified)) throw Object.assign(new Error('Upstream destination is not trusted'), { code: 'upstream_error', statusCode: 502 });
-  const hasPrivate = classes.some((addressClass) => addressClass.privateNetwork);
-  const hasPublic = classes.some((addressClass) => !addressClass.privateNetwork);
-  if (hasPrivate && hasPublic) throw Object.assign(new Error('Mixed public and private upstream addresses are not trusted'), { code: 'upstream_error', statusCode: 502 });
-  if (hasPrivate && !trustedPrivateNetwork) throw Object.assign(new Error('Upstream destination is not trusted'), { code: 'upstream_error', statusCode: 502 });
-  return currentAddresses;
+  try {
+    return (await validateUpstreamDestination(baseUrl, { trustedPrivateNetwork, approvedAddresses, lookup })).addresses;
+  } catch (error) {
+    throw Object.assign(new Error(error.message), { code: 'upstream_error', statusCode: 502 });
+  }
 }
 
 function upstreamTimeoutError() {

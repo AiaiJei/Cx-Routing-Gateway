@@ -98,7 +98,8 @@ export const runtimeWorkspaceClient: WorkspaceClient = {
   async simulateUpstreamTest(upstreamId) {
     if (!window.desktopControls) throw new Error("Desktop runtime unavailable");
     const result = await window.desktopControls.testUpstream(upstreamId) as { ok: boolean; models?: string[] };
-    return { simulated: false, message: result.ok ? `连通成功，发现 ${(result.models || []).length} 个模型` : "连通测试失败" };
+    if (!result.ok) throw new Error("上游连通测试未成功，请检查上游设置。");
+    return { simulated: false, message: `连通成功，发现 ${(result.models || []).length} 个模型` };
   },
   async testRoute(routeId, prompt) { if (!window.desktopControls) throw new Error("Desktop runtime unavailable"); return window.desktopControls.testRoute(routeId, prompt); },
   async createClientKey(name, scope) { if (!window.desktopControls) throw new Error("Desktop runtime unavailable"); return window.desktopControls.createClientKey(name, scope) as Promise<{ id: string; key: string }>; },

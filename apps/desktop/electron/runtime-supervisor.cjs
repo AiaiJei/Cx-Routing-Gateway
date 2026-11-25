@@ -66,6 +66,7 @@ async function startRuntime({ dataDir, masterKey, controlPort = 4319, gatewayPor
       import(pathToFileURL(entries[1]).href),
     ]);
     const store = new ConfigStore(path.join(dataDir, 'config.json'));
+    await store.recoverStaleLock();
     const vault = new SecretVault(path.join(dataDir, 'secrets.json'), masterKey);
     const controlServer = createControlServer({ store, vault, controlToken });
     const gatewayServer = createGatewayServer({ store, vault });

@@ -32,3 +32,19 @@
 
 - No version change, release, merge, credential/config write, or Desktop binary replacement was made.
 - The task PR is authorized to be created against `master` and must remain open.
+## Revision 5 — final release candidate verification (2026-11-25)
+
+- Root cause: both upstream testing and forwarding compared every DNS answer to the addresses saved at configuration time. Normal public DNS rotation was rejected after a restart.
+- Shared destination policy now revalidates each connection and permits public-IP rotation. The HTTP connection remains pinned to that validated result. Private-IP changes, public/private transitions, mixed answers, metadata/link-local/unspecified addresses remain rejected before credential access.
+- Windows ConfigStore writes and startup recovery share a crash-released named-pipe mutex derived from the canonical config directory. PID ownership is considered dead only on ESRCH. A legacy empty lock is recovered only when older than the current OS boot plus a 60-second margin. Unknown/malformed owners are retained. First-time configuration creation is also serialized.
+- Failure-first regressions: public rotation failed with upstream_error/destination_changed; current-boot empty lock, unknown process probe, and competing recoverers failed before their fixes. All pass after the fixes.
+- Full Runtime: `npm test` — PASS 253/253. Full Desktop: `npm test --prefix apps/desktop` — PASS 203/203. `npm run build --prefix apps/desktop` — PASS.
+- Independent reviewer `/root/release_lock_review`: PASS, no blocking P1/P2 after corrections. Independently ran syntax/diff checks, 5 lock-recovery matrix cases and 10 IPv6/mapped-address cases. Full suites were run by the primary agent.
+- Final official build: `electron-builder --win nsis portable --x64 --config.directories.output=release/1.1.9-official` — PASS. Setup, blockmap and Portable built. `verify-release.mjs ... --write` verifies 13 artifacts. Eight critical packaged source/asar modules hash-match the tested source.
+- Actual packaged Electron UI, isolated profile `.task-evidence/official-desktop-profile-3`: pre-boot empty lock recovered; upstream-test click displayed “连通成功，发现 1 个模型”; route threshold changed 3→4 and Save displayed “已保存 1 个上游模型配置”. Restarted the process with the same profile, changed injected public DNS from 1.1.1.1 to 9.9.9.9 without resaving Base URL, and the same UI test succeeded. The old stored approval remained 8.8.8.8. The route value 4 survived restart; a second edit 4→5 saved successfully. Disk snapshots confirm both writes and no remaining lock.
+- Desktop fixture used real renderer→preload→IPC→Local Control→ConfigStore. Only DNS lookup and the upstream socket destination were redirected to a loopback fixture through the isolated process debugger; no third-party API calls, real profile or credentials were used. Exactly two local GET /v1/models requests were recorded with original Host preserved. This is controlled Desktop evidence, not real-provider or physical-PC-reboot acceptance.
+- Final unpacked `--version` — PASS 1.1.9. Official Portable isolated Local Control/Gateway health smoke — PASS. All task-launched GUI/mock processes stopped; the pre-existing Owner app remains untouched.
+- Limitations: unsigned Windows assets; non-Windows automatic stale-lock recovery disabled. Do not run an old unpatched 1.1.9 test candidate concurrently against the same profile as the formal build. Owner testing of real providers remains NOT_RUN for this final candidate.
+- Governance: AWG project identity check PASS; PR23 scope check TASK_MISMATCH against the separate deployment contract. Task writes/release commands use direct Owner authorization and the PR23 contract through terminal tools, not AWG tool validation.
+
+Integration and publication will be recorded in the archived closeout after the PR is merged and release assets are verified.
