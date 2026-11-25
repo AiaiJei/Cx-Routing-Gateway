@@ -7,7 +7,7 @@
 - Added exact native method/result TypeScript contracts in domain/codex-management.ts and window.d.ts. data/codex-client.ts requires all four capabilities and maps only stable safe error codes; arbitrary parser/IO/network messages are hidden.
 - data/codex-management.ts owns native status/form actions. Selection changes invalidate previews and ignore late async preview results; a separate status request counter allows route selection while initial status is loading. Mutation confirmations block duplicate edits and submissions. Successful apply/restore clears the Key; failures retain it and require a fresh preview. Status-read failures stay visible while form selections change.
 - Browser fixture mode never reads the native configuration and blocks native preview/apply/restore/Key creation. Runtime workspaces without all four native methods state that the Desktop must be updated.
-- Explicit copy explains plaintext Key storage, potentially credential-bearing backups, TOML formatting/comment changes, restart/new-session requirement and possible project/startup overrides. Saving is not presented as proof that an existing Codex session changed.
+- Explicit copy explains plaintext Key storage, potentially credential-bearing backups, restart/new-session requirement and possible project/startup overrides. Saving is not presented as proof that an existing Codex session changed. Following the native review fix, copy now states that only integration fields change and other contents remain; the original whole-file serialization warning has been superseded by source-range editing.
 - Visual direction matches the existing white/gray Gateway shell, Geist and shared tokens. The main question is the route for the next Codex session. No new shell, synthetic metrics or theme. Added narrow layout/path wrapping and scoped readable disabled controls; removed only obsolete Codex placeholder rules from app.css.
 
 ## Test-first evidence
@@ -30,3 +30,15 @@ The final CSS-only disabled-contrast adjustment follows this test/build run; coo
 - Owner's actual Codex configuration/authentication files, provider calls and installed-client acceptance: **NOT_RUN**.
 - Task worktree only; no frontend commit, push, merge, release, version bump or installed executable change performed by this worker.
 - All worker file reads/edits/tests used terminal/apply_patch, outside AWG tool enforcement. Parent verified the active task scope.
+
+## Independent review fix — refresh and mutation overlap
+
+- Finding verified: workspace refresh and native status refresh run separately. Native status could finish first, allowing a write while workspace data was still pending. A late workspace result invalidated the preview sequence, which was also used to gate mutation results and cleanup. A successful apply/restore or newly created Key could then be silently discarded and the UI remain busy.
+- Wrote the reviewer scenario as four new regressions and ran `npm --prefix apps/desktop test -- src/pages/CodexPage.test.tsx src/data/codex-management.test.tsx`: **RED 4 failed / 14 passed**, matching the missing refresh lock and discarded mutation results.
+- CodexPage now consumes workspace refreshing/refreshError, blocks preview/create/apply/restore and key input until both refreshes finish, and keeps writes blocked after a workspace refresh error until retry succeeds. The hook enforces the same guard.
+- Mutation completion has its own request counter and in-flight ref. Preview invalidation cannot discard an active mutation result, error, finally cleanup or confirmation. Input payloads are captured before starting, and duplicate mutation dispatch is blocked synchronously.
+- A created Key is retained with its original model scope even if the route changes while it is being created. The UI always labels that scope and blocks apply to a different model; the native Key scope check remains authoritative.
+- Added failure cleanup, refresh-failure recovery and mismatched scoped-Key tests. Scoped three-file run: **PASS 23/23**. Full `npm --prefix apps/desktop test`: **PASS 26 files / 224 tests**, 0 failures.
+- Added CODEX_CONFIG_UNSUPPORTED safe mapping after the native source-range editor fix; first mapping run **RED 1 failed / 1 passed**, then full suite passed. No parser/table contents are echoed.
+- Updated confirmation/help copy for source-range editing; final `npm --prefix apps/desktop run build`: **PASS TypeScript/Vite**, 82 modules. Test promise generic declarations were corrected after TypeScript identified inferred Promise<unknown> in the new test doubles.
+- Final focused run after copy and mutation scope guard: **PASS 3 files / 23 tests**; `git diff --check`: **PASS**.

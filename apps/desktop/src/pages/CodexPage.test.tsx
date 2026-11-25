@@ -1,4 +1,4 @@
-import { act, render, screen, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
@@ -95,7 +95,7 @@ describe("CodexPage", () => {
     await user.click(screen.getByRole("button", { name: "应用配置" }));
     const dialog = screen.getByRole("dialog", { name: "确认应用 Codex 配置" });
     expect(dialog).toHaveTextContent(/明文.*Key/);
-    expect(dialog).toHaveTextContent(/注释/);
+    expect(dialog).toHaveTextContent(/仅更新接入字段.*其他内容保留/);
     expect(native.applyCodexConfig).not.toHaveBeenCalled();
     await user.click(within(dialog).getByRole("button", { name: "确认应用" }));
     expect(await screen.findByText(/配置已保存.*重启 Codex/)).toBeVisible();
@@ -224,5 +224,46 @@ describe("CodexPage", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(create).toHaveFocus();
     expect(defaultWorkspaceClient.createClientKey).not.toHaveBeenCalled();
+  });
+
+  it("blocks every write while workspace refresh is pending after native status settles", async () => {
+    const { native, data } = setupLive({ getCodexStatus: vi.fn().mockResolvedValue(saved) });
+    let finishWorkspace!: (value: typeof data) => void;
+    defaultWorkspaceClient.getWorkspace = vi.fn().mockResolvedValueOnce(data).mockImplementationOnce(() => new Promise(done => { finishWorkspace = done; }));
+    mount(); const user = await selectRoute();
+    await user.click(screen.getByRole("button", { name: "刷新状态" }));
+    await waitFor(() => expect(native.getCodexStatus).toHaveBeenCalledTimes(2));
+    await act(async () => {});
+    for (const name of ["创建专用 Key", "恢复备份", "预览配置", "应用配置"]) expect(screen.getByRole("button", { name })).toBeDisabled();
+    expect(screen.getByLabelText("Gateway 客户端 Key")).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "创建专用 Key" }));
+    expect(defaultWorkspaceClient.createClientKey).not.toHaveBeenCalled();
+    await act(async () => finishWorkspace(data));
+    expect(screen.getByRole("button", { name: "创建专用 Key" })).toBeEnabled();
+  });
+
+  it("keeps native writes blocked after a failed workspace refresh until refresh succeeds", async () => {
+    const { data } = setupLive({ getCodexStatus: vi.fn().mockResolvedValue(saved) });
+    defaultWorkspaceClient.getWorkspace = vi.fn().mockResolvedValueOnce(data).mockRejectedValueOnce(new Error("untrusted internal content")).mockResolvedValueOnce(data);
+    mount(); const user = await selectRoute();
+    await user.click(screen.getByRole("button", { name: "刷新状态" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("工作区刷新失败，请刷新状态后重试。");
+    for (const name of ["创建专用 Key", "恢复备份", "预览配置", "应用配置"]) expect(screen.getByRole("button", { name })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "刷新状态" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "创建专用 Key" })).toBeEnabled());
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("shows the created Key scope and blocks applying it to a different selected model", async () => {
+    setupLive(); mount(); const user = await selectRoute();
+    await user.click(screen.getByRole("button", { name: "创建专用 Key" }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "确认创建" }));
+    await screen.findByText(/专用 Key 已创建/);
+    await selectRoute("gateway-second");
+    expect(screen.getByText(/本页创建的 Key 仅允许访问 gateway-reasoner/)).toBeVisible();
+    expect(screen.getByLabelText("Gateway 客户端 Key")).toHaveValue(secret);
+    await user.click(screen.getByRole("button", { name: "预览配置" }));
+    await screen.findByText(/experimental_bearer_token/);
+    expect(screen.getByRole("button", { name: "应用配置" })).toBeDisabled();
   });
 });

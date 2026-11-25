@@ -11,6 +11,7 @@ const errors: Record<string, string> = {
   CODEX_INPUT_INVALID: "参数无效，请检查路由和凭证。",
   CODEX_CONFIG_CHANGED: "配置已被其他程序修改，请刷新状态并重新预览。",
   CODEX_CONFIG_INVALID: "配置不是可读取的 TOML，请先修正原文件。",
+  CODEX_CONFIG_UNSUPPORTED: "当前配置结构暂不支持安全修改，请手动整理后重新预览。",
   CODEX_CONFIG_TOO_LARGE: "配置文件过大，请检查原文件。",
   CODEX_PATH_UNSAFE: "配置或备份路径不安全，请检查文件类型。",
   CODEX_BACKUP_INVALID: "备份无法验证，已停止恢复。",

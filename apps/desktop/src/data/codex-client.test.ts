@@ -15,5 +15,6 @@ describe("Codex native boundary", () => {
     expect(codexErrorMessage({ code: "CODEX_KEY_REJECTED", message: "secret-key" }, "fallback")).toMatch(/客户端 Key 无效/);
     expect(codexErrorMessage(new Error("parser secret-key"), "fallback")).toBe("fallback");
     expect(codexErrorMessage(new Error("CODEX_UNKNOWN: secret-key"), "fallback")).toBe("fallback");
+    expect(codexErrorMessage(new Error("CODEX_CONFIG_UNSUPPORTED: private-table"), "fallback")).toMatch(/配置结构.*手动/);
   });
 });
