@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "project_id": "cx-routing-gateway",
+  "repo_id": "aiaijei-cx-routing-gateway",
+  "task_id": "CXRG-OVERVIEW-REFACTOR-20261126",
+  "contract_revision": 2,
+  "contract_path": "docs/tasks/2026-11-26-overview-refactor-contract.json",
+  "project": "Cx-Routing Gateway",
+  "repository": "AiaiJei/Cx-Routing-Gateway",
+  "state": "active",
+  "scope_paths": [
+    ".codex/awg-task.json",
+    ".tmp/worktrees/overview-dashboard-20261126",
+    ".tmp/worktrees/overview-dashboard-20261126/**",
+    "apps/desktop/src/pages/OverviewPage*",
+    "apps/desktop/src/components/Overview*",
+    "apps/desktop/src/styles/app.css",
+    "apps/desktop/src/styles/overview.css",
+    "apps/desktop/src/data/use-workspace.ts",
+    "apps/desktop/src/data/workspace-client*",
+    "apps/desktop/src/domain/types.ts",
+    "apps/desktop/src/domain/overview-*",
+    "docs/tasks/2026-11-26-overview-refactor*",
+    "docs/tasks/evidence/overview-refactor-20261126/**",
+    "docs/superpowers/specs/2026-11-26-overview-refactor-design.md",
+    "docs/superpowers/plans/2026-11-26-overview-refactor.md"
+  ],
+  "revision_history": [
+    {
+      "revision": 2,
+      "date": "2026-11-26",
+      "reason": "Added an isolated overview usage aggregation helper and its tests. Also made create_worktree explicit on the active manifest and contract after AWG validation, and scoped the exact worktree root. No backend API or runtime-service changes are authorized by this revision."
+    }
+  ],
+  "worktree_directory": ".tmp/worktrees",
+  "authorization": {
+    "implementation": true,
+    "evidence_append": true,
+    "create_worktree": true,
+    "commit": true,
+    "push": true,
+    "pull_request": true,
+    "merge": false,
+    "release": false,
+    "delete": false,
+    "local_build": true,
+    "sync_main_worktree": false
+  },
+  "authorization_source": "Owner explicitly approved creating an independent overview-refactor contract, switching the active task pointer while preserving the prior contract and all existing worktrees, and delivering a dedicated PR. This authorizes implementation, a new isolated branch/worktree, task commits, push, and opening the dedicated PR only; merge, release, deletion, and unrelated modifications are not authorized.",
+  "acceptance_result": "NOT_RUN",
+  "base_commit": "606d069e7b53efa492c86e32856d334d313fbaeb",
+  "branch": "codex/overview-dashboard-20261126",
+  "worktree": "C:/Users/20142/Desktop/Cx-Routing Gateway/.tmp/worktrees/overview-dashboard-20261126",
+  "rollback": "Keep master and all pre-existing worktrees and untracked data untouched. Do not delete branches or worktrees. Revert this task only through an authorized follow-up or the dedicated PR.",
+  "implementation_result": "NOT_STARTED",
+  "independent_review": "NOT_RUN",
+  "pull_request": null,
+  "owner_acceptance": "NOT_RUN: visual/runtime acceptance remains separate from code and test evidence.",
+  "local_revision_policy": "May commit and push only this task's scoped changes to codex/overview-dashboard-20261126 and open its dedicated PR. Do not merge, release, or alter unrelated local data.",
+  "acceptance_criteria": [
+    "Overview prioritizes truthful Gateway and configuration statuses, live usage data, and recent activity.",
+    "The 24-hour chart is derived from timestamped retained usage records and discloses when retention limits may make it incomplete.",
+    "Live, fixture, loading, error, and empty states are distinguishable and accessible.",
+    "Focused component tests, desktop production build, and rendered wide/narrow viewport review pass before PR creation.",
+    "Independent review is recorded separately from implementation and Owner acceptance."
+  ]
+}
