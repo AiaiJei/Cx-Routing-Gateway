@@ -1,6 +1,5 @@
 .overview-status-grid { display: grid; grid-template-columns: minmax(0, 1.45fr) repeat(2, minmax(0, 1fr)); gap: 18px; align-items: start; }
 .overview-icon { display: inline-flex; width: 48px; height: 48px; flex: 0 0 48px; color: var(--text); }
-.overview-icon[data-size="32"] { width: 32px; height: 32px; flex-basis: 32px; }
 .overview-icon[data-size="40"] { width: 40px; height: 40px; flex-basis: 40px; }
 .overview-icon svg { display: block; width: 100%; height: 100%; }
 .overview-icon svg * { vector-effect: non-scaling-stroke; }
@@ -9,7 +8,7 @@
 .overview-page .overview-status .section-title { font-size: 13px; font-weight: 500; letter-spacing: 0; color: var(--muted); }
 .overview-status strong { font-size: 26px; font-weight: 400; line-height: 1.2; overflow-wrap: anywhere; }
 .overview-status strong.overview-status__count { font-size: 26px; font-weight: 400; line-height: 1.1; }
-.overview-config-metric .overview-status__count { font-size: 24px; }
+.overview-config-metric strong.overview-status__count { font-size: 24px; }
 .overview-resource-count { display: flex; align-items: baseline; gap: 6px; }
 .overview-resource-count span { color: var(--muted); font-size: 12px; }
 .overview-check-summary { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
@@ -18,7 +17,6 @@
 .overview-config-metric { display: grid; grid-template-columns: 40px minmax(0, 1fr); column-gap: 10px; row-gap: 7px; align-content: start; }
 .overview-config-metric > .overview-icon { grid-row: 1 / span 4; }
 .overview-config-metric__content { display: grid; gap: 3px; min-width: 0; }
-.overview-config-metric__content .overview-status__count { font-size: 22px; }
 .overview-status__caption { color: var(--muted); font-size: 12px; }
 .overview-config-metric .quiet-link { grid-column: 2; font-size: 12px; }
 .overview-status__value { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 13px; font-weight: 400; }

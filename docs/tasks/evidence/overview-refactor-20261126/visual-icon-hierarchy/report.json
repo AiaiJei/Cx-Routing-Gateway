@@ -1,6 +1,6 @@
 {
  "url": "apps/desktop/dist/index.html",
- "at": "2026-11-26T14:26:39.383Z",
+ "at": "2026-11-26T14:45:28.095Z",
  "allow": [],
  "viewports": [
   {
@@ -335,7 +335,7 @@
       "middle": 162,
       "heading": {
        "text": "2 / 2",
-       "size": 26,
+       "size": 24,
        "tag": "strong"
       },
       "left": 256,
@@ -471,11 +471,11 @@
      "firstScreen": 8,
      "ragged": [
       {
-       "diff": 30,
+       "diff": 32,
        "top": 242
       },
       {
-       "diff": 37,
+       "diff": 39,
        "top": 242
       }
      ],
@@ -525,7 +525,6 @@
       14,
       16,
       24,
-      26,
       28
      ]
     },
@@ -654,8 +653,8 @@
       "words": 3,
       "chars": 5,
       "lines": 1,
-      "size": 26,
-      "vw": 6.7,
+      "size": 24,
+      "vw": 6.2,
       "font": "Geist Variable",
       "weight": 400,
       "tracking": 0,
@@ -675,8 +674,8 @@
       "words": 1,
       "chars": 1,
       "lines": 1,
-      "size": 26,
-      "vw": 6.7,
+      "size": 24,
+      "vw": 6.2,
       "font": "Geist Variable",
       "weight": 400,
       "tracking": 0,
@@ -708,7 +707,7 @@
       "align": "left",
       "position": "left",
       "widthRatio": 0.15,
-      "top": 948,
+      "top": 946,
       "tag": "strong",
       "kind": "heading"
      },
@@ -729,7 +728,7 @@
       "align": "left",
       "position": "right",
       "widthRatio": 0.18,
-      "top": 948,
+      "top": 946,
       "tag": "strong",
       "kind": "heading"
      },
@@ -750,7 +749,7 @@
       "align": "left",
       "position": "left",
       "widthRatio": 0.18,
-      "top": 1018,
+      "top": 1016,
       "tag": "strong",
       "kind": "heading"
      }
@@ -761,7 +760,7 @@
      "over2Lines": 0,
      "statements": 0,
      "centered": 0,
-     "medianWords": 1,
+     "medianWords": 2,
      "mixedFontHeadings": 0
     },
     "type": {
@@ -822,26 +821,6 @@
       "pill": false,
       "size": 13,
       "top": 595
-     },
-     {
-      "text": "路由与凭证",
-      "above": "2 / 2",
-      "upper": false,
-      "tracked": false,
-      "mono": false,
-      "pill": false,
-      "size": 13,
-      "top": 758
-     },
-     {
-      "text": "路由与凭证",
-      "above": "2",
-      "upper": false,
-      "tracked": false,
-      "mono": false,
-      "pill": false,
-      "size": 13,
-      "top": 758
      }
     ],
     "numbered": [],
@@ -981,13 +960,13 @@
       "sel": "section.overview-status-grid",
       "tag": "section",
       "top": 294,
-      "height": 613,
+      "height": 611,
       "words": 29,
       "media": 0,
       "middle": 0,
       "heading": {
        "text": "2 / 2",
-       "size": 26,
+       "size": 24,
        "tag": "strong"
       },
       "left": 16,
@@ -1003,7 +982,7 @@
      {
       "sel": "section.overview-metrics",
       "tag": "section",
-      "top": 925,
+      "top": 923,
       "height": 170,
       "words": 0,
       "media": 0,
@@ -1022,7 +1001,7 @@
      {
       "sel": "div.overview-activity-grid",
       "tag": "div",
-      "top": 1113,
+      "top": 1111,
       "height": 315,
       "words": 0,
       "media": 0,
@@ -1041,7 +1020,7 @@
      {
       "sel": "section.page-section",
       "tag": "section",
-      "top": 1446,
+      "top": 1444,
       "height": 298,
       "words": 0,
       "media": 0,
@@ -1166,7 +1145,6 @@
       14,
       16,
       24,
-      26,
       28
      ]
     },
@@ -1195,7 +1173,7 @@
    "level": "WARN",
    "id": "ragged-row",
    "width": 1440,
-   "message": "2 pair(s) of cards in one row end at different heights (by 30px, 37px).",
+   "message": "2 pair(s) of cards in one row end at different heights (by 32px, 39px).",
    "fix": "Cards that share a row share a bottom edge: balance them by their content (the same number of rows, a block of similar height beside it), or stack them. In testing, ragged rows were marked down every time."
   },
   {

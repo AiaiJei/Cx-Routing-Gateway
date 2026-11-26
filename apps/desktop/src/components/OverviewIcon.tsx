@@ -3,8 +3,7 @@ import type { NavigationIconName } from "./NavigationIcon";
 
 type OverviewIconName = NavigationIconName | "gateway" | "outcomes" | "duration";
 
-/** Larger overview symbols share the navigation icon family's line treatment. */
-export function OverviewIcon({ name, size = 48 }: { name: OverviewIconName; size?: 32 | 40 | 48 }) {
+export function OverviewIcon({ name, size = 48 }: { name: OverviewIconName; size?: 40 | 48 }) {
   return (
     <span className="overview-icon" data-size={size} aria-hidden="true">
       {name === "gateway" || name === "outcomes" || name === "duration" ? (

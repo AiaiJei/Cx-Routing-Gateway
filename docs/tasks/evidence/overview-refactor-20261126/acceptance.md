@@ -13,7 +13,7 @@ Base: `606d069e7b53efa492c86e32856d334d313fbaeb`
 - Data-source copy remains explicit: fixture mode is not live; upstream status describes the last recorded check, not a continuous health probe.
 - No backend endpoint, chart dependency, shared application-shell change, or network probe was added.
 
-## Automated Checks
+## Initial Implementation Checks
 
 | Command | Result |
 |---|---|
@@ -35,7 +35,7 @@ Task 1 mapping and Task 2 aggregation tests followed red-green cycles. The 24-ho
 ## Review and Acceptance Boundaries
 
 - Implementation result: PASS for the code and checks above.
-- Independent task review: NOT_RUN. Two reviewer-agent startup attempts failed because the local model endpoint returned `route_not_found`. The dedicated Draft PR is exposed for an independent reviewer; this is not a review PASS.
+- Independent task review: NOT_RUN. Earlier delegation attempts returned `route_not_found`; the latest reviewer attempt returned `unsupported_feature` for `Res->Chat`. No independent review verdict was produced. The dedicated Draft PR remains available for independent review.
 - Dedicated PR: [#27](https://github.com/AiaiJei/Cx-Routing-Gateway/pull/27), draft, targets `master`; not merged.
 - Real Desktop IPC/runtime rendering and Owner acceptance: NOT_RUN. Browser screenshots are fixture-only; no provider calls or user runtime configuration were accessed.
 - Integration: task branch only. It is authorized to push and open a Draft PR, but not to merge, release, delete the worktree, or update `master`.
@@ -43,7 +43,11 @@ Task 1 mapping and Task 2 aggregation tests followed red-green cycles. The 24-ho
 ## Owner Visual Follow-up
 
 - Owner clarified the visual priority as “图标占比 > 数值 > 状态”; it means visual prominence, not decoration count.
-- Added a 48px Gateway node symbol and 48px upstream-server symbol. The metric row uses 40px purpose icons beside 28px values and quiet 12px captions. Route/credential summaries use 40px icons, 22px counts, then smaller captions and states. Existing navigation SVGs are reused where possible; the Gateway/outcome/duration symbols use the same outline stroke. No tinted icon container or package was introduced.
+- Added a 48px Gateway node symbol and 48px upstream-server symbol. The metric row uses 40px purpose icons beside 28px values and quiet 12px captions. Route/credential summaries use 40px icons, 24px counts, then smaller captions and states. Existing navigation SVGs are reused where possible; the Gateway/outcome/duration symbols use the same outline stroke. No tinted icon container or package was introduced.
 - Regression test: `npm --prefix apps/desktop test -- src/pages/OverviewPage.test.tsx -t "places large purpose icons"` first failed because the Gateway symbol was absent, then passed after implementation. It asserts icon size, icon/value/caption order, and secondary route/status hierarchy.
 - Final visual files are under `visual-icon-hierarchy/`; the report has 0 horizontal overflow and 0 console errors at 1440×900 and 390×844. It also records the same three inspector warnings: small text share, short status-row height difference, and no colored chart series because the fixture has no request in the rolling window.
-- Final post-change verification: desktop suite 39 files / 334 tests PASS; production build PASS; four-file taste lint PASS; app inspector reports 0 FAIL / 0 WARN aggregate. Real Desktop IPC/runtime rendering and Owner runtime acceptance remain NOT_RUN.
+- Final post-change verification: desktop suite 39 files / 334 tests PASS; production build PASS; four-file taste lint 0 FAIL / 0 WARN; rendered app inspector 0 FAIL / 3 WARN. Real Desktop IPC/runtime rendering and Owner runtime acceptance remain NOT_RUN.
+- The final desktop suite was rerun on 2026-11-26 at 22:44 Asia/Shanghai after the count-size CSS correction; all 334 tests and the production build passed. The screenshots and inspector report were regenerated from that build.
+- Computed-style verification: `node docs/tasks/evidence/overview-refactor-20261126/verify-icon-hierarchy.mjs C:\Users\20142\.codex\skills\taste-skill\scripts\lib\cdp.mjs` PASS at both widths. `visual-icon-hierarchy/computed-hierarchy.json` records 40px icons / 24px configuration counts / 28px metric values / 12px captions, plus the 48px Gateway icon and 13px Gateway state. Both main scroll containers have zero horizontal overflow; configuration links retain the application's hash routes.
+- Manually inspected `desktop-fold.jpg`, `mobile-config.jpg`, and `mobile-metrics.jpg` from the final build. The two additional mobile screenshots scroll the internal `#main-content` container to cover configuration and request metrics below the first fold. The mobile request table retains intentional horizontal scrolling.
+- AWG checked the repository identity and allowed paths. Edits, test/build commands, browser inspection, commits and pushes ran through terminal tools; AWG is not a sandbox for those operations.
