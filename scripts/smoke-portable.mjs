@@ -10,8 +10,10 @@ if (!executable) throw new Error('Usage: node scripts/smoke-portable.mjs <portab
 const ports = await reservePortableSmokePorts();
 await ports.release();
 const userData = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-portable-userdata-'));
+const environment = { ...process.env, ...ports.environment, CXRG_USER_DATA_DIR: userData, CODEX_HOME: path.join(userData, 'codex') };
+for (const name of ['CXRG_MASTER_KEY', 'CXRG_CONTROL_TOKEN', 'CXRG_DEV_SERVER_URL', 'ELECTRON_RUN_AS_NODE']) delete environment[name];
 const child = spawn(executable, [`--user-data-dir=${userData}`], {
-  env: { ...process.env, ...ports.environment },
+  env: environment,
   stdio: 'ignore',
   windowsHide: true,
 });

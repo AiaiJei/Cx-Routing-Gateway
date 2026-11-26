@@ -3,12 +3,23 @@
   "project_id": "cx-routing-gateway",
   "repo_id": "aiaijei-cx-routing-gateway",
   "task_id": "CXRG-OVERVIEW-REFACTOR-20261126",
-  "contract_revision": 7,
+  "contract_revision": 9,
   "contract_path": "docs/tasks/2026-11-26-overview-refactor-contract.json",
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
   "state": "active",
   "scope_paths": [
+    "apps/desktop/electron/main.cjs",
+    "apps/desktop/electron/desktop-profile.cjs",
+    "tests/runtime/desktop-profile.test.mjs",
+    "scripts/smoke-portable.mjs",
+    "apps/desktop/package.json",
+    "apps/desktop/package-lock.json",
+    "apps/desktop/electron-builder.yml",
+    "apps/desktop/src/pages/SettingsPage.test.tsx",
+    "scripts/verify-release.mjs",
+    "tests/runtime/release-manifest.test.mjs",
+    "apps/desktop/release/1.1.12-overview-test-20261127/**",
     ".codex/awg-task.json",
     ".tmp/worktrees/overview-dashboard-20261126",
     ".tmp/worktrees/overview-dashboard-20261126/**",
@@ -29,6 +40,16 @@
     "docs/superpowers/plans/2026-11-26-overview-refactor.md"
   ],
   "revision_history": [
+    {
+      "revision": 9,
+      "date": "2026-11-27",
+      "reason": "Packaging inspection found no explicit Electron user/session-data override before the single-instance lock. Add an optional CXRG_USER_DATA_DIR startup adapter, tests and smoke/launcher wiring so the authorized local test runs beside Desktop 1.1.11 with deterministic data isolation. Normal launches without the variable remain unchanged; no backend or GitHub-release scope is added."
+    },
+    {
+      "revision": 8,
+      "date": "2026-11-27",
+      "reason": "Owner authorized publishing a test build to the local Desktop and incrementing the version by one. Desktop currently runs 1.1.11 while this task's source still says 1.1.10, so the local candidate is 1.1.12. Authorizes version alignment, local packaging, isolated launch checks and new Desktop test folder/shortcut only. Existing executables, processes and user data must be preserved; no GitHub release, merge or primary application-code integration."
+    },
     {
       "revision": 7,
       "date": "2026-11-26",
@@ -69,12 +90,16 @@
     "push": true,
     "pull_request": true,
     "merge": false,
-    "release": false,
+    "release": true,
+    "local_desktop_test_release": true,
+    "github_release": false,
+    "version_bump": true,
+    "isolated_local_smoke": true,
     "delete": false,
     "local_build": true,
     "sync_main_worktree": false
   },
-  "authorization_source": "Owner explicitly approved creating an independent overview-refactor contract, switching the active task pointer while preserving the prior contract and all existing worktrees, and delivering a dedicated PR. This authorizes implementation, a new isolated branch/worktree, task commits, push, and opening the dedicated PR only; merge, release, deletion, and unrelated modifications are not authorized.",
+  "authorization_source": "Existing overview implementation/commit/push/PR authorization persists. Owner now explicitly requested: 发布测试版到本地桌面。版本号递增1. This adds local Desktop test packaging/delivery and isolated checks only; it does not authorize GitHub publication, merge, deletion of pre-existing data or primary application-code updates.",
   "acceptance_result": "PARTIAL",
   "base_commit": "606d069e7b53efa492c86e32856d334d313fbaeb",
   "branch": "codex/overview-dashboard-20261126",
@@ -85,7 +110,10 @@
   "independent_review": "NOT_RUN: the latest reviewer earlier in this continuing task returned unsupported_feature, field input.output, direction Res->Chat. The blocked channel was not repeatedly retried for the aggregate clarification; no independent verdict is claimed. PR27 remains Draft.",
   "pull_request": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/27",
   "owner_acceptance": "NOT_RUN: visual/runtime acceptance remains separate from code and test evidence.",
-  "local_revision_policy": "May commit and push only this task's scoped changes to codex/overview-dashboard-20261126 and open its dedicated PR. Do not merge, release, or alter unrelated local data.",
+  "local_revision_policy": "May commit/push scoped changes to the existing PR and deliver a separately named 1.1.12 local Desktop test build. Do not merge, publish a GitHub release or change unrelated local data.",
+  "release_scope": "Local Desktop test only; use isolated Profile/Codex directories and ports 18418/18419; no real provider calls. Smoke checks may stop their own child process trees and remove only newly created task-local temporary profiles.",
+  "allowed_external_paths": ["C:/Users/20142/Desktop/Cx-Routing Gateway 1.1.12 测试版", "C:/Users/20142/Desktop/Cx-Routing Gateway 1.1.12 测试版/**", "C:/Users/20142/Desktop/Cx-Routing Gateway 1.1.12 测试版.lnk"],
+  "test_release": { "version": "1.1.12", "increment_basis": "verified running Desktop 1.1.11", "source_previous_version": "1.1.10", "status": "IN_PROGRESS" },
   "acceptance_criteria": [
     "Overview prioritizes usage statistics and per-model call analysis while retaining truthful Gateway/configuration states and recent activity.",
     "Summary and model totals use the same selected retained-log population; Token values disclose missing/partial reporting without double-counting cache fields.",
