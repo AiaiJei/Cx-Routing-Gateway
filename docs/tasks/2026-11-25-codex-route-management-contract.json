@@ -3,7 +3,7 @@
   "project_id": "cx-routing-gateway",
   "repo_id": "aiaijei-cx-routing-gateway",
   "task_id": "CXRG-CODEX-ROUTE-MANAGEMENT-20261125",
-  "contract_revision": 9,
+  "contract_revision": 10,
   "contract_path": "docs/tasks/2026-11-25-codex-route-management-contract.json",
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
@@ -228,6 +228,11 @@
       "date": "2026-11-26",
       "source": "Owner: 提交合并PR，任务工作树合并到主工作树，Github仓库开源权限仅阅读和下载Releases，发布Github版本及桌面正式版，更新README",
       "decision": "Owner revision9 authorizes PR25 commit/push/merge, primary master fast-forward, public repository with read-only collaborators, GitHub v1.1.10 release and separate formal Desktop binary. Preserve actual Codex proxy/account configuration, previous binaries/data and all worktrees. No provider calls or worktree deletion."
+    },
+    {
+      "date": "2026-11-26",
+      "source": "Owner: README refresh with current product capabilities and screenshot assets.",
+      "decision": "Authorize a dedicated documentation PR refreshing README product capability descriptions and screenshots under docs/tasks/evidence/codex-route-management-20261125/screenshots. Use released UI in a read-only demo state; do not modify application behavior, user data, or live provider settings. Scope is README, task evidence screenshots, and contract record."
     }
   ],
   "local_beta_1_1_10": {
