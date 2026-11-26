@@ -68,7 +68,7 @@
   "implementation_result": "PASS",
   "implementation_evidence": "Desktop tests 333/333; production TypeScript/Vite build PASS; taste-skill lint 0 findings; 1440x900 and 390x844 browser inspection has 0 horizontal overflow or console errors. The browser used fixture mode; Desktop IPC/runtime acceptance remains NOT_RUN. See docs/tasks/evidence/overview-refactor-20261126/acceptance.md.",
   "independent_review": "NOT_RUN: both task reviewer-agent startup attempts failed because the local model endpoint returned route_not_found; a Draft PR is used to expose the branch for external independent review.",
-  "pull_request": null,
+  "pull_request": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/27",
   "owner_acceptance": "NOT_RUN: visual/runtime acceptance remains separate from code and test evidence.",
   "local_revision_policy": "May commit and push only this task's scoped changes to codex/overview-dashboard-20261126 and open its dedicated PR. Do not merge, release, or alter unrelated local data.",
   "acceptance_criteria": [

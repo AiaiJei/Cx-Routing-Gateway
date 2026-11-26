@@ -36,5 +36,6 @@ Task 1 mapping and Task 2 aggregation tests followed red-green cycles. The 24-ho
 
 - Implementation result: PASS for the code and checks above.
 - Independent task review: NOT_RUN. Two reviewer-agent startup attempts failed because the local model endpoint returned `route_not_found`. The dedicated Draft PR is exposed for an independent reviewer; this is not a review PASS.
+- Dedicated PR: [#27](https://github.com/AiaiJei/Cx-Routing-Gateway/pull/27), draft, targets `master`; not merged.
 - Real Desktop IPC/runtime rendering and Owner acceptance: NOT_RUN. Browser screenshots are fixture-only; no provider calls or user runtime configuration were accessed.
 - Integration: task branch only. It is authorized to push and open a Draft PR, but not to merge, release, delete the worktree, or update `master`.
