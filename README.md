@@ -1,6 +1,19 @@
 # Cx-Routing Gateway
 
-Cx-Routing Gateway 是 Windows 桌面应用与本机模型网关，用于管理多个上游服务、统一本机模型入口，并按路由配置转发或转换请求。
+<p align="center">
+  <strong>把多家模型服务，收进一个本机网关。</strong><br />
+  在 Windows 桌面端管理上游、模型路由、访问凭证和 Codex 接入。
+</p>
+
+<p align="center">
+  <a href="https://github.com/AiaiJei/Cx-Routing-Gateway/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/AiaiJei/Cx-Routing-Gateway?display_name=tag&label=release"></a>
+  <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/github/license/AiaiJei/Cx-Routing-Gateway"></a>
+  <img alt="Windows x64" src="https://img.shields.io/badge/platform-Windows%20x64-0078D4">
+</p>
+
+**1.1.10 · Windows x64 · Electron / React / TypeScript**
+
+Chat Completions、Responses 与 Messages 统一接入；按路由选择上游、控制模型能力，并在可验证的协议范围内转换请求和响应。
 
 | 项目 | 信息 |
 | --- | --- |
@@ -9,45 +22,64 @@ Cx-Routing Gateway 是 Windows 桌面应用与本机模型网关，用于管理�
 | 桌面技术 | Electron、React、TypeScript |
 | 上游协议 | Chat Completions、Responses、Messages |
 
-正式安装包和发行说明以 [GitHub Releases](https://github.com/AiaiJei/Cx-Routing-Gateway/releases) 中实际发布的资产为准。版本号反映当前源码；它本身不表示对应版本的发行包已经发布。
+<p align="center">
+  <a href="https://github.com/AiaiJei/Cx-Routing-Gateway/releases/latest"><strong>下载 Windows 版本 →</strong></a>
+  &nbsp; · &nbsp;
+  <a href="docs/architecture.md">查看架构</a>
+  &nbsp; · &nbsp;
+  <a href="docs/acceptance-checklist.md">查看能力与验收边界</a>
+</p>
+
+正式版本和发行资产以 [GitHub Releases](https://github.com/AiaiJei/Cx-Routing-Gateway/releases/latest) 页面为准；源码版本号不代表对应安装包一定已发布。
+
+## 目录
+
+- [下载与开源](#下载与开源)
+- [功能一览](#功能一览)
+- [界面截图](#界面截图)
+- [Codex 接入](#codex-接入)
+- [运行方式](#运行方式)
+- [能力范围与安全](#能力范围与安全)
+- [验证](#验证)
 
 ## 下载与开源
 
-仓库以 [Apache-2.0](LICENSE) 开源。无需 GitHub 账号或访问令牌即可查看源码和下载公开 Releases。普通访问者可阅读、克隆和 Fork，不能直接推送、合并或发布；现有协作者仅保留只读访问，仓库管理员负责维护和正式发布。
+项目以 [Apache-2.0](LICENSE) 开源。无需 GitHub 账号或访问令牌即可查看源码、克隆仓库和下载公开发行版。
 
-- [正式发布与下载](https://github.com/AiaiJei/Cx-Routing-Gateway/releases/latest)：Windows x64 安装版和 Portable 便携版。
-- 安装版适合固定安装；Portable 可直接运行，关闭窗口后驻留托盘，完整退出请使用托盘菜单。
-- 两种版本沿用同一本机数据目录，更新前保留原程序。发行资产提供 SHA-256 清单；应用下载更新时也校验 GitHub 资产摘要。
-- 开发与内测验证使用独立数据目录；发布成功不表示已替用户切换 Codex 接入或验证所有上游模型。
+- [正式发布与下载](https://github.com/AiaiJei/Cx-Routing-Gateway/releases/latest)：Windows x64 安装版与 Portable 便携版。
+- 安装版适合固定安装；Portable 可直接运行。关闭主窗口后应用驻留系统托盘，完整退出请使用托盘菜单。
+- 两种版本沿用同一本机数据目录。发行资产附 SHA-256 清单；应用内下载也会校验 GitHub 资产摘要。
+- 更新前请保留现有程序。开发与内测使用独立数据目录；安装或更新不会自动切换用户的 Codex 接入配置。
 
-1.1.10 包含 Codex 直连/网关方案管理、模型与凭证记忆、推理区间、默认文本和图片、模型目录生效诊断、跨协议工具续轮及加密推理历史兼容。当前用户代理和账户配置由用户自行管理，程序不会因版本更新自动切换。
+1.1.10 包含 Codex 直连与网关方案管理、模型和凭证选择记忆、推理强度区间、模型文本/图片能力设置、目录生效诊断、跨协议工具续轮及加密推理历史兼容。应用不会因版本更新自动更改当前用户的代理或账户配置。
 
 ## 界面截图
 
-以下截图来自 1.1.1 本地浏览器预览，使用仓库内置的只读示例数据，不代表真实上游请求或运行时状态。
+以下截图来自 **1.1.10 当前界面的本地浏览器预览**。页面使用仓库内置的只读示例数据，不连接真实上游；状态、模型和调用记录仅作界面说明，不代表实际运行结果。
 
 ### 总览
 
-![Cx-Routing Gateway 总览页面](docs/screenshots/overview.png)
+![Cx-Routing Gateway 1.1.10 总览：本机状态、路由概况与最近调用](docs/tasks/evidence/codex-route-management-20261125/screenshots/overview-current.png)
 
 ### 模型路由
 
-![Cx-Routing Gateway 模型路由页面](docs/screenshots/routes.png)
+![Cx-Routing Gateway 1.1.10 模型路由：统一模型表与协议转换示意](docs/tasks/evidence/codex-route-management-20261125/screenshots/routes-current.png)
 
-### 设置
+### Codex 接入
 
-![Cx-Routing Gateway 设置页面](docs/screenshots/settings.png)
+![Cx-Routing Gateway 1.1.10 Codex 接入：直连与 CX-RG 网关模式](docs/tasks/evidence/codex-route-management-20261125/screenshots/codex-current.png)
 
-## 功能
+## 功能一览
 
 - **上游管理：** 添加和维护上游服务，发现模型并执行连通测试；上游凭证保存在本机加密存储中。
-- **模型路由：** 横向选择上游服务，在统一列表中选择模型；同名模型只选一次，自动对应所选上游中提供它的服务。协议集中设置，每个模型可设推理等级的最低—最高允许区间，并配置上游优先级和故障切换。
-- **协议适配：** 提供 Chat Completions、Responses 和 Messages 接入；支持同协议转发，以及已验证的文本、图片、SSE、本地工具定义和结果续轮转换。
-- **本机凭证：** 创建、限定模型范围、轮换和撤销客户端 Key；界面隐藏密钥，只在创建时显示完整 Key。
-- **Codex：** 管理官方及第三方 Responses 直连方案，或启用 CX-RG 多模型网关；支持配置导入、供应商编辑、确认启用和备份恢复。
-- **请求记录：** 查看状态、耗时、首 Token 和可用的 Token 用量指标，并按条件筛选；日志不记录请求正文或密钥。
-- **桌面设置与更新：** 调整本机日志保留条数；匿名读取公开 GitHub Releases，验证安装器 SHA-256 后由用户确认安装，无需仓库写入或发布权限。
-- **托盘驻留：** 关闭主窗口后应用隐藏到系统托盘；单击托盘恢复窗口，托盘菜单可打开或完整退出应用。
+- **上游服务：** 添加和管理多个服务，发现模型并测试连接；上游凭证使用本机加密存储。
+- **模型路由：** 统一查看模型与调用别名，设置入站/出站协议、上游优先级、故障切换和模型能力；同名模型避免重复添加。
+- **推理区间：** 为模型设置最低与最高推理档位；客户端在区间内的选择予以保留，越界请求限制到边界。
+- **协议转换：** 接入 Chat Completions、Responses 与 Messages；已验证的文本、SSE、图片及本地工具定义/结果续轮按各协议能力转换。
+- **本机访问凭证：** 创建、限定模型范围、轮换及撤销客户端 Key；完整密钥仅在创建时显示，可用凭证在本机加密保存。
+- **Codex 接入：** 管理官方及第三方 Responses 直连配置，或选择 CX-RG 网关；支持导入、编辑、启用确认、模型记忆与配置恢复。
+- **请求记录：** 按条件查看请求状态、耗时、首 Token 和可用 Token 指标；日志不保存请求正文或密钥。
+- **桌面更新与托盘：** 从公开 Releases 检查更新，校验安装包 SHA-256 后由用户确认安装；关闭主窗口可驻留系统托盘。
 
 ## Codex 接入
 
