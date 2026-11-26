@@ -240,3 +240,15 @@ it("maps route ranges independently without inventing a policy for legacy routes
   limited.reasoning!.min = "medium";
   expect(state.routes[0].reasoning!.min).toBe("low");
 });
+
+it("maps only a positive safe runtime usage retention limit", () => {
+  const mapLimit = (usageRetentionCount: unknown) => mapRuntimeState({
+    settings: { gatewayHost: "127.0.0.1", gatewayPort: 4318, usageRetentionCount },
+    upstreams: [], routes: [], usage: [], clientKeys: [],
+  }).usageRetentionCount;
+
+  expect(mapLimit(250)).toBe(250);
+  expect(mapLimit(0)).toBeUndefined();
+  expect(mapLimit("250")).toBeUndefined();
+  expect(mapLimit(Number.MAX_SAFE_INTEGER + 1)).toBeUndefined();
+});
