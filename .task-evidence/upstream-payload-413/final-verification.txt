@@ -1,7 +1,0 @@
-Focused regression: 30/30 PASS
-Full Runtime suite: 114/114 PASS
-Desktop production build: PASS (`npm --prefix apps/desktop run build`)
-Whitespace: PASS (`git diff --check`)
-Dependency setup: `npm ci` in this worktree's apps/desktop only; package and lock files unchanged.
-Provider reproduction: NOT_RUN (no real upstream calls).
-Native Electron/Desktop acceptance: NOT_RUN.
