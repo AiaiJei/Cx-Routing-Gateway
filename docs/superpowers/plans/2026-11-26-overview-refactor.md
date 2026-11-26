@@ -257,4 +257,6 @@ Run `git diff --check`, inspect `git diff --stat`, and confirm only contract-sco
 
 Commit only scoped evidence and acceptance documentation, push `codex/overview-dashboard-20261126`, and create a PR targeting `master`. Do not merge or release.
 
-**Execution mode:** Inline in the authorized worktree; no parallel agents are used.
+**Execution mode:** Use the subagent-driven workflow with a fresh implementer and scoped review for each task. Keep implementation ownership disjoint; the integrator handles cross-task decisions, final visual verification, and PR creation.
+
+**Ruling:** Task 1 (runtime retention mapping) and Task 2 (pure time-bucket aggregation) use separate files and no shared edits, so they may proceed in parallel. Tasks 3 and 4 wait for their stated dependencies and remain separate review checkpoints.
