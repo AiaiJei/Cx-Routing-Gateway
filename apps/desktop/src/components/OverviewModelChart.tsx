@@ -1,35 +1,33 @@
-import type { OverviewModelSummary } from "../domain/overview-analytics";
-import { compactChartValue, formatModelMetric, modelChartMetrics, modelChartValue } from "../domain/overview-model-chart";
-import type { ModelChartMetric } from "../domain/overview-model-chart";
+import { useEffect, useRef } from "react";
+import { compactChartValue, formatModelShare } from "../domain/overview-model-chart";
+import type { ModelDistribution } from "../domain/overview-model-chart";
+import { formatMetric } from "../domain/request-log";
 
-type Props = { models: OverviewModelSummary[]; metric: ModelChartMetric; maximum: number; selectedModel: string; onSelect: (model: string) => void };
-const plotHeight = 220;
-const tickFractions = [0, 0.25, 0.5, 0.75, 1];
+type Props = { distribution: ModelDistribution; selectedModel?: string; onSelect: (model: string) => void };
+const circumference = 2 * Math.PI * 86;
 
-export function OverviewModelChart({ models, metric, maximum, selectedModel, onSelect }: Props) {
-  const definition = modelChartMetrics.find((item) => item.key === metric)!;
-  const hasValues = models.some((model) => modelChartValue(model, metric) !== null);
-  const rows = { gridTemplateRows: `repeat(${models.length}, minmax(0, 1fr))` };
-  return <div className="overview-comparison-chart">
-    <div className="overview-comparison-axis" aria-hidden="true">
-      <span>模型</span><div>{hasValues && tickFractions.map((fraction) => <span key={fraction} style={{ left: `${fraction * 100}%` }}>{metric === "successRate" ? `${maximum * fraction}%` : compactChartValue(maximum * fraction, metric)}</span>)}</div><span>{definition.unit}</span>
+export function OverviewModelChart({ distribution, selectedModel, onSelect }: Props) {
+  const listRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const list = listRef.current;
+    const button = list && [...list.querySelectorAll<HTMLButtonElement>("button")].find((item) => item.dataset.model === selectedModel);
+    if (!list || !button) return;
+    if (button.offsetTop < list.scrollTop + 24) list.scrollTop = Math.max(0, button.offsetTop - 24);
+    else if (button.offsetTop + button.offsetHeight > list.scrollTop + list.clientHeight) list.scrollTop = button.offsetTop + button.offsetHeight - list.clientHeight;
+  }, [distribution, selectedModel]);
+  return <div className="overview-model-composition">
+    <div className="overview-model-ring">
+      <svg viewBox="0 0 240 240" role="img" aria-label="模型调用分布图" data-total={distribution.total}>
+        <title>模型调用分布图</title>
+        <desc>{`共 ${distribution.total} 次调用，${distribution.segments.length} 个模型。${distribution.segments.map((model) => `${model.model}：${model.calls} 次，占比 ${formatModelShare(model.share)}`).join("；")}`}</desc>
+        <circle className="overview-model-ring__empty" cx="120" cy="120" r="86" fill="none" strokeWidth="32" />
+        {distribution.segments.map((model) => <circle key={model.model} data-model={model.model} data-share={model.share} cx="120" cy="120" r="86" fill="none" stroke={model.color} strokeWidth="32" strokeDasharray={`${model.share * circumference} ${(1 - model.share) * circumference}`} strokeDashoffset={-model.start * circumference} transform="rotate(-90 120 120)"><title>{`${model.model}：${formatMetric(model.calls)} 次，${formatModelShare(model.share)}`}</title></circle>)}
+      </svg>
+      <div className="overview-model-ring__total" aria-hidden="true"><strong title={formatMetric(distribution.total)}>{compactChartValue(distribution.total)}</strong><span>次调用</span><span>{distribution.segments.length} 个模型</span></div>
     </div>
-    <div className="overview-comparison-body">
-      <div className="overview-comparison-labels" style={rows}>{models.map((model) => <button key={model.model} type="button" title={model.model} aria-label={`查看 ${model.model}`} aria-pressed={selectedModel === model.model} onClick={() => onSelect(model.model)}><span>{model.model}</span></button>)}</div>
-      <div className="overview-comparison-plot">
-        <svg viewBox={`0 0 100 ${plotHeight}`} preserveAspectRatio="none" role="img" aria-label={definition.chartName} data-maximum={maximum}>
-          <title>{definition.chartName}</title>
-          <desc>{`零起点，统一刻度 0 至 ${maximum} ${definition.unit}。${models.map((model) => `${model.model}：${formatModelMetric(modelChartValue(model, metric), metric)}`).join("；")}`}</desc>
-          {hasValues && tickFractions.map((fraction) => <line key={fraction} x1={fraction * 100} x2={fraction * 100} y1="0" y2={plotHeight} className="overview-comparison-grid" />)}
-          {models.map((model, index) => {
-            const value = modelChartValue(model, metric);
-            if (value === null) return null;
-            return <rect key={model.model} data-model={model.model} data-selected={selectedModel === model.model} x="0" y={(index + 0.5) * plotHeight / models.length - 9} width={value / maximum * 100} height="18"><title>{`${model.model}：${formatModelMetric(value, metric)}`}</title></rect>;
-          })}
-        </svg>
-        {!hasValues && <p className="overview-comparison-empty">本组模型未上报该指标</p>}
-      </div>
-      <div className="overview-comparison-values" style={rows}>{models.map((model) => <span key={model.model} title={formatModelMetric(modelChartValue(model, metric), metric)}>{compactChartValue(modelChartValue(model, metric), metric)}</span>)}</div>
+    <div ref={listRef} className="overview-model-legend" role="region" aria-label="全部模型图例" tabIndex={0}>
+      <div className="overview-model-legend__header" aria-hidden="true"><span>模型</span><span>调用</span><span>占比</span></div>
+      {distribution.segments.length ? <ul className="overview-model-legend__list">{distribution.segments.map((model) => <li key={model.model}><button type="button" data-model={model.model} aria-label={`查看 ${model.model}`} aria-pressed={selectedModel === model.model} title={`${model.model}：${formatMetric(model.calls)} 次，${formatModelShare(model.share)}`} onClick={() => onSelect(model.model)}><span className="overview-model-swatch" style={{ backgroundColor: model.color }} aria-hidden="true" /><span className="overview-model-legend__name">{model.model}</span><span>{formatMetric(model.calls)}</span><span>{formatModelShare(model.share)}</span></button></li>)}</ul> : <p className="overview-model-legend__empty">当前范围内没有模型调用记录</p>}
     </div>
   </div>;
 }

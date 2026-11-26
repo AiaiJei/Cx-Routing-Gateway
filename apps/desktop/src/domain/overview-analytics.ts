@@ -1,7 +1,7 @@
 import { finiteMetric, sanitizeTokens } from "./request-log";
 import type { CallLog } from "./types";
 
-export type OverviewRange = "retained" | "24h";
+export type OverviewRange = "today" | "retained" | "24h";
 const tokenKeys = ["total", "input", "output", "cacheRead", "cacheWrite"] as const;
 export type ReportedToken = { value: number | null; reported: number };
 export type OverviewSummary = {
@@ -37,7 +37,7 @@ function summarize(logs: readonly CallLog[]): OverviewSummary {
 
 export function buildOverviewAnalytics(logs: readonly CallLog[], range: OverviewRange, nowMs: number, retentionLimit?: number) {
   if (!Number.isFinite(nowMs)) throw new RangeError("nowMs must be a finite timestamp");
-  const windowStart = nowMs - 24 * 60 * 60 * 1000;
+  const windowStart = range === "today" ? new Date(nowMs).setHours(0, 0, 0, 0) : nowMs - 24 * 60 * 60 * 1000;
   const selected = logs.filter((log) => {
     if (range === "retained") return true;
     const timestamp = Date.parse(log.time);

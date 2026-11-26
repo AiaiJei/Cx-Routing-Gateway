@@ -7,6 +7,20 @@ const now = Date.parse("2026-11-26T12:00:00Z");
 const base: CallLog = { id: "one", time: "2026-11-26T10:00:00Z", model: "alpha", credential: "—", upstream: "—", direction: "Res → Chat → Res", status: "成功", durationMs: 100 };
 
 describe("buildOverviewAnalytics", () => {
+  it("limits today to local midnight through the reference time, not a rolling 24 hours", () => {
+    const reference = new Date(2026, 10, 26, 12).getTime();
+    const logs = [
+      { ...base, id: "yesterday", time: new Date(2026, 10, 25, 23, 59).toISOString() },
+      { ...base, id: "midnight", time: new Date(2026, 10, 26, 0).toISOString() },
+      { ...base, id: "morning", time: new Date(2026, 10, 26, 9).toISOString() },
+      { ...base, id: "now", time: new Date(reference).toISOString() },
+      { ...base, id: "invalid", time: "invalid" },
+    ];
+    const today = buildOverviewAnalytics(logs, "today", reference);
+    expect(today.logs.map((log) => log.id)).toEqual(["morning", "midnight"]);
+    expect(today.summary.calls).toBe(2);
+    expect(buildOverviewAnalytics(logs, "24h", reference).summary.calls).toBe(3);
+  });
   it("reconciles per-model calls with summary and preserves partial token reporting", () => {
     const result = buildOverviewAnalytics([
       { ...base, tokens: { input: 10, output: 5, total: 15, cacheRead: 4, cacheWrite: 2 } },

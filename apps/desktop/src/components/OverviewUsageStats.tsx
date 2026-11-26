@@ -19,12 +19,12 @@ export function OverviewUsageStats({ summary, range, retentionReached, refreshin
     <div className="section-heading overview-usage__heading">
       <div>
         <h2 id="overview-usage-title" className="section-title">用量统计</h2>
-        <p className="helper-text">{range === "24h" ? "最近 24 小时内的已保留调用" : "当前已保留的调用记录"} · 非历史全量</p>
+        <p className="helper-text">{range === "today" ? "本地今天 0:00 至本次读取的已保留调用" : range === "24h" ? "最近 24 小时内的已保留调用" : "当前已保留的调用记录"} · 非历史全量</p>
       </div>
       <div className="overview-filters">
         <label htmlFor="overview-range">统计范围</label>
-        <select id="overview-range" value={range} onChange={(event) => onRangeChange(event.target.value === "24h" ? "24h" : "retained")}>
-          <option value="retained">已保留记录</option><option value="24h">最近 24 小时</option>
+        <select id="overview-range" value={range} onChange={(event) => onRangeChange(event.target.value === "today" ? "today" : event.target.value === "24h" ? "24h" : "retained")}>
+          <option value="today">今天（本地时间）</option><option value="24h">最近 24 小时</option><option value="retained">已保留记录</option>
         </select>
         <button className="geist-button geist-button--secondary" type="button" disabled={refreshing} onClick={onRefresh}>{refreshing ? "刷新中…" : "刷新数据"}</button>
       </div>
@@ -32,7 +32,7 @@ export function OverviewUsageStats({ summary, range, retentionReached, refreshin
     <div className="overview-metrics" aria-busy={refreshing}>
       <div role="group" aria-label="调用总数">
         <OverviewIcon name="logs" size={40} />
-        <div className="overview-metric__content"><strong className="overview-metric__value">{formatMetric(summary.calls)}</strong><span className="overview-metric__caption">调用总数</span><span className="overview-metric__caption">{range === "24h" ? "最近 24 小时" : "已保留记录"}</span></div>
+        <div className="overview-metric__content"><strong className="overview-metric__value">{formatMetric(summary.calls)}</strong><span className="overview-metric__caption">调用总数</span><span className="overview-metric__caption">{range === "today" ? "今天" : range === "24h" ? "最近 24 小时" : "已保留记录"}</span></div>
       </div>
       <div role="group" aria-label="调用结果">
         <OverviewIcon name="outcomes" size={40} />

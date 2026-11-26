@@ -19,7 +19,7 @@ const defaultWorkspaceState = {
 };
 
 describe("OverviewPage", () => {
-  beforeEach(() => workspaceHook.mockReturnValue(defaultWorkspaceState));
+  beforeEach(() => { vi.spyOn(Date, "now").mockReturnValue(new Date(2026, 10, 18, 12).getTime()); workspaceHook.mockReturnValue(defaultWorkspaceState); });
   afterEach(() => vi.restoreAllMocks());
 
   it("places large purpose icons before primary numbers and quiet captions", async () => {
@@ -66,7 +66,8 @@ describe("OverviewPage", () => {
     expect(screen.getByRole("group", { name: "调用结果" })).toHaveTextContent("2 / 1");
     expect(screen.getByText("730", { exact: true })).toBeVisible();
     expect(screen.getByText("ms", { exact: true })).toBeVisible();
-    expect(screen.getByText("最近 24 小时没有可绘制的请求记录")).toBeVisible();
+    expect(screen.getByRole("combobox", { name: "统计范围" })).toHaveValue("today");
+    expect(screen.getByRole("img", { name: /请求趋势图，共 3 条/ })).toBeVisible();
     expect(screen.getByRole("heading", { name: "需要关注" })).toBeVisible();
     expect(screen.getByRole("heading", { name: "最近调用" })).toBeVisible();
     expect(screen.queryByRole("link", { name: "配置上游" })).not.toBeInTheDocument();
@@ -127,7 +128,7 @@ describe("OverviewPage", () => {
     expect(failed).toHaveTextContent("最近调用失败");
     expect(failed).toHaveTextContent("0.0%");
     expect(failed).toHaveTextContent("未上报");
-    expect(screen.getByRole("img", { name: "模型调用量对比图" })).toBeVisible();
+    expect(screen.getByRole("img", { name: "模型调用分布图" })).toHaveAttribute("data-total", "3");
   });
 
   it("updates usage, model results and recent calls together when the range changes", () => {
@@ -150,6 +151,23 @@ describe("OverviewPage", () => {
     expect(screen.getByRole("button", { name: "查看 old-model" })).toBeVisible();
   });
 
+  it("defaults the shared distribution and usage totals to the local calendar day", () => {
+    vi.spyOn(Date, "now").mockReturnValue(new Date(2026, 10, 26, 12).getTime());
+    workspaceHook.mockReturnValue({ ...defaultWorkspaceState, data: { ...workspaceFixtures, logs: [
+      { ...workspaceFixtures.logs[0], model: "today-model", time: new Date(2026, 10, 26, 11).toISOString() },
+      { ...workspaceFixtures.logs[1], model: "yesterday-model", time: new Date(2026, 10, 25, 23, 59).toISOString() },
+    ] } });
+    render(<MemoryRouter><OverviewPage /></MemoryRouter>);
+    expect(screen.getByRole("combobox", { name: "统计范围" })).toHaveValue("today");
+    expect(screen.getByRole("group", { name: "调用总数" }).querySelector("strong")).toHaveTextContent("1");
+    expect(screen.getByRole("img", { name: "模型调用分布图" })).toHaveAttribute("data-total", "1");
+    expect(screen.queryByRole("button", { name: "查看 yesterday-model" })).not.toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /请求趋势图，共 2 条/ })).toBeVisible();
+    fireEvent.change(screen.getByRole("combobox", { name: "统计范围" }), { target: { value: "24h" } });
+    expect(screen.getByRole("img", { name: "模型调用分布图" })).toHaveAttribute("data-total", "2");
+    expect(screen.getByRole("button", { name: "查看 yesterday-model" })).toBeVisible();
+  });
+
   it("shows refresh feedback and preserves existing data on refresh failure", () => {
     const refresh = vi.fn();
     workspaceHook.mockReturnValue({ ...defaultWorkspaceState, refresh });
@@ -165,17 +183,15 @@ describe("OverviewPage", () => {
     expect(screen.getByRole("group", { name: "调用总数" })).toHaveTextContent("3");
   });
 
-  it("keeps model comparison bounded when there are more than five models", () => {
+  it("includes every model in one distribution without group controls", () => {
     workspaceHook.mockReturnValue({ ...defaultWorkspaceState, data: { ...workspaceFixtures,
       logs: Array.from({ length: 7 }, (_, index) => ({ ...workspaceFixtures.logs[0], id: `call-${index}`, model: `model-${index}` })),
     } });
     render(<MemoryRouter><OverviewPage /></MemoryRouter>);
     const region = screen.getByRole("region", { name: "模型数据分析" });
     expect(within(region).queryByRole("table")).not.toBeInTheDocument();
-    expect(screen.getByText("1–5 / 7 个模型")).toBeVisible();
-    fireEvent.click(screen.getByRole("button", { name: "下一组模型" }));
-    expect(screen.getByText("6–7 / 7 个模型")).toBeVisible();
-    expect(screen.getByRole("img", { name: "模型调用量对比图" }).querySelectorAll("rect[data-model]")).toHaveLength(2);
+    expect(screen.queryByRole("button", { name: "下一组模型" })).not.toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "模型调用分布图" }).querySelectorAll("circle[data-model]")).toHaveLength(7);
   });
 
   it("shows the loading state before workspace data arrives", () => {

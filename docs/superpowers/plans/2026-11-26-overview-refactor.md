@@ -291,3 +291,15 @@ Scope: replace the expanding model table with a fixed-height chart and selected-
 - [x] Record the independent reviewer protocol failure separately; prepare the scoped code, evidence and updated Draft PR description. No merge, deployment or runtime acceptance is included.
 
 Use `verify-model-chart.mjs` and `visual-model-chart/` for this revision. Earlier verification scripts and screenshot folders are historical evidence of their respective revisions, not validation entry points for the current chart UI.
+
+## Daily Aggregate Distribution — Contract 7
+
+Owner clarified that all models belong in one current-day chart, distinguished by color blocks. This supersedes the grouped comparison in contract 6; baseline `96a4410`.
+
+- [x] Reproduce failing tests for local calendar-day boundaries and all-model aggregate rendering.
+- [x] Replace comparisons and paging with one ring, one segment per model, a fixed-height scrolling legend and one detail panel.
+- [x] Default shared statistics to today; preserve explicit other ranges and the separate rolling-24-hour trend.
+- [x] Add a labeled current-day request fixture with a yesterday-only model and 2/6/60/200-model cases for browser proof.
+- [x] Verify 41 files / 353 tests and production build; rerun the six chart tests, build and browser matrix after final palette changes. Preserve historical evidence and prepare the existing Draft PR update. Independent review and Desktop runtime remain separate gates.
+
+The current browser entry point is `verify-model-distribution.mjs`, with results under `visual-model-distribution/`. Prior chart scripts describe historical UI revisions and must be run against their matching baseline.

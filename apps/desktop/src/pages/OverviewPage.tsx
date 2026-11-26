@@ -14,7 +14,7 @@ import "../styles/overview.css";
 
 export function OverviewPage() {
   const { data, error, loading, refresh, refreshing, refreshError } = useWorkspace();
-  const [range, setRange] = useState<OverviewRange>("retained");
+  const [range, setRange] = useState<OverviewRange>("today");
   const nowMs = useMemo(() => Date.now(), [data, range]);
   const analytics = useMemo(() => buildOverviewAnalytics(data.logs, range, nowMs, data.usageRetentionCount), [data, range, nowMs]);
   const { logs, summary, models, retentionReached } = analytics;
@@ -54,7 +54,7 @@ export function OverviewPage() {
       {refreshError && <p className="overview-refresh-error" role="alert">刷新失败：{refreshError}。当前仍显示上次数据。</p>}
 
       <OverviewUsageStats summary={summary} range={range} retentionReached={retentionReached} refreshing={refreshing} onRangeChange={setRange} onRefresh={refresh} />
-      <OverviewModelAnalysis key={range} models={models} />
+      <OverviewModelAnalysis key={range} models={models} periodLabel={range === "today" ? `今天 · ${new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" }).format(nowMs)}（本地时间）` : range === "24h" ? "最近 24 小时" : "当前已保留记录"} />
 
       <section className="overview-status-grid" aria-label="Gateway 与配置状态">
         <section className="overview-status overview-status--gateway" aria-labelledby="gateway-status-title">
@@ -102,7 +102,7 @@ export function OverviewPage() {
       </section>
 
       <div className="overview-activity-grid">
-        <OverviewUsageChart logs={logs} nowMs={nowMs} retentionLimit={data.usageRetentionCount} />
+        <OverviewUsageChart logs={data.logs} nowMs={nowMs} retentionLimit={data.usageRetentionCount} />
         {failedLogs.length > 0 && (
           <section className="attention-panel" aria-labelledby="attention-title">
             <div className="section-heading">
