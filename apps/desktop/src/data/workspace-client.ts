@@ -1,6 +1,47 @@
 import { finiteMetric, sanitizeTokens } from '../domain/request-log';
 import { workspaceFixtures } from "./fixtures";
-import type { RouteTestResult, WorkspaceFixtures } from "../domain/types";
+import type { CallLog, RouteTestResult, StreamFailurePhase, UpstreamUpdateInput, WorkspaceFixtures } from "../domain/types";
+
+function httpStatus(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isInteger(value) && value >= 100 && value <= 599 ? value : undefined;
+}
+
+function streamFailurePhase(value: unknown): StreamFailurePhase | undefined {
+  return value === "upstream_headers" || value === "upstream_body" || value === "downstream_closed" ? value : undefined;
+}
+
+function requestLogStatuses(item: any): Pick<CallLog, "httpStatus" | "upstreamStatus" | "gatewayStatus" | "streamFailurePhase"> {
+  const phase = streamFailurePhase(item.streamFailurePhase);
+  return {
+    httpStatus: httpStatus(item.httpStatus),
+    upstreamStatus: httpStatus(item.upstreamStatus),
+    gatewayStatus: httpStatus(item.gatewayStatus),
+    ...(phase ? { streamFailurePhase: phase } : {}),
+  };
+}
+
+function requestLogTimings(item: any): Partial<Pick<CallLog, "upstreamHeadersMs" | "upstreamFirstByteMs" | "upstreamBodyMs" | "upstreamChunkCount" | "gatewayProcessingMs">> {
+  const upstreamHeadersMs = finiteMetric(item.upstreamHeadersMs);
+  const upstreamFirstByteMs = finiteMetric(item.upstreamFirstByteMs);
+  const upstreamBodyMs = finiteMetric(item.upstreamBodyMs);
+  const upstreamChunkCount = Number.isSafeInteger(item.upstreamChunkCount) && item.upstreamChunkCount >= 0 ? item.upstreamChunkCount : undefined;
+  const gatewayProcessingMs = finiteMetric(item.gatewayProcessingMs);
+  return {
+    ...(upstreamHeadersMs === undefined ? {} : { upstreamHeadersMs }),
+    ...(upstreamFirstByteMs === undefined ? {} : { upstreamFirstByteMs }),
+    ...(upstreamBodyMs === undefined ? {} : { upstreamBodyMs }),
+    ...(upstreamChunkCount === undefined ? {} : { upstreamChunkCount }),
+    ...(gatewayProcessingMs === undefined ? {} : { gatewayProcessingMs }),
+  };
+}
+
+const gatewayErrors: Record<string, string> = { all_upstreams_unavailable: "所有上游当前均不可用", upstream_error: "上游请求失败，请检查上游状态和日志", upstream_connection_reset: "上游连接被重置，请检查上游服务或网络", upstream_timeout: "上游响应超时", unsupported_feature: "当前请求包含不支持的协议特性", multiple_candidates_unsupported: "当前目标协议不支持一次生成多个候选结果", route_not_found: "路由未匹配到此请求协议", model_capability_unsupported: "模型配置明确不支持该请求能力", invalid_model_capabilities: "模型能力配置无效，请检查模型路由", invalid_max_output_tokens: "最大输出参数无效，请填写正整数", model_reasoning_range_conflict: "模型支持的推理强度与路由区间没有交集" };
+function gatewayErrorDescription(item: any): string | undefined {
+  if (typeof item.errorCode !== "string") return undefined;
+  const description = item.errorCode === "unsupported_feature" && (item.errorField || item.errorDirection) ? "当前目标协议无法表达该字段" : gatewayErrors[item.errorCode] || item.errorCode;
+  const detail = [typeof item.errorField === "string" ? `字段 ${item.errorField}` : undefined, typeof item.errorDirection === "string" ? `方向 ${item.errorDirection}` : undefined].filter(Boolean).join("，");
+  return detail ? `${description}（${detail}）` : description;
+}
 
 export type WorkspaceClient = {
   getWorkspace(): Promise<WorkspaceFixtures>;
@@ -9,8 +50,11 @@ export type WorkspaceClient = {
   createClientKey?(name: string, scope?: string[]): Promise<{ id: string; key: string }>;
   rotateClientKey?(id: string): Promise<{ key: string }>;
   revokeClientKey?(id: string): Promise<{ enabled: boolean }>;
+  permanentlyDeleteClientKey?(id: string): Promise<{ id: string; deleted: true }>;
+  clearRequestLogs?(): Promise<{ deleted: true; removedCount: number }>;
   createUpstream?(input: { name: string; baseUrl: string; apiKey?: string; allowPrivateNetwork?: boolean }): Promise<unknown>;
-  deleteUpstream?(id: string): Promise<unknown>;
+  updateUpstream?(id: string, input: UpstreamUpdateInput): Promise<unknown>;
+  deleteUpstream?(id: string): Promise<{ id: string; deleted: true } | { deleted: false; error: string; routes: Array<{ id: string; alias: string; inboundProtocol: string }> }>;
   saveModelRoutes?(selection: import("../domain/types").ModelRouteSelection): Promise<unknown>;
   createRoute?(input: { alias: string; inboundProtocol: string; outboundProtocol: string; upstreamId: string; modelId: string }): Promise<unknown>;
   deleteRoute?(id: string): Promise<unknown>;
@@ -34,12 +78,13 @@ export const fixtureWorkspaceClient: WorkspaceClient = {
 
 export function mapRuntimeState(state: any): WorkspaceFixtures {
   const protocol = (value: string) => value as WorkspaceFixtures["routes"][number]["inboundProtocol"];
+  const upstreamNames = new Map((Array.isArray(state.upstreams) ? state.upstreams : []).map((item: any) => [item.id, item.name]));
   return {
     meta: { source: "runtime", live: true },
     gateway: { state: state.runtimeStatus?.state === "failed" ? "启动失败" : "运行中", url: `http://${state.settings.gatewayHost}:${state.settings.gatewayPort}`, metrics: state.metrics },
     upstreams: state.upstreams.map((item: any) => ({ id: item.id, name: item.name, baseUrl: item.baseUrl, credentialLabel: item.credentialRef ? "已配置（已脱敏）" : "未配置", status: (item.lastCheckedAt ? "已连接" : item.enabled ? "待测试" : "未连接") as WorkspaceFixtures["upstreams"][number]["status"], models: item.models || [] })),
-    routes: state.routes.map((item: any) => ({ id: item.id, alias: item.alias, inboundProtocol: protocol(item.inboundProtocol), outboundProtocol: protocol(item.outboundProtocol), enabled: item.enabled, failover: item.failover, targets: (item.targets?.length ? item.targets : [{ upstreamId: item.upstreamId, modelId: item.modelId }]).map((target: any) => ({ upstreamId: target.upstreamId, upstreamModel: target.modelId })) })),
-    logs: (state.usage || []).map((item: any) => ({ id: item.requestId, time: item.createdAt, model: item.modelId, credential: "已脱敏", upstream: item.upstreamId, direction: `${item.inboundProtocol ?? "—"} → ${item.outboundProtocol ?? "—"} → ${item.inboundProtocol ?? "—"}`, status: (item.status === "completed" ? "成功" : "失败") as WorkspaceFixtures["logs"][number]["status"], durationMs: finiteMetric(item.durationMs) ?? null, stream: typeof item.stream === "boolean" ? item.stream : undefined, firstTokenMs: finiteMetric(item.firstTokenMs), tokens: sanitizeTokens(item.tokens) })),
+    routes: state.routes.map((item: any) => ({ id: item.id, alias: item.alias, inboundProtocol: protocol(item.inboundProtocol), outboundProtocol: protocol(item.outboundProtocol), enabled: item.enabled, failover: item.failover, ...(item.reasoning ? { reasoning: { min: item.reasoning.min, max: item.reasoning.max } } : {}), ...(item.capabilities ? { capabilities: structuredClone(item.capabilities) } : {}), targets: (item.targets?.length ? item.targets : [{ upstreamId: item.upstreamId, modelId: item.modelId }]).map((target: any) => ({ upstreamId: target.upstreamId, upstreamModel: target.modelId })) })),
+    logs: (state.usage || []).map((item: any) => ({ id: item.requestId, time: item.createdAt, model: item.modelId, credential: "已脱敏", upstream: item.upstreamName || upstreamNames.get(item.upstreamId) || "—", reasoning: typeof item.reasoningEffort === "string" ? item.reasoningEffort : undefined, ...requestLogStatuses(item), ...requestLogTimings(item), error: gatewayErrorDescription(item), direction: `${item.inboundProtocol ?? "—"} → ${item.outboundProtocol ?? "—"} → ${item.inboundProtocol ?? "—"}`, status: (item.status === "completed" ? "成功" : "失败") as WorkspaceFixtures["logs"][number]["status"], durationMs: finiteMetric(item.durationMs) ?? null, stream: typeof item.stream === "boolean" ? item.stream : undefined, firstTokenMs: finiteMetric(item.firstTokenMs), tokens: sanitizeTokens(item.tokens) })),
     credentials: state.clientKeys.map((item: any) => ({ id: item.id, label: item.name, preview: "cxrg_••••••••", scope: item.scope?.length ? item.scope.join(", ") : "全部模型", createdAt: item.createdAt.slice(0, 10), lastUsed: item.enabled ? (item.lastUsedAt || "暂无记录") : "已撤销", status: item.enabled ? "运行时" as const : "已撤销" as const })),
     settings: [{ label: "Gateway 监听地址", value: state.settings.gatewayHost, available: true }, { label: "本机端口", value: String(state.settings.gatewayPort), available: true }, { label: "日志保留条数", value: `${state.settings.usageRetentionCount ?? 1000} 条`, available: true }, { label: "开机启动", value: "关闭", available: false }],
   };
@@ -53,13 +98,17 @@ export const runtimeWorkspaceClient: WorkspaceClient = {
   async simulateUpstreamTest(upstreamId) {
     if (!window.desktopControls) throw new Error("Desktop runtime unavailable");
     const result = await window.desktopControls.testUpstream(upstreamId) as { ok: boolean; models?: string[] };
-    return { simulated: false, message: result.ok ? `连通成功，发现 ${(result.models || []).length} 个模型` : "连通测试失败" };
+    if (!result.ok) throw new Error("上游连通测试未成功，请检查上游设置。");
+    return { simulated: false, message: `连通成功，发现 ${(result.models || []).length} 个模型` };
   },
   async testRoute(routeId, prompt) { if (!window.desktopControls) throw new Error("Desktop runtime unavailable"); return window.desktopControls.testRoute(routeId, prompt); },
   async createClientKey(name, scope) { if (!window.desktopControls) throw new Error("Desktop runtime unavailable"); return window.desktopControls.createClientKey(name, scope) as Promise<{ id: string; key: string }>; },
   async rotateClientKey(id) { if (!window.desktopControls) throw new Error("Desktop runtime unavailable"); return window.desktopControls.rotateClientKey(id) as Promise<{ key: string }>; },
   async revokeClientKey(id) { if (!window.desktopControls) throw new Error("Desktop runtime unavailable"); return window.desktopControls.revokeClientKey(id) as Promise<{ enabled: boolean }>; },
+  async permanentlyDeleteClientKey(id) { if (!window.desktopControls) throw new Error("Desktop runtime unavailable"); return window.desktopControls.permanentlyDeleteClientKey(id); },
+  async clearRequestLogs() { if (!window.desktopControls) throw new Error("Desktop runtime unavailable"); return window.desktopControls.clearRequestLogs(); },
   async createUpstream(input) { if (!window.desktopControls) throw new Error("Desktop runtime unavailable"); return window.desktopControls.createUpstream(input); },
+  async updateUpstream(id, input) { if (!window.desktopControls) throw new Error("Desktop runtime unavailable"); return window.desktopControls.updateUpstream(id, input); },
   async deleteUpstream(id) { if (!window.desktopControls) throw new Error("Desktop runtime unavailable"); return window.desktopControls.deleteUpstream(id); },
   async saveModelRoutes(selection) { if (!window.desktopControls) throw new Error("Desktop runtime unavailable"); return window.desktopControls.saveModelRoutes(selection); },
   async createRoute(input) { if (!window.desktopControls) throw new Error("Desktop runtime unavailable"); return window.desktopControls.createRoute(input); },

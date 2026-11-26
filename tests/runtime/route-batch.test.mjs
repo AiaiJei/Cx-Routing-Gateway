@@ -83,15 +83,18 @@ test('priority failover counts only configured errors, resets on success, and re
   }
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-priority-'));
   const store = new ConfigStore(path.join(dir, 'config.json')); const vault = new SecretVault(path.join(dir, 'vault.json'), 'key');
-  await store.update(config => ({ ...config, upstreams: urls.map((baseUrl, i) => ({ id: `up-${i}`, baseUrl, enabled: true, trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'] })), routes: [{ id: 'r', alias: 'm', inboundProtocol: 'Chat', outboundProtocol: 'Chat', enabled: true, upstreamId: 'up-0', modelId: 'm', targets: [{ upstreamId: 'up-0', modelId: 'm' }, { upstreamId: 'up-1', modelId: 'm' }], failover: { failureThreshold: 2, statusClasses: [5], cooldownSeconds: 60 } }], clientKeys: [{ id: 'k', keyHash: crypto.createHash('sha256').update('client').digest('hex'), enabled: true }] }));
+  await store.update(config => ({ ...config, upstreams: urls.map((baseUrl, i) => ({ id: `up-${i}`, name: `Upstream ${i}`, baseUrl, enabled: true, trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'] })), routes: [{ id: 'r', alias: 'm', inboundProtocol: 'Chat', outboundProtocol: 'Chat', enabled: true, upstreamId: 'up-0', modelId: 'm', targets: [{ upstreamId: 'up-0', modelId: 'm' }, { upstreamId: 'up-1', modelId: 'm' }], failover: { failureThreshold: 2, statusClasses: [5], cooldownSeconds: 60 } }], clientKeys: [{ id: 'k', keyHash: crypto.createHash('sha256').update('client').digest('hex'), enabled: true }] }));
   const gateway = createGatewayServer({ store, vault, now: () => now }); const base = await listen(gateway); t.after(() => gateway.close());
   const call = () => fetch(`${base}/v1/chat/completions`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer client' }, body: JSON.stringify({ model: 'm', messages: [{ role: 'user', content: 'test' }] }) });
   assert.equal((await call()).status, 502);
   primaryStatus = 200; assert.equal((await call()).status, 200);
-  primaryStatus = 400; assert.equal((await call()).status, 502);
+  primaryStatus = 400; assert.equal((await call()).status, 400);
   primaryStatus = 503; assert.equal((await call()).status, 502); assert.equal((await call()).status, 502);
   assert.equal((await (await call()).json()).choices[0].message.content, 'B');
   assert.deepEqual(calls, ['A', 'A', 'A', 'A', 'A', 'B']);
+  const logged = (await store.read()).usage;
+  assert.equal(logged.at(-1).upstreamId, 'up-1');
+  assert.equal(logged.at(-1).upstreamName, 'Upstream 1');
   now += 60001; primaryStatus = 200;
   assert.equal((await (await call()).json()).choices[0].message.content, 'A');
 });
@@ -107,7 +110,7 @@ test('configured 4xx failures and network errors switch priority without retryin
   await store.update(config => ({ ...config, upstreams, routes: [{ id: 'r', alias: 'm', inboundProtocol: 'Chat', outboundProtocol: 'Chat', enabled: true, upstreamId: 'u0', modelId: 'm', targets: upstreams.map(up => ({ upstreamId: up.id, modelId: 'm' })), failover: { failureThreshold: 1, statusClasses: [4], cooldownSeconds: 60 } }], clientKeys: [{ id: 'k', keyHash: crypto.createHash('sha256').update('client').digest('hex'), enabled: true }] }));
   const gateway = createGatewayServer({ store, vault }); const base = await listen(gateway); t.after(() => gateway.close());
   const call = () => fetch(`${base}/v1/chat/completions`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer client' }, body: JSON.stringify({ model: 'm', messages: [{ role: 'user', content: 'test' }] }) });
-  assert.equal((await call()).status, 502);
+  assert.equal((await call()).status, 429);
   assert.equal(primaryCalls, 1); assert.equal(fallbackCalls, 0);
   assert.equal((await call()).status, 200); assert.equal(fallbackCalls, 1);
   await store.update(config => ({ ...config, upstreams: config.upstreams.map(up => up.id === 'u0' ? { ...up, baseUrl: 'http://127.0.0.1:1' } : up), routes: config.routes.map(route => ({ ...route, failover: { failureThreshold: 1, statusClasses: [5], cooldownSeconds: 60 } })) }));

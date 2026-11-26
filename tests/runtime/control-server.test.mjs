@@ -13,6 +13,116 @@ async function jsonRequest(url, options = {}) {
   return { response, body: await response.json() };
 }
 
+async function controlFixture(t, prefix = 'cxrg-control-actions-', serverOptions = {}) {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
+  const store = new ConfigStore(path.join(dir, 'config.json'));
+  const vault = new SecretVault(path.join(dir, 'secrets.json'), 'test-master-key');
+  const server = createControlServer({ store, vault, allowUnauthenticated: true, ...serverOptions });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => server.close());
+  return { base: `http://127.0.0.1:${server.address().port}`, store, vault };
+}
+
+test('control API clears all retained logs and persists the removed count', async (t) => {
+  const { base, store } = await controlFixture(t, 'cxrg-control-clear-logs-');
+  await store.update((config) => ({
+    ...config,
+    usage: [
+      { id: 'log-a', status: 'completed' },
+      { id: 'log-b', status: 'failed' },
+      { id: 'log-c', status: 'rejected' },
+    ],
+  }));
+
+  const cleared = await jsonRequest(`${base}/v1/control/logs`, { method: 'DELETE' });
+  assert.equal(cleared.response.status, 200);
+  assert.deepEqual(cleared.body, { deleted: true, removedCount: 3 });
+  assert.deepEqual((await jsonRequest(`${base}/v1/control/logs`)).body.logs, []);
+  assert.deepEqual((await new ConfigStore(store.filePath).read()).usage, []);
+});
+
+test('control API permanently deletes active and revoked keys while DELETE still revokes', async (t) => {
+  const { base } = await controlFixture(t, 'cxrg-control-delete-keys-');
+  const active = await jsonRequest(`${base}/v1/control/client-keys`, { method: 'POST', body: JSON.stringify({ name: 'active' }) });
+  const revoked = await jsonRequest(`${base}/v1/control/client-keys`, { method: 'POST', body: JSON.stringify({ name: 'revoked' }) });
+  assert.equal(active.response.status, 201);
+  assert.equal(revoked.response.status, 201);
+
+  const revoke = await jsonRequest(`${base}/v1/control/client-keys/${revoked.body.id}`, { method: 'DELETE' });
+  assert.deepEqual(revoke.body, { id: revoked.body.id, enabled: false });
+
+  for (const key of [active.body, revoked.body]) {
+    const deleted = await jsonRequest(`${base}/v1/control/client-keys/${key.id}/permanent`, { method: 'DELETE' });
+    assert.equal(deleted.response.status, 200);
+    assert.deepEqual(deleted.body, { id: key.id, deleted: true });
+  }
+  assert.deepEqual((await jsonRequest(`${base}/v1/control/state`)).body.clientKeys, []);
+});
+
+test('control API blocks upstream deletion for every legacy and target route reference', async (t) => {
+  const { base, store } = await controlFixture(t, 'cxrg-control-upstream-references-');
+  const routeIds = ['legacy-active', 'legacy-disabled', 'target-active', 'target-disabled'];
+  await store.update((config) => ({
+    ...config,
+    upstreams: [{ id: 'up-a', name: 'Referenced', enabled: true }, { id: 'up-b', name: 'Other', enabled: true }],
+    routes: [
+      { id: routeIds[0], alias: 'Legacy active', inboundProtocol: 'Chat', upstreamId: 'up-a', enabled: true },
+      { id: routeIds[1], alias: 'Legacy disabled', inboundProtocol: 'Mes', upstreamId: 'up-a', enabled: false },
+      { id: routeIds[2], alias: 'Target active', inboundProtocol: 'Res', upstreamId: 'up-b', targets: [{ upstreamId: 'up-a', modelId: 'a' }], enabled: true },
+      { id: routeIds[3], alias: 'Target disabled', inboundProtocol: 'Chat', upstreamId: 'up-b', targets: [{ upstreamId: 'up-a', modelId: 'b' }], enabled: false },
+    ],
+  }));
+
+  const deleted = await jsonRequest(`${base}/v1/control/upstreams/up-a`, { method: 'DELETE' });
+  assert.equal(deleted.response.status, 409);
+  assert.equal(deleted.body.error, 'upstream_in_use');
+  assert.deepEqual(deleted.body.routes, [
+    { id: routeIds[0], alias: 'Legacy active', inboundProtocol: 'Chat' },
+    { id: routeIds[1], alias: 'Legacy disabled', inboundProtocol: 'Mes' },
+    { id: routeIds[2], alias: 'Target active', inboundProtocol: 'Res' },
+    { id: routeIds[3], alias: 'Target disabled', inboundProtocol: 'Chat' },
+  ]);
+  assert.equal((await store.read()).upstreams.some((item) => item.id === 'up-a'), true);
+});
+
+test('control API serializes route creation against upstream deletion', async (t) => {
+  const { base, store } = await controlFixture(t, 'cxrg-control-route-create-race-');
+  await store.update((config) => ({ ...config, upstreams: [{ id: 'up-race', name: 'Race', enabled: true }] }));
+  const [created, deleted] = await Promise.all([
+    jsonRequest(`${base}/v1/control/routes`, { method: 'POST', body: JSON.stringify({ alias: 'race', inboundProtocol: 'Chat', outboundProtocol: 'Chat', upstreamId: 'up-race', modelId: 'model-a' }) }),
+    jsonRequest(`${base}/v1/control/upstreams/up-race`, { method: 'DELETE' }),
+  ]);
+  const config = await store.read();
+  const upstreamIds = new Set(config.upstreams.map((item) => item.id));
+  for (const route of config.routes) {
+    assert.equal(upstreamIds.has(route.upstreamId), true);
+    for (const target of route.targets ?? []) assert.equal(upstreamIds.has(target.upstreamId), true);
+  }
+  assert.ok([201, 400].includes(created.response.status));
+  assert.ok([200, 409].includes(deleted.response.status));
+});
+
+test('control API serializes route updates against upstream deletion', async (t) => {
+  const { base, store } = await controlFixture(t, 'cxrg-control-route-update-race-');
+  await store.update((config) => ({
+    ...config,
+    upstreams: [{ id: 'up-a', name: 'A', enabled: true }, { id: 'up-b', name: 'B', enabled: true }],
+    routes: [{ id: 'route-race', alias: 'race', inboundProtocol: 'Chat', outboundProtocol: 'Chat', upstreamId: 'up-b', modelId: 'model-a', enabled: true }],
+  }));
+  const [updated, deleted] = await Promise.all([
+    jsonRequest(`${base}/v1/control/routes/route-race`, { method: 'PATCH', body: JSON.stringify({ upstreamId: 'up-a' }) }),
+    jsonRequest(`${base}/v1/control/upstreams/up-a`, { method: 'DELETE' }),
+  ]);
+  const config = await store.read();
+  const upstreamIds = new Set(config.upstreams.map((item) => item.id));
+  for (const route of config.routes) {
+    assert.equal(upstreamIds.has(route.upstreamId), true);
+    for (const target of route.targets ?? []) assert.equal(upstreamIds.has(target.upstreamId), true);
+  }
+  assert.ok([200, 400].includes(updated.response.status));
+  assert.ok([200, 409].includes(deleted.response.status));
+});
+
 test('control API manages upstreams, routes, and one-time client key creation', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-control-'));
   const server = createControlServer({
@@ -64,6 +174,149 @@ test('control API manages upstreams, routes, and one-time client key creation', 
   assert.equal(routeUpdate.body.alias, 'demo-updated');
   const removed = await jsonRequest(`${base}/v1/control/routes/${route.body.id}`, { method: 'DELETE' });
   assert.equal(removed.response.status, 200);
+});
+
+test('control API preserves existing private-network trust when an edit omits the trust field', async (t) => {
+  const { base, store } = await controlFixture(t, 'cxrg-control-upstream-trust-edit-');
+  await store.update((config) => ({ ...config, upstreams: [{ id: 'trusted-edit', name: 'Trusted', baseUrl: 'http://127.0.0.1:4321', protocol: 'Chat', trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'], enabled: true }] }));
+
+  const updated = await jsonRequest(`${base}/v1/control/upstreams/trusted-edit`, { method: 'PATCH', body: JSON.stringify({ baseUrl: 'http://127.0.0.1:4322' }) });
+  assert.equal(updated.response.status, 200);
+  assert.equal(updated.body.baseUrl, 'http://127.0.0.1:4322');
+  assert.equal(updated.body.trustedPrivateNetwork, true);
+  assert.deepEqual(updated.body.approvedAddresses, ['127.0.0.1']);
+});
+
+test('control API rejects an empty upstream Base URL without changing configuration', async (t) => {
+  const { base, store } = await controlFixture(t, 'cxrg-control-upstream-empty-url-');
+  await store.update((config) => ({ ...config, upstreams: [{ id: 'empty-url', name: 'Configured', baseUrl: 'https://api.example/v1', protocol: 'Chat', enabled: true }] }));
+
+  const updated = await jsonRequest(`${base}/v1/control/upstreams/empty-url`, { method: 'PATCH', body: JSON.stringify({ baseUrl: '' }) });
+  assert.equal(updated.response.status, 400);
+  assert.equal((await store.read()).upstreams[0].baseUrl, 'https://api.example/v1');
+});
+
+test('re-saving the same upstream Base URL refreshes its validated DNS approval', async t => {
+  let resolvedAddress = '8.8.8.8';
+  const { base, store } = await controlFixture(t, 'cxrg-control-upstream-refresh-dns-', {
+    dnsLookup: async () => [{ address: resolvedAddress, family: 4 }],
+  });
+  const baseUrl = 'https://api.example/v1';
+  await store.update(config => ({
+    ...config,
+    upstreams: [{ id: 'refresh-dns', name: 'Refresh DNS', baseUrl, protocol: 'Chat', trustedPrivateNetwork: false, approvedAddresses: ['8.8.8.8'], enabled: true }],
+  }));
+  resolvedAddress = '1.1.1.1';
+
+  const updated = await jsonRequest(`${base}/v1/control/upstreams/refresh-dns`, { method: 'PATCH', body: JSON.stringify({ baseUrl }) });
+
+  assert.equal(updated.response.status, 200);
+  assert.equal(updated.body.baseUrl, baseUrl);
+  assert.deepEqual(updated.body.approvedAddresses, ['1.1.1.1']);
+});
+
+test('control API validates the existing destination when private-network trust is revoked', async (t) => {
+  const { base, store } = await controlFixture(t, 'cxrg-control-upstream-revoke-trust-', {
+    dnsLookup: async () => [{ address: '127.0.0.1', family: 4 }],
+  });
+  await store.update((config) => ({ ...config, upstreams: [{ id: 'revoke-trust', name: 'Trusted', baseUrl: 'http://127.0.0.1:4321', protocol: 'Chat', trustedPrivateNetwork: true, approvedAddresses: ['127.0.0.1'], enabled: true }] }));
+
+  const updated = await jsonRequest(`${base}/v1/control/upstreams/revoke-trust`, { method: 'PATCH', body: JSON.stringify({ allowPrivateNetwork: false }) });
+  assert.equal(updated.response.status, 400);
+  assert.equal((await store.read()).upstreams[0].trustedPrivateNetwork, true);
+});
+
+test('control API keeps the active credential when writing a replacement key fails', async (t) => {
+  const { base, store, vault } = await controlFixture(t, 'cxrg-control-upstream-vault-failure-');
+  const oldRef = await vault.put('old-upstream-secret');
+  await store.update((config) => ({ ...config, upstreams: [{ id: 'key-edit', name: 'Key edit', baseUrl: 'https://api.example/v1', protocol: 'Chat', credentialRef: oldRef, enabled: true }] }));
+  vault.put = async () => { throw new Error('vault unavailable'); };
+
+  const updated = await jsonRequest(`${base}/v1/control/upstreams/key-edit`, { method: 'PATCH', body: JSON.stringify({ apiKey: 'replacement-secret' }) });
+  assert.equal(updated.response.status, 500);
+  assert.equal((await store.read()).upstreams[0].credentialRef, oldRef);
+  assert.equal(await vault.get(oldRef), 'old-upstream-secret');
+});
+
+test('control API keeps the current credential when an edit submits a blank replacement key', async (t) => {
+  const { base, store, vault } = await controlFixture(t, 'cxrg-control-upstream-blank-key-');
+  const oldRef = await vault.put('existing-upstream-secret');
+  await store.update((config) => ({ ...config, upstreams: [{ id: 'key-edit', name: 'Key edit', baseUrl: 'https://api.example/v1', protocol: 'Chat', credentialRef: oldRef, enabled: true }] }));
+
+  const updated = await jsonRequest(`${base}/v1/control/upstreams/key-edit`, { method: 'PATCH', body: JSON.stringify({ name: 'Renamed', apiKey: '' }) });
+  assert.equal(updated.response.status, 200);
+  assert.equal((await store.read()).upstreams[0].credentialRef, oldRef);
+  assert.equal(await vault.get(oldRef), 'existing-upstream-secret');
+});
+
+test('control API retains the old credential and removes the replacement if config persistence fails', async (t) => {
+  const { base, store, vault } = await controlFixture(t, 'cxrg-control-upstream-store-failure-');
+  const oldRef = await vault.put('old-upstream-secret');
+  await store.update((config) => ({ ...config, upstreams: [{ id: 'key-edit', name: 'Key edit', baseUrl: 'https://api.example/v1', protocol: 'Chat', credentialRef: oldRef, enabled: true }] }));
+  const put = vault.put.bind(vault);
+  let replacementRef;
+  vault.put = async (secret) => { replacementRef = await put(secret); return replacementRef; };
+  store.update = async () => { throw new Error('config persistence unavailable'); };
+
+  const updated = await jsonRequest(`${base}/v1/control/upstreams/key-edit`, { method: 'PATCH', body: JSON.stringify({ apiKey: 'replacement-secret' }) });
+  assert.equal(updated.response.status, 500);
+  assert.equal((await store.read()).upstreams[0].credentialRef, oldRef);
+  assert.equal(await vault.get(oldRef), 'old-upstream-secret');
+  assert.equal(typeof replacementRef, 'string');
+  assert.equal(await vault.get(replacementRef), undefined);
+});
+
+test('control API persists a replacement credential before retiring the old one', async (t) => {
+  const { base, store, vault } = await controlFixture(t, 'cxrg-control-upstream-key-rotation-');
+  const oldRef = await vault.put('old-upstream-secret');
+  await store.update((config) => ({ ...config, upstreams: [{ id: 'key-edit', name: 'Key edit', baseUrl: 'https://api.example/v1', protocol: 'Chat', credentialRef: oldRef, enabled: true }] }));
+  const remove = vault.remove.bind(vault);
+  let oldCredentialRetiredAfterSwitch = false;
+  vault.remove = async (credentialRef) => {
+    if (credentialRef === oldRef) oldCredentialRetiredAfterSwitch = (await store.read()).upstreams[0].credentialRef !== oldRef;
+    return remove(credentialRef);
+  };
+
+  const updated = await jsonRequest(`${base}/v1/control/upstreams/key-edit`, { method: 'PATCH', body: JSON.stringify({ apiKey: 'replacement-secret' }) });
+  assert.equal(updated.response.status, 200);
+  const activeRef = (await store.read()).upstreams[0].credentialRef;
+  assert.notEqual(activeRef, oldRef);
+  assert.equal(await vault.get(activeRef), 'replacement-secret');
+  assert.equal(oldCredentialRetiredAfterSwitch, true);
+  assert.equal(await vault.get(oldRef), undefined);
+});
+
+test('control API merges a delayed blank-key edit with a concurrent credential rotation', async (t) => {
+  let markLookupStarted;
+  let releaseLookup;
+  const lookupStarted = new Promise((resolve) => { markLookupStarted = resolve; });
+  const lookupGate = new Promise((resolve) => { releaseLookup = resolve; });
+  const { base, store, vault } = await controlFixture(t, 'cxrg-control-upstream-edit-rotation-race-', {
+    dnsLookup: async (hostname) => {
+      if (hostname === 'delayed.example') {
+        markLookupStarted();
+        await lookupGate;
+      }
+      return [{ address: '8.8.8.8', family: 4 }];
+    },
+  });
+  const oldRef = await vault.put('old-upstream-secret');
+  await store.update((config) => ({ ...config, upstreams: [{ id: 'key-edit', name: 'Key edit', baseUrl: 'https://api.example/v1', protocol: 'Chat', credentialRef: oldRef, enabled: true }] }));
+
+  const delayedEdit = jsonRequest(`${base}/v1/control/upstreams/key-edit`, { method: 'PATCH', body: JSON.stringify({ name: 'Renamed', baseUrl: 'https://delayed.example/v1', apiKey: '' }) });
+  await lookupStarted;
+  const rotation = await jsonRequest(`${base}/v1/control/upstreams/key-edit`, { method: 'PATCH', body: JSON.stringify({ apiKey: 'replacement-secret' }) });
+  assert.equal(rotation.response.status, 200);
+  const replacementRef = rotation.body.credentialRef;
+  assert.equal(await vault.get(replacementRef), 'replacement-secret');
+
+  releaseLookup();
+  const edited = await delayedEdit;
+  assert.equal(edited.response.status, 200);
+  const activeRef = (await store.read()).upstreams[0].credentialRef;
+  assert.equal(activeRef, replacementRef);
+  assert.equal(await vault.get(activeRef), 'replacement-secret');
+  assert.equal(await vault.get(oldRef), undefined);
 });
 
 test('control API runs a bounded upstream connectivity and model discovery check', async (t) => {
@@ -164,7 +417,7 @@ test('control API rejects route updates that create an active alias conflict', a
   assert.equal(updated.body.error, 'route_conflict');
 });
 
-test('control API does not carry private-network trust across a destination change', async (t) => {
+test('control API requires explicit trust when an edit revokes private-network access', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-ssrf-update-'));
   const server = createControlServer({ store: new ConfigStore(path.join(dir, 'config.json')), vault: new SecretVault(path.join(dir, 'secrets.json'), 'test-master-key'), allowUnauthenticated: true });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -172,7 +425,7 @@ test('control API does not carry private-network trust across a destination chan
   const base = `http://127.0.0.1:${server.address().port}`;
   const created = await jsonRequest(`${base}/v1/control/upstreams`, { method: 'POST', body: JSON.stringify({ name: 'Trusted', baseUrl: 'http://127.0.0.1:1', protocol: 'Chat', allowPrivateNetwork: true }) });
   assert.equal(created.response.status, 201);
-  const updated = await jsonRequest(`${base}/v1/control/upstreams/${created.body.id}`, { method: 'PATCH', body: JSON.stringify({ baseUrl: 'http://127.0.0.2:1' }) });
+  const updated = await jsonRequest(`${base}/v1/control/upstreams/${created.body.id}`, { method: 'PATCH', body: JSON.stringify({ baseUrl: 'http://127.0.0.2:1', allowPrivateNetwork: false }) });
   assert.equal(updated.response.status, 400);
   assert.match(updated.body.error, /Private|trusted/i);
 });

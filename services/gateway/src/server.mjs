@@ -1,18 +1,54 @@
 import { createRequestMetrics } from './request-metrics.mjs';
 import http from 'node:http';
 import https from 'node:https';
+import tls from 'node:tls';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dns from 'node:dns/promises';
+import { validateUpstreamDestination } from '../../../packages/shared/src/destination-policy.mjs';
+import { applyRouteReasoningPolicy } from '../../../packages/shared/src/reasoning-policy.mjs';
+import { applyModelCapabilities } from './model-capability-policy.mjs';
 import net from 'node:net';
 import { Readable } from 'node:stream';
+import { performance } from 'node:perf_hooks';
+import { parseRequest as parseAdapterRequest, serializeRequest as serializeAdapterRequest, parseResponse as parseAdapterResponse, serializeResponse as serializeAdapterResponse, parseStreamEvent as parseAdapterStreamEvent, serializeStreamEvent as serializeAdapterStreamEvent } from './protocol-adapters.mjs';
 
 const DEFAULT_MAX_REQUEST_BODY_BYTES = 64 * 1024 * 1024;
 const pathProtocols = { '/v1/responses': 'Res', '/v1/messages': 'Mes', '/v1/chat/completions': 'Chat' };
+const upstreamStatusMap = new Map([
+  [400, { clientStatus: 400, errorCode: 'upstream_http_400' }],
+  [401, { clientStatus: 401, errorCode: 'upstream_http_401' }],
+  [402, { clientStatus: 402, errorCode: 'upstream_http_402' }],
+  [403, { clientStatus: 403, errorCode: 'upstream_http_403' }],
+  [404, { clientStatus: 404, errorCode: 'upstream_http_404' }],
+  [408, { clientStatus: 408, errorCode: 'upstream_http_408' }],
+  [409, { clientStatus: 409, errorCode: 'upstream_http_409' }],
+  [413, { clientStatus: 413, errorCode: 'upstream_payload_too_large' }],
+  [415, { clientStatus: 415, errorCode: 'upstream_http_415' }],
+  [422, { clientStatus: 422, errorCode: 'upstream_http_422' }],
+  [429, { clientStatus: 429, errorCode: 'upstream_rate_limited' }],
+]);
+export function classifyUpstreamStatus(status) {
+  return upstreamStatusMap.get(status) || { clientStatus: 502, errorCode: 'upstream_error' };
+}
+
+const connectionErrorCodes = new Set(['ECONNRESET', 'EPIPE', 'UND_ERR_SOCKET', 'ECONNABORTED']);
+function normalizeUpstreamError(error) {
+  let current = error;
+  for (let depth = 0; current && depth < 3; depth += 1) {
+    if (connectionErrorCodes.has(current.code)) return Object.assign(new Error('Upstream connection reset'), { code: 'upstream_connection_reset', statusCode: 502 });
+    current = current.cause;
+  }
+  if (typeof error?.message === 'string' && /(?:socket hang up|fetch failed|terminated)/i.test(error.message) && connectionErrorCodes.has(error?.cause?.code)) {
+    return Object.assign(new Error('Upstream connection reset'), { code: 'upstream_connection_reset', statusCode: 502 });
+  }
+  if (error?.statusCode) return error;
+  return Object.assign(new Error('Upstream unavailable'), { code: 'upstream_error', statusCode: 502, cause: error });
+}
 function requestBodyLimit(value) {
   if (value === undefined) return DEFAULT_MAX_REQUEST_BODY_BYTES;
-  if (typeof value === 'string' && !value.trim()) throw new Error('maxRequestBodyBytes must be a positive safe integer');
+  if (!['number', 'string'].includes(typeof value) || (typeof value === 'string' && !value.trim())) throw new Error('maxRequestBodyBytes must be a positive safe integer');
   const parsed = typeof value === 'number' ? value : Number(value);
   if (!Number.isSafeInteger(parsed) || parsed <= 0) throw new Error('maxRequestBodyBytes must be a positive safe integer');
   return parsed;
@@ -33,14 +69,21 @@ function send(res, status, body, requestId) {
 
 async function bodyOf(req, maxBytes, timeoutMs = 30_000) {
   const tooLarge = () => {
-    const error = Object.assign(new Error(`Request body exceeds ${maxBytes} byte limit`), { code: 'request_body_too_large', statusCode: 413, limitBytes: maxBytes });
-    error.drain = new Promise(resolve => {
-      if (req.complete || req.readableEnded) return resolve();
-      req.once('end', resolve);
-      req.once('close', resolve);
-      req.resume();
-    });
-    return error;
+    if (!req.complete && !req.readableEnded) {
+      const drainTimer = setTimeout(() => req.destroy(), timeoutMs);
+      drainTimer.unref();
+      const finishDrain = () => {
+        clearTimeout(drainTimer);
+        req.off('end', finishDrain);
+        req.off('close', finishDrain);
+        req.off('error', finishDrain);
+      };
+      req.once('end', finishDrain);
+      req.once('close', finishDrain);
+      req.once('error', finishDrain);
+    }
+    req.resume();
+    return Object.assign(new Error(`Request body exceeds ${maxBytes} byte limit`), { code: 'request_body_too_large', statusCode: 413, limitBytes: maxBytes });
   };
   const declaredLength = req.headers['content-length'];
   if (declaredLength !== undefined && /^\d+$/.test(declaredLength) && Number(declaredLength) > maxBytes) throw tooLarge();
@@ -48,7 +91,7 @@ async function bodyOf(req, maxBytes, timeoutMs = 30_000) {
   const chunks = [];
   try {
     const stream = (async () => {
-      for await (const chunk of req) {
+      for await (const chunk of req.iterator({ destroyOnReturn: false })) {
         size += chunk.length;
         if (size > maxBytes) throw tooLarge();
         chunks.push(chunk);
@@ -58,281 +101,392 @@ async function bodyOf(req, maxBytes, timeoutMs = 30_000) {
   } finally { clearTimeout(timer); }
   try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw Object.assign(new Error('Invalid JSON'), { statusCode: 400 }); }
 }
+
 function keyFrom(req) {
   const auth = req.headers.authorization;
   if (auth?.startsWith('Bearer ')) return auth.slice(7);
   return req.headers['x-api-key'];
 }
 
-function classifyAddress(raw) {
-  const address = String(raw).toLowerCase().replace(/^::ffff:/, '');
-  if (net.isIP(address) === 4) {
-    const [first, second] = address.split('.').map(Number);
-    return { privateNetwork: first === 10 || first === 127 || (first === 172 && second >= 16 && second <= 31) || (first === 192 && second === 168) || (first === 100 && second >= 64 && second <= 127), linkLocal: first === 169 && second === 254, metadata: address === '169.254.169.254', unspecified: first === 0 };
-  }
-  return { privateNetwork: address === '::1' || address.startsWith('fc') || address.startsWith('fd'), linkLocal: address.startsWith('fe80:'), metadata: address === 'fd00:ec2::254', unspecified: address === '::' };
+function reasoningEffortOf(input) {
+  const candidates = [input?.reasoning_effort, input?.reasoning?.effort, input?.output_config?.effort, input?.thinking?.effort];
+  const value = candidates.find((item) => typeof item === 'string' && item.trim());
+  if (typeof value !== 'string') return undefined;
+  const normalized = value.trim();
+  return normalized.length <= 32 ? normalized : undefined;
 }
 
 export async function validateDestination(baseUrl, trustedPrivateNetwork, approvedAddresses = [], lookup = dns.lookup) {
-  const value = new URL(baseUrl);
-  const records = await lookup(value.hostname, { all: true });
-  const currentAddresses = records.map((record) => record.address.toLowerCase()).sort();
-  if (!currentAddresses.length || currentAddresses.some((address) => !net.isIP(address))) throw Object.assign(new Error('Invalid upstream DNS result'), { code: 'upstream_error', statusCode: 502 });
-  if (approvedAddresses.length && (currentAddresses.length !== approvedAddresses.length || currentAddresses.some((address, index) => address !== approvedAddresses[index]))) throw Object.assign(new Error('Upstream DNS result changed'), { code: 'upstream_error', statusCode: 502 });
-  const classes = currentAddresses.map((address) => classifyAddress(address));
-  if (classes.some((addressClass) => addressClass.metadata || addressClass.linkLocal || addressClass.unspecified)) throw Object.assign(new Error('Upstream destination is not trusted'), { code: 'upstream_error', statusCode: 502 });
-  const hasPrivate = classes.some((addressClass) => addressClass.privateNetwork);
-  const hasPublic = classes.some((addressClass) => !addressClass.privateNetwork);
-  if (hasPrivate && hasPublic) throw Object.assign(new Error('Mixed public and private upstream addresses are not trusted'), { code: 'upstream_error', statusCode: 502 });
-  if (hasPrivate && !trustedPrivateNetwork) throw Object.assign(new Error('Upstream destination is not trusted'), { code: 'upstream_error', statusCode: 502 });
-  return currentAddresses;
-}
-
-function textParts(value) {
-  if (typeof value === 'string') return value;
-  if (Array.isArray(value)) return value.filter((part) => ['text', 'input_text', 'output_text'].includes(part?.type)).map((part) => part.text || part.input_text || part.output_text || '').join('');
-  return '';
-}
-
-function normalize(protocol, body) {
-  if (body.tool_choice || body.response_format || body.n > 1 || body.logprobs || body.modalities) throw Object.assign(new Error('Unsupported feature'), { code: 'unsupported_feature', statusCode: 400 });
-  const tools = (body.tools || []).map((tool) => {
-    if (protocol === 'Chat') return { name: tool.function?.name, description: tool.function?.description, parameters: tool.function?.parameters };
-    if (protocol === 'Mes') return { name: tool.name, description: tool.description, parameters: tool.input_schema };
-    return { name: tool.name, description: tool.description, parameters: tool.parameters };
-  });
-  if (tools.some((tool) => !tool.name || !tool.parameters)) throw Object.assign(new Error('Unsupported tool definition'), { code: 'unsupported_feature', statusCode: 400 });
-  const toolResults = [];
-  if (protocol === 'Chat') {
-    const system = body.messages?.filter((item) => item.role === 'system').map((item) => textParts(item.content)).join('\n') || undefined;
-    const messages = (body.messages || []).filter((item) => item.role !== 'system' && item.role !== 'tool').map((item) => ({ role: item.role, content: textParts(item.content) }));
-    for (const item of body.messages || []) if (item.role === 'tool' && item.tool_call_id) toolResults.push({ id: item.tool_call_id, content: textParts(item.content) });
-    return { model: body.model, system, messages, maxTokens: body.max_completion_tokens ?? body.max_tokens, tools, toolResults };
+  try {
+    return (await validateUpstreamDestination(baseUrl, { trustedPrivateNetwork, approvedAddresses, lookup })).addresses;
+  } catch (error) {
+    throw Object.assign(new Error(error.message), { code: 'upstream_error', statusCode: 502 });
   }
-  if (protocol === 'Mes') {
-    const messages = [];
-    for (const item of body.messages || []) {
-      const blocks = Array.isArray(item.content) ? item.content : [];
-      const results = blocks.filter((block) => block.type === 'tool_result');
-      if (results.length) for (const result of results) toolResults.push({ id: result.tool_use_id, content: textParts(result.content) });
-      else messages.push({ role: item.role, content: textParts(item.content) });
-    }
-    return { model: body.model, system: textParts(body.system), messages, maxTokens: body.max_tokens, tools, toolResults };
-  }
-  const rawInput = typeof body.input === 'string' ? [{ role: 'user', content: body.input }] : (body.input || []);
-  for (const item of rawInput) if (item.type === 'function_call_output') toolResults.push({ id: item.call_id, content: textParts(item.output) });
-  const input = rawInput.filter((item) => item.type !== 'function_call_output').map((item) => ({ role: item.role || 'user', content: textParts(item.content || item) }));
-  const system = [body.instructions, ...input.filter((item) => item.role === 'system' || item.role === 'developer').map((item) => item.content)].filter(Boolean).join('\n') || undefined;
-  return { model: body.model, system, messages: input.filter((item) => item.role !== 'system' && item.role !== 'developer'), maxTokens: body.max_output_tokens, tools, toolResults };
 }
 
-function outboundBody(protocol, normalized, model) {
-  if (protocol === 'Chat') return { model, messages: [...(normalized.system ? [{ role: 'system', content: normalized.system }] : []), ...normalized.messages, ...(normalized.toolResults || []).map((result) => ({ role: 'tool', tool_call_id: result.id, content: result.content }))], ...(normalized.tools?.length ? { tools: normalized.tools.map((tool) => ({ type: 'function', function: { name: tool.name, description: tool.description, parameters: tool.parameters } })) } : {}), ...(normalized.maxTokens ? { max_completion_tokens: normalized.maxTokens } : {}) };
-  if (protocol === 'Mes') return { model, ...(normalized.system ? { system: normalized.system } : {}), messages: [...normalized.messages, ...(normalized.toolResults?.length ? [{ role: 'user', content: normalized.toolResults.map((result) => ({ type: 'tool_result', tool_use_id: result.id, content: result.content })) }] : [])], ...(normalized.tools?.length ? { tools: normalized.tools.map((tool) => ({ name: tool.name, description: tool.description, input_schema: tool.parameters })) } : {}), max_tokens: normalized.maxTokens || 1024 };
-  return { model, input: [...(normalized.system ? [{ role: 'developer', content: normalized.system }] : []), ...normalized.messages, ...(normalized.toolResults || []).map((result) => ({ type: 'function_call_output', call_id: result.id, output: result.content }))], ...(normalized.tools?.length ? { tools: normalized.tools.map((tool) => ({ type: 'function', name: tool.name, description: tool.description, parameters: tool.parameters })) } : {}), ...(normalized.maxTokens ? { max_output_tokens: normalized.maxTokens } : {}) };
+function upstreamTimeoutError() {
+  return Object.assign(new Error('Upstream timeout'), { code: 'upstream_timeout', statusCode: 504 });
 }
 
-function extractText(protocol, body) {
-  if (protocol === 'Chat') {
-    const message = body.choices?.[0]?.message;
-    return textParts(message?.content) || (typeof message?.refusal === 'string' ? message.refusal : '');
-  }
-  if (protocol === 'Mes') return textParts(body.content);
-  const message = body.output?.find((item) => item.type === 'message');
-  const content = textParts(message?.content);
-  if (content) return content;
-  return (message?.content || []).filter((item) => item.type === 'refusal').map((item) => item.refusal || item.text || '').join('');
+async function readBeforeDeadline(reader, deadline, monotonicNow) {
+  const remaining = deadline - monotonicNow();
+  if (remaining <= 0) throw upstreamTimeoutError();
+  let timer;
+  try {
+    const timeout = new Promise((_, reject) => { timer = setTimeout(() => reject(upstreamTimeoutError()), remaining); });
+    return await Promise.race([reader.read(), timeout]);
+  } finally { clearTimeout(timer); }
 }
 
-function extractToolCalls(protocol, body) {
-  if (protocol === 'Chat') {
-    return (body.choices?.[0]?.message?.tool_calls || []).map((call) => ({ id: call.id, name: call.function?.name, arguments: call.function?.arguments || '{}' }));
-  }
-  if (protocol === 'Mes') {
-    return (body.content || []).filter((item) => item.type === 'tool_use').map((call) => ({ id: call.id, name: call.name, arguments: JSON.stringify(call.input || {}) }));
-  }
-  return (body.output || []).filter((item) => item.type === 'function_call').map((call) => ({ id: call.call_id, name: call.name, arguments: call.arguments || '{}' }));
-}
-
-function inboundResponse(inboundProtocol, outboundProtocol, body, requestId) {
-  const text = extractText(outboundProtocol, body);
-  const toolCalls = extractToolCalls(outboundProtocol, body);
-  const protocol = inboundProtocol;
-  if (toolCalls.length && protocol === 'Chat') return { id: body.id || `chatcmpl_${requestId}`, object: 'chat.completion', choices: [{ index: 0, message: { role: 'assistant', content: null, tool_calls: toolCalls.map((toolCall, index) => ({ id: toolCall.id || `call_${requestId}_${index}`, type: 'function', function: { name: toolCall.name, arguments: toolCall.arguments } })) }, finish_reason: 'tool_calls' }], usage: body.usage };
-  if (toolCalls.length && protocol === 'Mes') return { id: body.id || `msg_${requestId}`, type: 'message', role: 'assistant', content: toolCalls.map((toolCall, index) => ({ type: 'tool_use', id: toolCall.id || `tool_${requestId}_${index}`, name: toolCall.name, input: JSON.parse(toolCall.arguments) })), stop_reason: 'tool_use', usage: body.usage };
-  if (toolCalls.length) return { id: body.id || `resp_${requestId}`, object: 'response', output: toolCalls.map((toolCall, index) => ({ type: 'function_call', call_id: toolCall.id || `call_${requestId}_${index}`, name: toolCall.name, arguments: toolCall.arguments })), status: 'completed', usage: body.usage };
-  if (protocol === 'Chat') return { id: body.id || `chatcmpl_${requestId}`, object: 'chat.completion', choices: [{ index: 0, message: { role: 'assistant', content: text }, finish_reason: 'stop' }], usage: body.usage };
-  if (protocol === 'Mes') return { id: body.id || `msg_${requestId}`, type: 'message', role: 'assistant', content: [{ type: 'text', text }], stop_reason: 'end_turn', usage: body.usage };
-  return { id: body.id || `resp_${requestId}`, object: 'response', output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text }] }], status: 'completed', usage: body.usage };
-}
-
-async function fetchWithTimeout(url, options, addresses, timeoutMs = 30000, signal, onTimeout) {
+async function fetchWithTimeout(url, options, addresses, headerTimeoutMs, requestDeadline, signal, onTimeout, monotonicNow) {
   const target = new URL(url);
-  const address = addresses[0];
+  const transport = target.protocol === 'https:' ? https : http;
   return new Promise((resolve, reject) => {
     let timedOut = false;
     let settled = false;
     let timer;
+    let addressIndex = 0;
+    let activeRequest;
+    let lastConnectionError;
     const cleanup = () => {
       clearTimeout(timer);
       signal?.removeEventListener('abort', abortRequest);
     };
-    const abortRequest = () => request.destroy(Object.assign(new Error('Gateway request was cancelled'), { code: 'request_aborted', statusCode: 499 }));
-    const request = (target.protocol === 'https:' ? https : http).request(target, {
-      method: options.method,
-      headers: options.headers,
-      lookup: (_hostname, lookupOptions, callback) => {
-        const record = { address, family: net.isIP(address) };
-        if (lookupOptions.all) callback(null, [record]);
-        else callback(null, record.address, record.family);
-      },
-    }, (response) => {
-      const status = response.statusCode || 502;
-      const headers = new Headers();
-      for (let index = 0; index < response.rawHeaders.length; index += 2) headers.append(response.rawHeaders[index], response.rawHeaders[index + 1]);
-      response.once('end', cleanup);
-      response.once('close', cleanup);
-      if ([204, 205, 304].includes(status)) { response.resume(); return resolve(new Response(null, { status, headers })); }
-      settled = true;
-      resolve(new Response(Readable.toWeb(response), { status, headers }));
-    });
-    timer = setTimeout(() => { timedOut = true; onTimeout?.(); request.destroy(Object.assign(new Error('Upstream timeout'), { code: 'upstream_timeout', statusCode: 504 })); }, timeoutMs);
-    request.on('error', (error) => {
-      cleanup();
+    const abortRequest = () => activeRequest?.destroy(Object.assign(new Error('Gateway request was cancelled'), { code: 'request_aborted', statusCode: 499 }));
+    const remaining = Math.max(0, requestDeadline - monotonicNow());
+    if (remaining <= 0) return reject(upstreamTimeoutError());
+    timer = setTimeout(() => {
+      timedOut = true;
+      onTimeout?.();
+      activeRequest?.destroy(upstreamTimeoutError());
+    }, Math.min(headerTimeoutMs, remaining));
+    const attemptAddress = () => {
       if (settled) return;
-      settled = true;
-      reject(timedOut ? Object.assign(new Error('Upstream timeout'), { code: 'upstream_timeout', statusCode: 504 }) : error.code === 'request_aborted' ? error : Object.assign(new Error('Upstream unavailable'), { code: 'upstream_error', statusCode: 502 }));
-    });
+      if (signal?.aborted) {
+        settled = true;
+        cleanup();
+        return reject(Object.assign(new Error('Gateway request was cancelled'), { code: 'request_aborted', statusCode: 499 }));
+      }
+      if (timedOut) {
+        settled = true;
+        cleanup();
+        return reject(upstreamTimeoutError());
+      }
+      const address = addresses[addressIndex++];
+      if (!address) {
+        settled = true;
+        cleanup();
+        return reject(lastConnectionError || Object.assign(new Error('Upstream address unavailable'), { code: 'upstream_error', statusCode: 502 }));
+      }
+      let connectionReady = false;
+      const request = transport.request(target, {
+        method: options.method,
+        headers: options.headers,
+        agent: false,
+        lookup: (_hostname, lookupOptions, callback) => {
+          const record = { address, family: net.isIP(address) };
+          if (lookupOptions.all) callback(null, [record]);
+          else callback(null, record.address, record.family);
+        },
+      }, (response) => {
+        if (settled) { response.destroy(); return; }
+        try {
+          const status = response.statusCode;
+          if (!Number.isInteger(status) || status < 200 || status > 599) throw new Error('Invalid upstream status');
+          const headers = new Headers();
+          for (let index = 0; index < response.rawHeaders.length; index += 2) headers.append(response.rawHeaders[index], response.rawHeaders[index + 1]);
+          const noBody = [204, 205, 304].includes(status);
+          const result = new Response(noBody ? null : Readable.toWeb(response), { status, headers });
+          settled = true;
+          clearTimeout(timer);
+          response.once('end', cleanup);
+          response.once('close', cleanup);
+          if (noBody) response.resume();
+          resolve(result);
+        } catch {
+          settled = true;
+          cleanup();
+          response.destroy();
+          reject(Object.assign(new Error('Invalid upstream response'), { code: 'upstream_error', statusCode: 502 }));
+        }
+      });
+      activeRequest = request;
+      request.once('socket', (socket) => {
+        const sendRequest = () => {
+          if (settled || connectionReady) return;
+          connectionReady = true;
+          request.end(options.body);
+        };
+        if (target.protocol === 'https:') {
+          const secureConnectionReady = () => { if (socket.authorized !== false) sendRequest(); };
+          if (socket.encrypted && socket.secureConnecting === false) secureConnectionReady();
+          else socket.once('secureConnect', secureConnectionReady);
+        } else if (!socket.connecting) sendRequest();
+        else socket.once('connect', sendRequest);
+      });
+      request.on('error', (error) => {
+        if (settled) return;
+        if (!connectionReady && !signal?.aborted && !timedOut && addressIndex < addresses.length) {
+          lastConnectionError = error;
+          attemptAddress();
+          return;
+        }
+        settled = true;
+        cleanup();
+        reject(timedOut ? upstreamTimeoutError() : error.code === 'request_aborted' ? error : normalizeUpstreamError(error));
+      });
+    };
     if (signal?.aborted) abortRequest();
     else signal?.addEventListener('abort', abortRequest, { once: true });
-    request.end(options.body);
+    attemptAddress();
   });
 }
 
-async function readJson(response, maxBytes = 4 * 1024 * 1024) {
-  let size = 0; let data = '';
-  for await (const chunk of response.body) {
-    size += chunk.length;
-    if (size > maxBytes) throw Object.assign(new Error('Upstream response too large'), { code: 'upstream_error', statusCode: 502 });
-    data += Buffer.from(chunk).toString('utf8');
+function raceWithAbort(work, signal) {
+  if (signal.aborted) return Promise.reject(new Error('Connectivity probe timed out'));
+  let onAbort;
+  const aborted = new Promise((_, reject) => {
+    onAbort = () => reject(new Error('Connectivity probe timed out'));
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
+  return Promise.race([work, aborted]).finally(() => signal.removeEventListener('abort', onAbort));
+}
+
+function connectAddress(target, address, port, timeoutMs, signal) {
+  return new Promise((resolve) => {
+    let socket;
+    let settled = false;
+    let timer;
+    const finish = (connected) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      signal.removeEventListener('abort', onAbort);
+      socket?.destroy();
+      resolve(connected);
+    };
+    const onAbort = () => finish(false);
+    if (signal.aborted) return finish(false);
+    signal.addEventListener('abort', onAbort, { once: true });
+    timer = setTimeout(() => finish(false), Math.max(1, timeoutMs));
+    try {
+      if (target.protocol === 'https:') {
+        const hostname = target.hostname.replace(/^\[(.*)\]$/, '$1');
+        const options = { host: address, port, rejectUnauthorized: true };
+        if (!net.isIP(hostname)) options.servername = hostname;
+        socket = tls.connect(options);
+      } else {
+        socket = net.createConnection({ host: address, port });
+      }
+    } catch {
+      finish(false);
+      return;
+    }
+    socket.once(target.protocol === 'https:' ? 'secureConnect' : 'connect', () => finish(true));
+    socket.once('error', () => finish(false));
+    socket.once('close', () => finish(false));
+  });
+}
+
+async function checkTransportConnectivity(baseUrl, addresses, timeoutMs, signal, monotonicNow) {
+  const target = new URL(baseUrl);
+  if (!['http:', 'https:'].includes(target.protocol) || !Array.isArray(addresses) || !addresses.length) return false;
+  const port = Number(target.port || (target.protocol === 'https:' ? 443 : 80));
+  const deadline = monotonicNow() + timeoutMs;
+  for (const address of addresses) {
+    const remaining = deadline - monotonicNow();
+    if (remaining <= 0 || signal.aborted) return false;
+    if (!net.isIP(address)) continue;
+    // Connect to the validated IP; use the URL hostname only for TLS identity.
+    if (await connectAddress(target, address, port, remaining, signal)) return true;
   }
+  return false;
+}
+
+async function readJson(response, deadline, monotonicNow, maxBytes = 4 * 1024 * 1024) {
+  let size = 0; let data = '';
+  const reader = response.body.getReader();
+  try {
+    while (true) {
+      const result = await readBeforeDeadline(reader, deadline, monotonicNow);
+      if (result.done) break;
+      size += result.value.byteLength;
+      if (size > maxBytes) throw Object.assign(new Error('Upstream response too large'), { code: 'upstream_error', statusCode: 502 });
+      data += Buffer.from(result.value).toString('utf8');
+    }
+  } finally { await reader.cancel().catch(() => {}); }
   try { return JSON.parse(data); } catch { throw Object.assign(new Error('Invalid upstream response'), { code: 'upstream_error', statusCode: 502 }); }
 }
 
-async function pipeStream(response, res, metrics, maxBytes = 4 * 1024 * 1024, maxDurationMs = 120_000) {
+function createResponsesStreamRelay(res) {
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let lastSequence = -1;
+  let finished = false;
+  let terminalWire;
+  const streamError = () => Object.assign(new Error('Invalid or incomplete upstream stream'), { code: 'upstream_error', statusCode: 502 });
+  const forwardFrame = (frame, delimiter = '') => {
+    const data = frame.split(/\r?\n/).filter(line => line.startsWith('data:')).map(line => line.slice(5).trimStart()).join('\n');
+    const wire = frame + delimiter;
+    if (!data || data === '[DONE]') {
+      if (terminalWire !== undefined) terminalWire += wire;
+      else if (data !== '[DONE]') res.write(wire);
+      return;
+    }
+    let payload;
+    try { payload = JSON.parse(data); } catch { throw streamError(); }
+    if (!payload || typeof payload !== 'object') throw streamError();
+    const sequence = payload.sequence_number;
+    if (sequence !== undefined && (!Number.isSafeInteger(sequence) || sequence < 0 || sequence >= Number.MAX_SAFE_INTEGER || sequence <= lastSequence)) throw streamError();
+    const type = frame.split(/\r?\n/).find(line => line.startsWith('event:'))?.slice(6).trim() || payload.type;
+    if (terminalWire !== undefined || ['error', 'response.failed', 'response.incomplete'].includes(type)) throw streamError();
+    if (sequence !== undefined) lastSequence = sequence;
+    if (type === 'response.completed' || type === 'response.done') terminalWire = wire;
+    else res.write(wire);
+  };
+  const consume = (text) => {
+    buffer += text;
+    let delimiter;
+    while ((delimiter = /\r?\n\r?\n/.exec(buffer))) {
+      const frame = buffer.slice(0, delimiter.index);
+      buffer = buffer.slice(delimiter.index + delimiter[0].length);
+      forwardFrame(frame, delimiter[0]);
+    }
+  };
+  return {
+    push(chunk) {
+      if (finished) return;
+      try { consume(decoder.decode(chunk, { stream: true })); }
+      catch (error) { finished = true; buffer = ''; throw error; }
+    },
+    finish(cleanEnd) {
+      if (finished) return;
+      finished = true;
+      consume(decoder.decode());
+      const tail = buffer;
+      buffer = '';
+      if (tail.trim()) forwardFrame(tail);
+      if (cleanEnd) {
+        if (terminalWire === undefined) throw streamError();
+        res.write(terminalWire);
+      }
+    },
+    nextSequence() { return lastSequence + 1; },
+  };
+}
+
+async function pipeStream(response, res, metrics, deadline, monotonicNow, sequenceTracker, maxBytes = 4 * 1024 * 1024) {
   const reader = response.body.getReader();
-  const deadline = Date.now() + maxDurationMs;
   let size = 0;
   try {
     while (true) {
-      const remaining = deadline - Date.now();
-      if (remaining <= 0) throw Object.assign(new Error('Upstream stream timeout'), { code: 'upstream_timeout', statusCode: 504 });
-      let timer;
-      try {
-        const timeout = new Promise((_, reject) => { timer = setTimeout(() => reject(Object.assign(new Error('Upstream stream timeout'), { code: 'upstream_timeout', statusCode: 504 })), remaining); });
-        const result = await Promise.race([reader.read(), timeout]);
-        if (result.done) break;
-        size += result.value.byteLength;
-        if (size > maxBytes) throw Object.assign(new Error('Upstream stream too large'), { code: 'upstream_error', statusCode: 502 });
+      const result = await readBeforeDeadline(reader, deadline, monotonicNow);
+      if (result.done) { metrics.endUpstreamBody(); break; }
+      metrics.observeUpstreamChunk(result.value);
+      size += result.value.byteLength;
+      if (size > maxBytes) throw Object.assign(new Error('Upstream stream too large'), { code: 'upstream_error', statusCode: 502 });
+      metrics.measureProcessing(() => {
         metrics.push(result.value);
-        res.write(Buffer.from(result.value));
-      } finally { clearTimeout(timer); }
+        if (sequenceTracker) sequenceTracker.push(result.value);
+        else res.write(Buffer.from(result.value));
+      });
     }
-    metrics.finish();
-    res.end();
-  } finally { await reader.cancel().catch(() => {}); }
+    metrics.measureProcessing(() => {
+      sequenceTracker?.finish(true);
+      metrics.finish();
+      res.end();
+    });
+  } catch (error) {
+    try { metrics.measureProcessing(() => sequenceTracker?.finish(false)); } catch { /* Preserve the original failure. */ }
+    throw error;
+  } finally {
+    metrics.endUpstreamBody();
+    await reader.cancel().catch(() => {});
+  }
 }
 
-function streamDelta(protocol, eventName, payload, state = {}) {
-  if (payload === '[DONE]') return { done: true, text: '' };
-  if (protocol === 'Chat') {
-    const toolCalls = payload.choices?.[0]?.delta?.tool_calls;
-    if (Array.isArray(toolCalls) && toolCalls.length) { state.sawTool = true; return { done: false, text: '', tools: toolCalls.map((call) => ({ index: call.index ?? 0, id: call.id, callId: call.id, name: call.function?.name, arguments: call.function?.arguments || '' })) }; }
-    return { done: false, text: textParts(payload.choices?.[0]?.delta?.content) };
-  }
-  if (protocol === 'Mes') {
-    if (payload.content_block?.type === 'tool_use') {
-      const index = Number.isInteger(payload.index) ? payload.index : (state.nextToolIndex || 0);
-      state.nextToolIndex = Math.max(state.nextToolIndex || 0, index + 1);
-      state.sawTool = true;
-      return { done: false, text: '', tools: [{ index, id: payload.content_block.id, callId: payload.content_block.id, name: payload.content_block.name, arguments: '' }] };
-    }
-    if (payload.delta?.type === 'input_json_delta') {
-      const index = Number.isInteger(payload.index) ? payload.index : (state.nextToolIndex ? state.nextToolIndex - 1 : 0);
-      state.sawTool = true;
-      return { done: false, text: '', tools: [{ index, arguments: payload.delta.partial_json || '' }] };
-    }
-    return { done: eventName === 'message_stop', text: payload.delta?.type === 'text_delta' ? payload.delta.text || '' : '' };
-  }
-  if (eventName === 'response.output_item.added' && payload.item?.type === 'function_call') {
-    const index = Number.isInteger(payload.output_index) ? payload.output_index : (state.nextToolIndex || 0);
-    state.nextToolIndex = Math.max(state.nextToolIndex || 0, index + 1);
-    const key = payload.item.id || payload.item.call_id;
-    if (key) state.toolIndexes?.set(key, index);
-    state.sawTool = true;
-    return { done: false, text: '', tools: [{ index, id: payload.item.id, callId: payload.item.call_id, name: payload.item.name, arguments: '' }] };
-  }
-  if (eventName === 'response.function_call_arguments.delta') {
-    const index = Number.isInteger(payload.output_index) ? payload.output_index : (state.toolIndexes?.get(payload.item_id) ?? 0);
-    state.sawTool = true;
-    return { done: false, text: '', tools: [{ index, arguments: payload.delta || '' }] };
-  }
-  return { done: eventName === 'response.completed' || eventName === 'response.done', text: typeof payload.delta === 'string' ? payload.delta : '' };
+function sequenceResponsesFrames(wire, responseState) {
+  return wire.split(/\r?\n\r?\n/).filter(frame => frame.trim()).map(frame => {
+    const lines = frame.split(/\r?\n/);
+    const eventName = lines.find(line => line.startsWith('event:'))?.slice(6).trim();
+    const payload = JSON.parse(lines.filter(line => line.startsWith('data:')).map(line => line.slice(5).trimStart()).join('\n'));
+    payload.sequence_number = responseState.nextSequence++;
+    return `event: ${eventName || payload.type}\ndata: ${JSON.stringify(payload)}\n\n`;
+  }).join('');
 }
 
-function serializedStreamEvent(protocol, text, done, requestId, tool, tools, finishReason = 'stop') {
-  if (protocol === 'Chat') {
-    if (done) return `data: ${JSON.stringify({ id: `chatcmpl_${requestId}`, object: 'chat.completion.chunk', choices: [{ index: 0, delta: {}, finish_reason: finishReason }] })}\n\ndata: [DONE]\n\n`;
-    if (Array.isArray(tools) && tools.length) return tools.map((item) => `data: ${JSON.stringify({ id: `chatcmpl_${requestId}`, object: 'chat.completion.chunk', choices: [{ index: 0, delta: { tool_calls: [{ index: item.index ?? 0, ...(item.id ? { id: item.id, type: 'function' } : {}), function: { ...(item.name ? { name: item.name } : {}), arguments: item.arguments || '' } }] }, finish_reason: null }] })}\n\n`).join('');
-    if (tool) return `data: ${JSON.stringify({ id: `chatcmpl_${requestId}`, object: 'chat.completion.chunk', choices: [{ index: 0, delta: { tool_calls: [{ index: tool.index ?? 0, ...(tool.id ? { id: tool.id, type: 'function' } : {}), function: { ...(tool.name ? { name: tool.name } : {}), arguments: tool.arguments || '' } }] }, finish_reason: null }] })}\n\n`;
-    return `data: ${JSON.stringify({ id: `chatcmpl_${requestId}`, object: 'chat.completion.chunk', choices: [{ index: 0, delta: { content: text }, finish_reason: null }] })}\n\n`;
-  }
-  if (protocol === 'Mes') {
-    if (Array.isArray(tools) && tools.length) return tools.map((item) => `${item.id || item.name ? `event: content_block_start\ndata: ${JSON.stringify({ type: 'content_block_start', index: item.index ?? 0, content_block: { type: 'tool_use', id: item.id || item.callId || `tool_${requestId}_${item.index ?? 0}`, name: item.name || '', input: {} } })}\n\n` : ''}${item.arguments ? `event: content_block_delta\ndata: ${JSON.stringify({ type: 'content_block_delta', index: item.index ?? 0, delta: { type: 'input_json_delta', partial_json: item.arguments } })}\n\n` : ''}`).join('');
-    return done ? `event: message_stop\ndata: ${JSON.stringify({ type: 'message_stop' })}\n\n` : `event: content_block_delta\ndata: ${JSON.stringify({ type: 'content_block_delta', delta: { type: 'text_delta', text } })}\n\n`;
-  }
-  if (protocol === 'Res' && Array.isArray(tools) && tools.length) return tools.map((item) => `${item.id || item.name ? `event: response.output_item.added\ndata: ${JSON.stringify({ type: 'response.output_item.added', output_index: item.index ?? 0, item: { type: 'function_call', id: item.id || `fc_${requestId}_${item.index ?? 0}`, call_id: item.callId || item.id || `call_${requestId}_${item.index ?? 0}`, name: item.name || '', arguments: '' } })}\n\n` : ''}${item.arguments ? `event: response.function_call_arguments.delta\ndata: ${JSON.stringify({ type: 'response.function_call_arguments.delta', output_index: item.index ?? 0, delta: item.arguments })}\n\n` : ''}`).join('');
-  return done ? `event: response.completed\ndata: ${JSON.stringify({ type: 'response.completed', response: { id: `resp_${requestId}`, status: 'completed' } })}\n\n` : `event: response.output_text.delta\ndata: ${JSON.stringify({ type: 'response.output_text.delta', delta: text })}\n\n`;
+function convertedResponsesUsage(tokens) {
+  if (!tokens || tokens.input === undefined || tokens.output === undefined) return undefined;
+  return {
+    input_tokens: tokens.input,
+    output_tokens: tokens.output,
+    total_tokens: tokens.total ?? (tokens.input + tokens.output),
+    ...(tokens.cacheRead !== undefined ? { input_tokens_details: { cached_tokens: tokens.cacheRead } } : {}),
+    ...(tokens.reasoning !== undefined ? { output_tokens_details: { reasoning_tokens: tokens.reasoning } } : {}),
+  };
 }
 
-async function pipeConvertedStream(response, res, outboundProtocol, inboundProtocol, requestId, metrics, maxBytes = 4 * 1024 * 1024, maxDurationMs = 120_000) {
+async function pipeConvertedStream(response, res, outboundProtocol, inboundProtocol, requestId, metrics, deadline, monotonicNow, toolContext, responseState, model, maxBytes = 4 * 1024 * 1024) {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
-  const deadline = Date.now() + maxDurationMs;
   let buffer = '';
   let size = 0;
-  const streamState = { nextToolIndex: 0, toolIndexes: new Map() };
+  let terminalEvent;
+  const streamState = { nextToolIndex: 0, toolContext, model };
+  const writeEvent = (event) => {
+    if (event.type === 'batch') {
+      for (const item of event.events) writeEvent(item);
+      return;
+    }
+    if (event.type === 'ignore') return;
+    if (event.type === 'done') {
+      if (event.finishReason || !terminalEvent) terminalEvent = event;
+      return;
+    }
+    const wire = serializeAdapterStreamEvent(inboundProtocol, event, requestId, streamState);
+    if (wire) res.write(inboundProtocol === 'Res' ? sequenceResponsesFrames(wire, responseState) : wire);
+  };
   const writeFrame = (frame) => {
     const lines = frame.split(/\r?\n/);
     const eventName = lines.find((line) => line.startsWith('event:'))?.slice(6).trim() || '';
     const data = lines.filter((line) => line.startsWith('data:')).map((line) => line.slice(5).trimStart()).join('\n');
     if (!data) return;
     const payload = data === '[DONE]' ? '[DONE]' : JSON.parse(data);
-    const delta = streamDelta(outboundProtocol, eventName, payload, streamState);
-    if (delta.text || delta.tool || delta.tools || delta.done || payload === '[DONE]') res.write(serializedStreamEvent(inboundProtocol, delta.text, delta.done || payload === '[DONE]', requestId, delta.tool, delta.tools, streamState.sawTool ? 'tool_calls' : 'stop'));
+    const type = eventName || payload?.type;
+    if (inboundProtocol === 'Res' && (type === 'error' || payload?.error)) {
+      throw Object.assign(new Error('Upstream stream reported an error'), { code: 'upstream_error', statusCode: 502 });
+    }
+    writeEvent(parseAdapterStreamEvent(outboundProtocol, type, payload, streamState));
   };
   try {
     while (true) {
-      const remaining = deadline - Date.now();
-      if (remaining <= 0) throw Object.assign(new Error('Upstream stream timeout'), { code: 'upstream_timeout', statusCode: 504 });
-      let timer;
-      try {
-        const timeout = new Promise((_, reject) => { timer = setTimeout(() => reject(Object.assign(new Error('Upstream stream timeout'), { code: 'upstream_timeout', statusCode: 504 })), remaining); });
-        const result = await Promise.race([reader.read(), timeout]);
-        if (result.done) break;
-        size += result.value.byteLength;
-        if (size > maxBytes) throw Object.assign(new Error('Upstream stream too large'), { code: 'upstream_error', statusCode: 502 });
+      const result = await readBeforeDeadline(reader, deadline, monotonicNow);
+      if (result.done) { metrics.endUpstreamBody(); break; }
+      metrics.observeUpstreamChunk(result.value);
+      size += result.value.byteLength;
+      if (size > maxBytes) throw Object.assign(new Error('Upstream stream too large'), { code: 'upstream_error', statusCode: 502 });
+      metrics.measureProcessing(() => {
         metrics.push(result.value);
         buffer += decoder.decode(result.value, { stream: true });
         const frames = buffer.split(/\r?\n\r?\n/);
         buffer = frames.pop() || '';
         for (const frame of frames) writeFrame(frame);
-      } finally { clearTimeout(timer); }
+      });
     }
-    if (buffer.trim()) writeFrame(buffer);
-    metrics.finish();
-    res.end();
-  } finally { await reader.cancel().catch(() => {}); }
+    metrics.measureProcessing(() => {
+      buffer += decoder.decode();
+      if (buffer.trim()) writeFrame(buffer);
+      metrics.finish();
+      if (!terminalEvent) throw Object.assign(new Error('Upstream stream ended before completion'), { code: 'upstream_error', statusCode: 502 });
+      if (inboundProtocol === 'Res') streamState.usage = convertedResponsesUsage(metrics.snapshot().tokens);
+      const terminalWire = serializeAdapterStreamEvent(inboundProtocol, terminalEvent, requestId, streamState);
+      if (terminalWire) res.write(inboundProtocol === 'Res' ? sequenceResponsesFrames(terminalWire, responseState) : terminalWire);
+      res.end();
+    });
+  } finally {
+    metrics.endUpstreamBody();
+    await reader.cancel().catch(() => {});
+  }
 }
 
 async function appendUsage(store, record) {
@@ -345,7 +499,17 @@ async function appendUsage(store, record) {
   } catch {}
 }
 
-export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, maxConcurrentRequests = 32, upstreamTimeoutMs = 30_000, maxRequestBodyBytes = process.env.CXRG_MAX_REQUEST_BODY_BYTES, dnsLookup = dns.lookup, now = Date.now } = {}) {
+async function markCredentialUsed(store, credential) {
+  if (credential.temporary) return false;
+  try {
+    await store.update((value) => ({ ...value, clientKeys: value.clientKeys.map((item) => item.id === credential.id ? { ...item, lastUsedAt: new Date().toISOString() } : item) }));
+    return false;
+  } catch {
+    return true;
+  }
+}
+
+export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, maxConcurrentRequests = 32, upstreamHeaderTimeoutMs = 300_000, upstreamHealthProbeTimeoutMs = 5000, maxRequestDurationMs = 600_000, routeTestTimeoutMs = 610_000, maxRequestBodyBytes = process.env.CXRG_MAX_REQUEST_BODY_BYTES, dnsLookup = dns.lookup, connectivityCheck = checkTransportConnectivity, now = Date.now, monotonicNow = () => performance.now() } = {}) {
   if (!store || !vault) throw new Error('Gateway server requires store and vault');
   const requestBodyLimitBytes = requestBodyLimit(maxRequestBodyBytes);
   const rateBuckets = new Map();
@@ -353,9 +517,45 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
   const routeTestCredentials = new Map();
   const routeTestCalls = [];
   let inFlight = 0;
+  async function probeTarget(item) {
+    const health = item.health;
+    if (health.probePromise) return health.probePromise;
+    const generation = health.generation;
+    const probe = (async () => {
+      const controller = new AbortController();
+      let timer;
+      const deadline = monotonicNow() + upstreamHealthProbeTimeoutMs;
+      timer = setTimeout(() => controller.abort(), upstreamHealthProbeTimeoutMs);
+      let healthy = false;
+      try {
+        const addresses = await raceWithAbort(validateDestination(item.upstream.baseUrl, item.upstream.trustedPrivateNetwork === true, item.upstream.approvedAddresses || [], dnsLookup), controller.signal);
+        if (controller.signal.aborted) return false;
+        healthy = await raceWithAbort(connectivityCheck(item.upstream.baseUrl, addresses, upstreamHealthProbeTimeoutMs, controller.signal, monotonicNow), controller.signal);
+      } catch {
+        healthy = false;
+      } finally {
+        clearTimeout(timer);
+      }
+      if (health.generation === generation) {
+        if (healthy) {
+          health.failures = 0;
+          health.openUntil = 0;
+          health.generation += 1;
+        } else {
+          health.openUntil = now() + health.cooldownSeconds * 1000;
+          health.generation += 1;
+        }
+      }
+      return healthy || (health.generation !== generation && health.openUntil === 0);
+    })();
+    health.probePromise = probe.finally(() => { health.probePromise = undefined; });
+    return health.probePromise;
+  }
   const server = http.createServer(async (req, res) => {
     const requestId = crypto.randomUUID();
-    const startedAt = Date.now();
+    const startedAt = now();
+    const requestStartedMonotonic = monotonicNow();
+    const requestDeadline = requestStartedMonotonic + maxRequestDurationMs;
     const requestController = new AbortController();
     res.once('close', () => { if (!res.writableEnded) requestController.abort(); });
     let upstreamTimedOut = false;
@@ -365,14 +565,27 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
     let upstream;
     let targetHealth;
     let requestGeneration;
+    let reasoningEffort;
+    let compatibilityWarnings;
     let upstreamStarted = false;
+    let upstreamStatus;
+    let streamRequested = false;
+    let responseSequenceTracker;
+    const responseState = { nextSequence: 0 };
     let outcomeRecorded = false;
     let hasFallback = false;
     let acquiredSlot = false;
     function recordOutcome(failed) {
-      if (!targetHealth || outcomeRecorded || targetHealth.generation !== requestGeneration) return;
+      if (!targetHealth || outcomeRecorded) return;
       outcomeRecorded = true;
-      if (!failed || !hasFallback) { targetHealth.failures = 0; return; }
+      if (!failed) {
+        targetHealth.failures = 0;
+        targetHealth.openUntil = 0;
+        targetHealth.generation += 1;
+        return;
+      }
+      if (targetHealth.generation !== requestGeneration) return;
+      if (!hasFallback) { targetHealth.failures = 0; return; }
       targetHealth.failures += 1;
       if (targetHealth.failures >= targetHealth.threshold) {
         targetHealth.failures = 0;
@@ -407,7 +620,9 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
       const recent = (rateBuckets.get(keyHash) || []).filter((entry) => timestamp - entry < 60_000);
       if (recent.length >= rateLimitPerMinute) return send(res, 429, { error: 'rate_limited', requestId }, requestId);
       recent.push(timestamp); rateBuckets.set(keyHash, recent);
-      const input = await bodyOf(req, requestBodyLimitBytes);
+      let input = await bodyOf(req, requestBodyLimitBytes);
+      streamRequested = input.stream === true;
+      reasoningEffort = reasoningEffortOf(input);
       route = config.routes.find((item) => item.enabled && item.alias === input.model && item.inboundProtocol === inbound);
       if (!route) return send(res, 404, { error: 'route_not_found', requestId }, requestId);
       if (credential.routeId && credential.routeId !== route.id) return send(res, 403, { error: 'forbidden', requestId }, requestId);
@@ -416,22 +631,49 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
       if (!availableTargets.length) return send(res, 502, { error: 'upstream_error', requestId }, requestId);
       hasFallback = availableTargets.length > 1;
       const policy = { failureThreshold: route.failover?.failureThreshold ?? 3, statusClasses: route.failover?.statusClasses ?? [4, 5], cooldownSeconds: route.failover?.cooldownSeconds ?? 60 };
-      const signature = JSON.stringify({ targets: route.targets ?? [{ upstreamId: route.upstreamId, modelId: route.modelId }], policy });
+      const healthTargets = (route.targets?.length ? route.targets : [{ upstreamId: route.upstreamId, modelId: route.modelId }]).map((target) => {
+        const configuredUpstream = config.upstreams.find((item) => item.id === target.upstreamId);
+        return {
+          ...target,
+          upstream: configuredUpstream ? {
+            baseUrl: configuredUpstream.baseUrl,
+            protocol: configuredUpstream.protocol,
+            credentialRef: configuredUpstream.credentialRef,
+            enabled: configuredUpstream.enabled === true,
+            approvedAddresses: configuredUpstream.approvedAddresses ?? [],
+            trustedPrivateNetwork: configuredUpstream.trustedPrivateNetwork === true,
+          } : null,
+        };
+      });
+      const signature = JSON.stringify({ targets: healthTargets, policy });
       let health = healthByRoute.get(route.id);
       if (!health || health.signature !== signature) { health = { signature, targets: new Map() }; healthByRoute.set(route.id, health); }
-      const selected = availableTargets.find(item => {
+      const candidates = availableTargets.map(item => {
         const key = JSON.stringify([item.target.upstreamId, item.target.modelId]);
-        if (!health.targets.has(key)) health.targets.set(key, { failures: 0, openUntil: 0, generation: 0, threshold: policy.failureThreshold, cooldownSeconds: policy.cooldownSeconds });
+        if (!health.targets.has(key)) health.targets.set(key, { failures: 0, openUntil: 0, generation: 0, threshold: policy.failureThreshold, cooldownSeconds: policy.cooldownSeconds, probePromise: undefined });
         item.health = health.targets.get(key);
-        return item.health.openUntil <= now();
+        return item;
       });
-      if (!selected) return send(res, 503, { error: 'all_upstreams_unavailable', requestId }, requestId);
-      targetHealth = selected.health;
+      let selectedTarget;
+      for (const item of candidates) {
+        if (item.health.openUntil > now()) continue;
+        if (item.health.openUntil > 0 && !await probeTarget(item)) continue;
+        selectedTarget = item;
+        break;
+      }
+      if (!selectedTarget) return send(res, 503, { error: 'all_upstreams_unavailable', requestId }, requestId);
+      targetHealth = selectedTarget.health;
       requestGeneration = targetHealth.generation;
-      upstream = selected.upstream;
-      route = { ...route, upstreamId: selected.target.upstreamId, modelId: selected.target.modelId };
-      metrics = createRequestMetrics({ protocol: route.outboundProtocol, stream: input.stream === true, startedAt });
-      const normalized = route.outboundProtocol === inbound ? null : normalize(inbound, input);
+      upstream = selectedTarget.upstream;
+      route = { ...route, upstreamId: selectedTarget.target.upstreamId, modelId: selectedTarget.target.modelId };
+      if (route.reasoning !== undefined) reasoningEffort = undefined;
+      const effectiveReasoning = applyRouteReasoningPolicy(input, inbound, route.reasoning);
+      input = applyModelCapabilities(effectiveReasoning.input, inbound, route.capabilities, { range: route.reasoning, originalInput: input });
+      reasoningEffort = reasoningEffortOf(input);
+      metrics = createRequestMetrics({ protocol: route.outboundProtocol, stream: input.stream === true, startedAt: requestStartedMonotonic, clock: monotonicNow });
+      responseSequenceTracker = inbound === 'Res' && route.outboundProtocol === 'Res' ? createResponsesStreamRelay(res) : undefined;
+      const normalized = route.outboundProtocol === inbound ? null : parseAdapterRequest(inbound, input, { direction: inbound + '->' + route.outboundProtocol });
+      compatibilityWarnings = normalized?.compatibilityWarnings;
       upstreamStarted = true;
       const addresses = await validateDestination(upstream.baseUrl, upstream.trustedPrivateNetwork === true, upstream.approvedAddresses || [], dnsLookup);
       const outboundPath = { Res: '/v1/responses', Mes: '/v1/messages', Chat: '/v1/chat/completions' }[route.outboundProtocol];
@@ -439,43 +681,76 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
       const secret = upstream.credentialRef ? await vault.get(upstream.credentialRef) : undefined;
       if (secret) headers[route.outboundProtocol === 'Mes' ? 'x-api-key' : 'authorization'] = route.outboundProtocol === 'Mes' ? secret : `Bearer ${secret}`;
       if (route.outboundProtocol === 'Mes') headers['anthropic-version'] = '2026-10-21';
-      const payload = route.outboundProtocol === inbound ? { ...input, model: route.modelId } : outboundBody(route.outboundProtocol, normalized, route.modelId);
+      const payload = route.outboundProtocol === inbound ? { ...input, model: route.modelId } : serializeAdapterRequest(route.outboundProtocol, normalized, route.modelId);
       if (input.stream === true) {
         payload.stream = true;
         if (route.outboundProtocol === 'Chat') payload.stream_options = { ...payload.stream_options, include_usage: true };
       }
-      const upstreamResponse = await fetchWithTimeout(upstreamUrl(upstream.baseUrl, outboundPath), { method: 'POST', headers, body: JSON.stringify(payload) }, addresses, upstreamTimeoutMs, requestController.signal, () => { upstreamTimedOut = true; });
+      const serializedPayload = JSON.stringify(payload);
+      headers['content-length'] = String(Buffer.byteLength(serializedPayload, 'utf8'));
+      const upstreamResponse = await fetchWithTimeout(upstreamUrl(upstream.baseUrl, outboundPath), { method: 'POST', headers, body: serializedPayload }, addresses, upstreamHeaderTimeoutMs, requestDeadline, requestController.signal, () => { upstreamTimedOut = true; }, monotonicNow);
+      metrics.markUpstreamHeaders();
+      upstreamStatus = upstreamResponse.status;
       if (upstreamResponse.status >= 300) {
         await upstreamResponse.body?.cancel().catch(() => {});
         recordOutcome(policy.statusClasses.includes(Math.floor(upstreamResponse.status / 100)));
-        await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Date.now() - startedAt, ...metrics?.snapshot(), inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, modelId: route.modelId, status: 'failed', errorCode: 'upstream_error', upstreamStatus: upstreamResponse.status });
-        return send(res, 502, { error: 'upstream_error', requestId }, requestId);
+        const classified = classifyUpstreamStatus(upstreamResponse.status);
+        await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Math.max(0, monotonicNow() - requestStartedMonotonic), ...metrics?.snapshot(), ...(reasoningEffort ? { reasoningEffort } : {}), ...(compatibilityWarnings?.length ? { compatibilityWarnings } : {}), inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, upstreamName: upstream.name, modelId: route.modelId, status: 'failed', errorCode: classified.errorCode, upstreamStatus: upstreamResponse.status, gatewayStatus: classified.clientStatus });
+        return send(res, classified.clientStatus, { error: classified.errorCode, requestId }, requestId);
       }
       if (input.stream === true) {
         res.statusCode = upstreamResponse.status;
         res.setHeader('content-type', upstreamResponse.headers.get('content-type') || 'text/event-stream');
         res.setHeader('x-request-id', requestId);
-        if (route.outboundProtocol === inbound) await pipeStream(upstreamResponse, res, metrics);
-        else await pipeConvertedStream(upstreamResponse, res, route.outboundProtocol, inbound, requestId, metrics);
+        if (route.outboundProtocol === inbound) await pipeStream(upstreamResponse, res, metrics, requestDeadline, monotonicNow, responseSequenceTracker);
+        else await pipeConvertedStream(upstreamResponse, res, route.outboundProtocol, inbound, requestId, metrics, requestDeadline, monotonicNow, normalized?.tools || [], responseState, route.modelId);
         recordOutcome(false);
-        await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Date.now() - startedAt, ...metrics?.snapshot(), inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, modelId: route.modelId, status: 'completed' });
-        if (!credential.temporary) await store.update((value) => ({ ...value, clientKeys: value.clientKeys.map((item) => item.id === credential.id ? { ...item, lastUsedAt: new Date().toISOString() } : item) }));
+        const credentialUsageUpdateFailed = await markCredentialUsed(store, credential);
+        await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Math.max(0, monotonicNow() - requestStartedMonotonic), ...metrics?.snapshot(), ...(reasoningEffort ? { reasoningEffort } : {}), ...(compatibilityWarnings?.length ? { compatibilityWarnings } : {}), httpStatus: upstreamResponse.status, inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, upstreamName: upstream.name, modelId: route.modelId, status: 'completed', ...(credentialUsageUpdateFailed ? { credentialUsageUpdateFailed: true } : {}) });
         return;
       }
-      const upstreamBody = await readJson(upstreamResponse);
+      const upstreamBody = await readJson(upstreamResponse, requestDeadline, monotonicNow);
       metrics.observeJson(upstreamBody);
+      let clientBody = upstreamBody;
+      if (route.outboundProtocol !== inbound) {
+        try {
+          const normalizedResponse = parseAdapterResponse(route.outboundProtocol, upstreamBody, normalized?.tools || []);
+          clientBody = serializeAdapterResponse(inbound, normalizedResponse, requestId);
+          if (inbound === 'Res' && (upstreamBody.error || !clientBody.output.length)) {
+            throw new Error('Converted response has no deliverable output');
+          }
+        } catch {
+          throw Object.assign(new Error('Invalid upstream response'), { code: 'upstream_error', statusCode: 502 });
+        }
+      }
       recordOutcome(false);
-      await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Date.now() - startedAt, ...metrics?.snapshot(), inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, modelId: route.modelId, status: 'completed' });
-      if (!credential.temporary) await store.update((value) => ({ ...value, clientKeys: value.clientKeys.map((item) => item.id === credential.id ? { ...item, lastUsedAt: new Date().toISOString() } : item) }));
-      return send(res, 200, route.outboundProtocol === inbound ? upstreamBody : inboundResponse(inbound, route.outboundProtocol, upstreamBody, requestId), requestId);
+      const credentialUsageUpdateFailed = await markCredentialUsed(store, credential);
+      await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Math.max(0, monotonicNow() - requestStartedMonotonic), ...metrics?.snapshot(), ...(reasoningEffort ? { reasoningEffort } : {}), ...(compatibilityWarnings?.length ? { compatibilityWarnings } : {}), httpStatus: upstreamResponse.status, gatewayStatus: 200, inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, upstreamName: upstream.name, modelId: route.modelId, status: 'completed', ...(credentialUsageUpdateFailed ? { credentialUsageUpdateFailed: true } : {}) });
+      return send(res, 200, clientBody, requestId);
     } catch (error) {
-      if (upstreamTimedOut) error = Object.assign(new Error('Upstream timeout'), { code: 'upstream_timeout', statusCode: 504 });
-      if (upstreamStarted && (error.code === 'upstream_error' || error.code === 'upstream_timeout' || !error.statusCode)) recordOutcome(true);
-      if (route && upstream) await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Date.now() - startedAt, ...metrics?.snapshot(), inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, modelId: route.modelId, status: error.statusCode === 400 ? 'rejected' : 'failed', errorCode: error.code || 'gateway_error' });
-      if (requestController.signal.aborted || res.destroyed) return;
-      if (res.headersSent) return res.destroy();
-      if (error.drain) res.setHeader('connection', 'close');
-      return send(res, error.statusCode || 500, { error: error.code || 'internal_error', message: error.statusCode ? error.message : undefined, ...(error.limitBytes ? { limitBytes: error.limitBytes } : {}), requestId }, requestId);
+      const downstreamAborted = requestController.signal.aborted || res.destroyed;
+      if (downstreamAborted) error = Object.assign(new Error('Downstream disconnected'), { code: 'request_aborted' });
+      else {
+        error = normalizeUpstreamError(error);
+        if (upstreamTimedOut) error = Object.assign(new Error('Upstream timeout'), { code: 'upstream_timeout', statusCode: 504 });
+      }
+      const gatewayStatus = res.headersSent ? res.statusCode : downstreamAborted ? undefined : (error.statusCode || 500);
+      const streamFailurePhase = streamRequested && upstreamStarted
+        ? (downstreamAborted ? 'downstream_closed' : upstreamStatus === undefined ? 'upstream_headers' : 'upstream_body')
+        : undefined;
+      if (!downstreamAborted && upstreamStarted && (error.code === 'upstream_error' || error.code === 'upstream_connection_reset' || error.code === 'upstream_timeout' || !error.statusCode)) recordOutcome(true);
+      if (route && upstream) await appendUsage(store, { requestId, createdAt: new Date(startedAt).toISOString(), durationMs: Math.max(0, monotonicNow() - requestStartedMonotonic), ...metrics?.snapshot(), ...(reasoningEffort ? { reasoningEffort } : {}), ...(compatibilityWarnings?.length ? { compatibilityWarnings } : {}), ...(gatewayStatus === undefined ? {} : { gatewayStatus }), ...(upstreamStatus === undefined ? {} : { upstreamStatus }), ...(streamFailurePhase ? { streamFailurePhase } : {}), inboundProtocol: inbound, outboundProtocol: route.outboundProtocol, routeId: route.id, upstreamId: upstream.id, upstreamName: upstream.name, modelId: route.modelId, status: error.statusCode === 400 ? 'rejected' : 'failed', errorCode: error.code || 'gateway_error', ...(error.field ? { errorField: error.field } : {}), ...(error.direction ? { errorDirection: error.direction } : {}), ...(error.toolType ? { errorToolType: error.toolType } : {}) });
+      if (downstreamAborted) return;
+      if (res.headersSent) {
+        if (streamRequested && inbound === 'Res' && !res.writableEnded) {
+          const sequence = route.outboundProtocol === 'Res' ? (responseSequenceTracker?.nextSequence() ?? 0) : responseState.nextSequence++;
+          res.end(`\n\nevent: error\ndata: ${JSON.stringify({ type: 'error', code: error.code || 'upstream_error', message: 'Upstream stream interrupted', param: null, sequence_number: sequence })}\n\n`);
+          return;
+        }
+        return res.destroy();
+      }
+
+      return send(res, error.statusCode || 500, { ...(error.limitBytes ? { limitBytes: error.limitBytes } : {}), error: error.code || 'internal_error', message: error.statusCode ? error.message : undefined, ...(error.field ? { field: error.field } : {}), ...(error.direction ? { direction: error.direction } : {}), ...(error.toolType ? { toolType: error.toolType } : {}), requestId }, requestId);
     } finally {
       if (acquiredSlot) inFlight -= 1;
     }
@@ -503,25 +778,25 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
       : route.inboundProtocol === 'Mes'
         ? { model: route.alias, max_tokens: 256, messages: [{ role: 'user', content: text }] }
         : { model: route.alias, max_completion_tokens: 256, messages: [{ role: 'user', content: text }] };
-    const startedAt = now();
+    const startedAt = monotonicNow();
     try {
       const response = await fetch(`http://127.0.0.1:${address.port}${endpoint}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
         body: JSON.stringify(body),
-        signal: AbortSignal.timeout(35_000),
+        signal: AbortSignal.timeout(routeTestTimeoutMs),
       });
       const requestId = response.headers.get('x-request-id') || '';
       const result = await response.json().catch(() => ({}));
-      const durationMs = Math.max(0, now() - startedAt);
+      const durationMs = Math.max(0, monotonicNow() - startedAt);
       if (!response.ok) {
-        const errors = { all_upstreams_unavailable: '所有上游当前均不可用', upstream_error: '上游请求失败，请检查上游状态和日志', upstream_timeout: '上游响应超时', unsupported_feature: '当前请求包含不支持的协议特性', route_not_found: '路由未匹配到此请求协议' };
+        const errors = { all_upstreams_unavailable: '所有上游当前均不可用', upstream_error: '上游请求失败，请检查上游状态和日志', upstream_rate_limited: '上游请求被限流，请稍后重试', upstream_payload_too_large: '上游拒绝了过大的请求体', request_body_too_large: '请求体超过网关限制', upstream_timeout: '上游响应超时', unsupported_feature: '当前请求包含不支持的协议特性', route_not_found: '路由未匹配到此请求协议' };
         return { routeAlias: route.alias, text: '', requestId, durationMs, status: response.status, error: errors[result.error] || `Gateway 请求失败（${response.status}）` };
       }
-      const resultText = extractText(route.inboundProtocol, result);
+      const resultText = parseAdapterResponse(route.inboundProtocol, result).text;
       return { routeAlias: route.alias, text: typeof resultText === 'string' ? resultText : '', requestId, durationMs, status: response.status };
     } catch (error) {
-      if (error instanceof Error && error.name === 'TimeoutError') throw new Error('测试请求超时（35 秒）');
+      if (error instanceof Error && error.name === 'TimeoutError') throw new Error('测试请求超时');
       throw error;
     } finally {
       routeTestCredentials.delete(keyHash);

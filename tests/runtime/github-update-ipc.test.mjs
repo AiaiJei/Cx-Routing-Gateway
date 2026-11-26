@@ -5,7 +5,17 @@ import ipcModule from '../../apps/desktop/electron/github-update-ipc.cjs';
 const { registerGitHubUpdateIpc } = ipcModule;
 const token = 'github_pat_ipc_test_123456';
 
-function setup({ trusted = true, tokenConfigured = true, verifyStoredToken = async () => true, updateError, installError } = {}) {
+test('public release IPC checks and installs without reading old private repository credentials', async () => {
+  const { handlers, calls, installed } = setup({ tokenConfigured: false, publicRead: true });
+  const checked = await handlers.get('runtime:check-update')({ sender: {} });
+  assert.equal(checked.publicRead, true);
+  const result = await handlers.get('runtime:install-update')({ sender: {} });
+  assert.equal(result.installed, true);
+  assert.deepEqual(calls, [['checkUpdate', '1.1.2', undefined], ['installUpdate', '1.1.2', undefined]]);
+  assert.equal(installed.length, 1);
+});
+
+function setup({ trusted = true, tokenConfigured = true, publicRead = false, verifyStoredToken = async () => true, updateError, installError } = {}) {
   const handlers = new Map();
   const calls = [];
   const tokenService = {
@@ -18,28 +28,35 @@ function setup({ trusted = true, tokenConfigured = true, verifyStoredToken = asy
   const updater = {
     async verifyGitHubToken() { return { valid: true }; },
     async checkUpdate(input) {
-      calls.push(['checkUpdate', input.token]);
+      calls.push(['checkUpdate', input.currentVersion, input.token]);
       if (updateError) throw updateError;
       return { configured: true, available: true, version: '1.1.0', releaseUrl: 'https://github.com/AiaiJei/Cx-Routing-Gateway/releases/tag/v1.1.0' };
     },
     async installUpdate(input) {
-      calls.push(['installUpdate', input.token]);
+      calls.push(['installUpdate', input.currentVersion, input.token]);
       if (installError) throw installError;
       return { version: '1.1.0', path: 'verified-installer.exe' };
     },
   };
   const installed = [];
   registerGitHubUpdateIpc({
+    publicRead,
     ipcMain: { handle: (channel, handler) => handlers.set(channel, handler) },
     isTrustedSender: () => trusted,
     getTokenService: () => tokenService,
     loadUpdater: async () => updater,
-    getCurrentVersion: () => '1.0.3',
+    getCurrentVersion: () => '1.1.2',
     getDownloadDir: () => 'temp-updates',
     installDownloaded: async (result) => { installed.push(result); },
   });
   return { handlers, calls, installed };
 }
+
+test('update IPC passes the four-part product version to the updater', async () => {
+  const { handlers, calls } = setup();
+  await handlers.get('runtime:check-update')({ sender: {} });
+  assert.deepEqual(calls, ['getToken', ['checkUpdate', '1.1.2', token]]);
+});
 
 test('update credential and release IPC rejects untrusted senders before invoking services', async () => {
   const { handlers, calls } = setup({ trusted: false });
@@ -62,14 +79,14 @@ test('update check IPC removes a token only after the repository verifier confir
   const { handlers, calls } = setup({ updateError: error, verifyStoredToken: async () => false });
   const result = await handlers.get('runtime:check-update')({ sender: {} });
   assert.deepEqual(result, { configured: false, available: false, tokenInvalid: true });
-  assert.deepEqual(calls, ['getToken', ['checkUpdate', token], 'verifyStoredToken']);
+  assert.deepEqual(calls, ['getToken', ['checkUpdate', '1.1.2', token], 'verifyStoredToken']);
 });
 
 test('update check IPC preserves valid tokens on release-not-found responses', async () => {
   const error = Object.assign(new Error('GitHub Releases API returned 404'), { code: 'GITHUB_CREDENTIAL_RECHECK' });
   const { handlers, calls } = setup({ updateError: error, verifyStoredToken: async () => true });
   await assert.rejects(() => handlers.get('runtime:check-update')({ sender: {} }), /returned 404/);
-  assert.deepEqual(calls, ['getToken', ['checkUpdate', token], 'verifyStoredToken']);
+  assert.deepEqual(calls, ['getToken', ['checkUpdate', '1.1.2', token], 'verifyStoredToken']);
 });
 
 test('install IPC launches only an installer returned by the digest-verifying updater', async () => {
@@ -77,5 +94,5 @@ test('install IPC launches only an installer returned by the digest-verifying up
   const result = await handlers.get('runtime:install-update')({ sender: {} });
   assert.deepEqual(installed, [{ version: '1.1.0', path: 'verified-installer.exe' }]);
   assert.deepEqual(result, { configured: true, installed: true, version: '1.1.0' });
-  assert.deepEqual(calls, ['getToken', ['installUpdate', token]]);
+  assert.deepEqual(calls, ['getToken', ['installUpdate', '1.1.2', token]]);
 });

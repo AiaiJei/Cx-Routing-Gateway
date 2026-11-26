@@ -1,0 +1,65 @@
+{
+  "cycle": 2,
+  "pid": 9452,
+  "requests": [
+    {
+      "path": "/v1/models",
+      "host": "desktop-fixture.invalid",
+      "method": "GET"
+    },
+    {
+      "path": "/v1/models",
+      "host": "desktop-fixture.invalid",
+      "method": "GET"
+    }
+  ],
+  "connections": [
+    {
+      "address": "9.9.9.9",
+      "host": "desktop-fixture.invalid"
+    }
+  ],
+  "lockPresent": false,
+  "upstreams": [
+    {
+      "id": "desktop-fixture",
+      "name": "PR23 隔离重启测试",
+      "baseUrl": "http://desktop-fixture.invalid/v1",
+      "protocol": "Chat",
+      "enabled": true,
+      "approvedAddresses": [
+        "8.8.8.8"
+      ],
+      "models": [
+        "fixture-model"
+      ],
+      "lastCheckedAt": "2026-11-25T06:43:56.787Z"
+    }
+  ],
+  "routes": [
+    {
+      "id": "fixture-route",
+      "alias": "fixture-model",
+      "modelId": "fixture-model",
+      "upstreamId": "desktop-fixture",
+      "inboundProtocol": "Chat",
+      "outboundProtocol": "Chat",
+      "enabled": true,
+      "targets": [
+        {
+          "upstreamId": "desktop-fixture",
+          "modelId": "fixture-model"
+        }
+      ],
+      "failover": {
+        "failureThreshold": 5,
+        "statusClasses": [
+          4,
+          5
+        ],
+        "cooldownSeconds": 60
+      },
+      "allowLossy": false
+    }
+  ]
+}

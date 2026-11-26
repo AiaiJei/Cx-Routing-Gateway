@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import net from 'node:net';
 import http from 'node:http';
+import crypto from 'node:crypto';
 import { closeServer, startRuntime } from '../../apps/desktop/electron/runtime-supervisor.cjs';
 
 async function freePort() {
@@ -40,6 +41,49 @@ test('runtime supervisor starts both local services and stops them through liven
   await runtime.stop();
   assert.equal(runtime.getStatus().state, 'stopped');
   await assert.rejects(fetch(`http://127.0.0.1:${gatewayPort}/health`));
+});
+
+test('runtime restart preserves the configured upstream credential and routes through it', async (t) => {
+  let seenAuthorization;
+  const upstream = http.createServer(async (req, res) => {
+    seenAuthorization = req.headers.authorization;
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'persisted' } }] }));
+  });
+  await new Promise((resolve) => upstream.listen(0, '127.0.0.1', resolve));
+  const upstreamPort = upstream.address().port;
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-runtime-restart-'));
+  const controlPort = await freePort();
+  const gatewayPort = await freePort();
+  const masterKey = 'runtime-restart-master-key-1234567890';
+  const first = await startRuntime({ dataDir: dir, masterKey, controlPort, gatewayPort });
+  const auth = { authorization: 'Bearer ' + first.controlToken };
+  const createdUpstream = await fetch('http://127.0.0.1:' + controlPort + '/v1/control/upstreams', {
+    method: 'POST', headers: { ...auth, 'content-type': 'application/json' },
+    body: JSON.stringify({ name: 'Persisted', baseUrl: 'http://127.0.0.1:' + upstreamPort, protocol: 'Chat', apiKey: 'persisted-upstream-key', allowPrivateNetwork: true }),
+  }).then((response) => response.json());
+  await fetch('http://127.0.0.1:' + controlPort + '/v1/control/routes', {
+    method: 'POST', headers: { ...auth, 'content-type': 'application/json' },
+    body: JSON.stringify({ alias: 'persisted-route', inboundProtocol: 'Chat', outboundProtocol: 'Chat', upstreamId: createdUpstream.id, modelId: 'persisted-model' }),
+  });
+  const clientKey = await fetch('http://127.0.0.1:' + controlPort + '/v1/control/client-keys', {
+    method: 'POST', headers: { ...auth, 'content-type': 'application/json' },
+    body: JSON.stringify({ name: 'restart-client' }),
+  }).then((response) => response.json());
+  const configPath = path.join(dir, 'config.json');
+  const configBefore = JSON.parse(await fs.readFile(configPath, 'utf8'));
+  assert.equal(configBefore.upstreams[0].credentialRef.length > 0, true);
+  assert.equal((await fs.readFile(path.join(dir, 'secrets.json'), 'utf8')).includes('persisted-upstream-key'), false);
+  await first.stop();
+  const second = await startRuntime({ dataDir: dir, masterKey, controlPort, gatewayPort });
+  t.after(async () => { await second.stop(); upstream.close(); });
+  const response = await fetch('http://127.0.0.1:' + gatewayPort + '/v1/chat/completions', {
+    method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + clientKey.key },
+    body: JSON.stringify({ model: 'persisted-route', messages: [{ role: 'user', content: 'hello' }] }),
+  });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).choices[0].message.content, 'persisted');
+  assert.equal(seenAuthorization, 'Bearer persisted-upstream-key');
 });
 
 test('in-process server shutdown force-closes a connection after the grace period', async (t) => {

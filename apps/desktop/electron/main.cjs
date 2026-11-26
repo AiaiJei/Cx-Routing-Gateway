@@ -1,6 +1,6 @@
 const { app, BrowserWindow, ipcMain, safeStorage, shell, Tray, Menu } = require("electron");
 const path = require("node:path");
-const fs = require("node:fs");
+const os = require("node:os");
 const crypto = require("node:crypto");
 const { spawn } = require("node:child_process");
 const { startRuntime } = require("./runtime-supervisor.cjs");
@@ -8,6 +8,14 @@ const { isTrustedDocumentUrl } = require("./security.cjs");
 const { createGitHubTokenStore } = require("./github-token-store.cjs");
 const { createGitHubTokenService } = require("./github-token-service.cjs");
 const { registerGitHubUpdateIpc } = require("./github-update-ipc.cjs");
+const { registerUpstreamEditIpc } = require("./upstream-edit-ipc.cjs");
+const { registerUpstreamTestIpc } = require("./upstream-test-ipc.cjs");
+const { createCodexConfigService } = require("./codex-config-service.cjs");
+const { createCodexRuntimeClient } = require("./codex-runtime-client.cjs");
+const { registerCodexIpc } = require("./codex-ipc.cjs");
+const { createCodexClientManager } = require("./codex-client-manager.cjs");
+const { loadOrCreateRuntimeMasterKey } = require("./runtime-master-key.cjs");
+const { cxrgProductVersion } = require("../package.json");
 const { installTrayLifecycle, registerActivateHandler, registerSecondInstanceHandler } = require("./tray-lifecycle.cjs");
 
 const devServerUrl = process.env.CXRG_DEV_SERVER_URL;
@@ -19,6 +27,34 @@ let quitting = false;
 let githubTokenStore;
 let githubTokenService;
 let trayLifecycle;
+let codexConfigService;
+let codexClientManager;
+const codexHome = path.resolve(process.env.CODEX_HOME || path.join(os.homedir(), ".codex"));
+
+function getCodexConfigService() {
+  if (!codexConfigService) {
+    const runtimeClient = createCodexRuntimeClient({
+      getControlPort: () => controlPort,
+      getGatewayPort: () => gatewayPort,
+      getControlToken: () => runtime?.controlToken || "",
+      isRuntimeReady: () => startupState === "running" && runtime?.getStatus?.().state === "running",
+    });
+    codexConfigService = createCodexConfigService({
+      codexHome, ...runtimeClient, safeStorage,
+      profilesPath: path.join(app.getPath("userData"), "codex-direct-profiles.enc"),
+      preferencesPath: path.join(app.getPath("userData"), "codex-gateway-preferences.json"),
+      isLoginPending: () => codexClientManager?.getLoginState() === "pending",
+    });
+  }
+  return codexConfigService;
+}
+
+function getCodexClientManager() {
+  if (!codexClientManager) codexClientManager = createCodexClientManager({ codexHome, getConfigStatus: () => getCodexConfigService().getStatus() });
+  return codexClientManager;
+}
+
+app.on("before-quit", () => codexClientManager?.dispose());
 
 function updateScriptPath() {
   return process.resourcesPath && !process.defaultApp
@@ -55,18 +91,7 @@ function masterKeyPath() {
 }
 
 function getMasterKey() {
-  if (process.env.CXRG_MASTER_KEY) return process.env.CXRG_MASTER_KEY;
-  const target = masterKeyPath();
-  try {
-    const stored = fs.readFileSync(target, "utf8").trim();
-    if (safeStorage.isEncryptionAvailable()) return safeStorage.decryptString(Buffer.from(stored, "base64"));
-    return stored;
-  } catch {}
-  const key = crypto.randomBytes(32).toString("base64url");
-  fs.mkdirSync(path.dirname(target), { recursive: true });
-  const stored = safeStorage.isEncryptionAvailable() ? safeStorage.encryptString(key).toString("base64") : key;
-  fs.writeFileSync(target, `${stored}\n`, { mode: 0o600 });
-  return key;
+  return loadOrCreateRuntimeMasterKey({ filePath: masterKeyPath(), safeStorage, envMasterKey: process.env.CXRG_MASTER_KEY, randomBytes: crypto.randomBytes });
 }
 
 function trustedSender(event) {
@@ -138,12 +163,14 @@ ipcMain.handle("runtime:get-status", async (event) => {
   return runtime?.getStatus?.() || { state: startupState };
 });
 
-ipcMain.handle("runtime:test-upstream", async (event, upstreamId) => {
-  if (!trustedSender(event) || typeof upstreamId !== "string" || upstreamId.length > 100) throw new Error("Untrusted runtime request");
-  const response = await fetch(`http://127.0.0.1:${controlPort}/v1/control/upstreams/${encodeURIComponent(upstreamId)}/test`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${runtime?.controlToken || ""}` }, body: "{}" });
-  if (!response.ok) throw new Error(`Connectivity test returned ${response.status}`);
-  return response.json();
+registerUpstreamTestIpc({
+  ipcMain,
+  isTrustedSender: trustedSender,
+  getControlPort: () => controlPort,
+  getControlToken: () => runtime?.controlToken || "",
 });
+
+registerCodexIpc({ ipcMain, isTrustedSender: trustedSender, getService: getCodexConfigService, getClientManager: getCodexClientManager });
 
 ipcMain.handle("runtime:test-route", async (event, routeId, prompt) => {
   if (!trustedSender(event) || typeof routeId !== "string" || routeId.length > 100 || typeof prompt !== "string" || prompt.trim().length < 1 || prompt.length > 2000) throw new Error("Invalid route test request");
@@ -173,6 +200,20 @@ ipcMain.handle("runtime:revoke-client-key", async (event, id) => {
   return response.json();
 });
 
+ipcMain.handle("runtime:permanently-delete-client-key", async (event, id) => {
+  if (!trustedSender(event) || typeof id !== "string" || id.length > 100) throw new Error("Invalid key id");
+  const response = await fetch(`http://127.0.0.1:${controlPort}/v1/control/client-keys/${encodeURIComponent(id)}/permanent`, { method: "DELETE", headers: { authorization: `Bearer ${runtime?.controlToken || ""}` } });
+  if (!response.ok) throw new Error(`Client key deletion returned ${response.status}`);
+  return response.json();
+});
+
+ipcMain.handle("runtime:clear-request-logs", async (event) => {
+  if (!trustedSender(event)) throw new Error("Untrusted runtime request");
+  const response = await fetch(`http://127.0.0.1:${controlPort}/v1/control/logs`, { method: "DELETE", headers: { authorization: `Bearer ${runtime?.controlToken || ""}` } });
+  if (!response.ok) throw new Error(`Request log clearing returned ${response.status}`);
+  return response.json();
+});
+
 ipcMain.handle("runtime:create-upstream", async (event, input) => {
   if (!trustedSender(event) || !input || typeof input.name !== "string" || typeof input.baseUrl !== "string") throw new Error("Invalid upstream");
   const response = await fetch(`http://127.0.0.1:${controlPort}/v1/control/upstreams`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${runtime?.controlToken || ""}` }, body: JSON.stringify({ name: input.name.trim().slice(0, 80), baseUrl: input.baseUrl.trim(), apiKey: typeof input.apiKey === "string" ? input.apiKey : undefined, allowPrivateNetwork: input.allowPrivateNetwork === true }) });
@@ -180,9 +221,20 @@ ipcMain.handle("runtime:create-upstream", async (event, input) => {
   return response.json();
 });
 
+registerUpstreamEditIpc({
+  ipcMain,
+  isTrustedSender: trustedSender,
+  getControlPort: () => controlPort,
+  getControlToken: () => runtime?.controlToken || "",
+});
+
 ipcMain.handle("runtime:delete-upstream", async (event, id) => {
-  if (!trustedSender(event) || typeof id !== "string") throw new Error("Invalid upstream id");
+  if (!trustedSender(event) || typeof id !== "string" || id.length > 100) throw new Error("Invalid upstream id");
   const response = await fetch(`http://127.0.0.1:${controlPort}/v1/control/upstreams/${encodeURIComponent(id)}`, { method: "DELETE", headers: { authorization: `Bearer ${runtime?.controlToken || ""}` } });
+  if (response.status === 409) {
+    const body = await response.json().catch(() => ({}));
+    if (body.error === "upstream_in_use") return { deleted: false, error: body.error, routes: Array.isArray(body.routes) ? body.routes : [] };
+  }
   if (!response.ok) throw new Error(`Upstream deletion returned ${response.status}`);
   return response.json();
 });
@@ -230,9 +282,10 @@ registerGitHubUpdateIpc({
   isTrustedSender: trustedSender,
   getTokenService: getGitHubTokenService,
   loadUpdater: () => import(updateScriptPath()),
-  getCurrentVersion: () => app.getVersion(),
+  getCurrentVersion: () => cxrgProductVersion,
   getDownloadDir: () => path.join(app.getPath("temp"), "cxrg-updates"),
   installDownloaded: async (result) => {
+  codexClientManager?.dispose();
   const installer = spawn(result.path, [], { detached: true, stdio: "ignore", windowsHide: false });
   installer.unref();
   quitting = true;
@@ -244,7 +297,7 @@ registerGitHubUpdateIpc({
 const versionOnly = process.argv.includes("--version");
 const lock = versionOnly ? true : app.requestSingleInstanceLock();
 if (versionOnly) {
-  app.whenReady().then(() => { console.log(app.getVersion()); app.exit(0); });
+  app.whenReady().then(() => { console.log(cxrgProductVersion); app.exit(0); });
 } else if (!lock) {
   app.quit();
 } else {

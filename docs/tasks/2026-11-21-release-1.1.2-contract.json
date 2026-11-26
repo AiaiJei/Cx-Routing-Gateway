@@ -1,0 +1,110 @@
+{
+  "contract_version": 1,
+  "task_id": "CXRG-RELEASE-1.1.2-2026-11-21",
+  "title": "Merge PR 14, publish Cx-Routing Gateway 1.1.2, install Portable",
+  "project": "Cx-Routing Gateway",
+  "repository": "AiaiJei/Cx-Routing-Gateway",
+  "status": "complete",
+  "stage": "release-published",
+  "base": "master",
+  "base_sha": "c633a359dc76c9b5b48bb929870765e6ca85de5d",
+  "branch": "codex/upstream-payload-413",
+  "worktree": ".worktree/upstream-payload-413",
+  "authorization": {
+    "source": "2026-11-21 user request: PR#12已经合并，现状提交合并我们的PR，版本号递增1[1.1.2]。任务工作树合并主工作树并移除任务工作树；发布Github版本，发布信息注明修复内容和更新内容。同时，在本地桌面安装最新版本的Portable。",
+    "operations": [
+      "resolve PR #14 conflicts against merged master",
+      "bump product/package/build version to 1.1.2",
+      "run tests and build Windows x64 artifacts",
+      "merge PR #14 into master",
+      "fast-forward primary master and remove this task worktree",
+      "publish GitHub Release v1.1.2 with installer, blockmap, Portable and manifest",
+      "copy verified Portable 1.1.2 to Desktop without overwriting",
+      "record release hashes and rollback evidence"
+    ],
+    "not_authorized": [
+      "delete unrelated branches or worktrees",
+      "rewrite v1.1.1 release/tag",
+      "modify unrelated untracked governance/plugin files"
+    ]
+  },
+  "scope": {
+    "include": [
+      "PR #14 upstream payload/status fix",
+      "PR #12 merged request-log source and four-part version baseline",
+      "product version 1.1.2",
+      "Windows x64 NSIS/blockmap/Portable release",
+      "GitHub Release v1.1.2",
+      "Desktop Portable copy",
+      "merge and task worktree cleanup"
+    ],
+    "exclude": [
+      "real provider acceptance",
+      "new routing/auth behavior",
+      "rewriting existing releases",
+      "deleting unrelated worktrees or branches"
+    ]
+  },
+  "authorized_paths": [
+    ".codex/awg-task.json",
+    "services/gateway/src/server.mjs",
+    "tests/runtime/gateway-server.test.mjs",
+    "tests/runtime/route-batch.test.mjs",
+    "tests/runtime/check-update.test.mjs",
+    "tests/runtime/release-manifest.test.mjs",
+    "tests/runtime/github-update-ipc.test.mjs",
+    "apps/desktop/package.json",
+    "apps/desktop/package-lock.json",
+    "apps/desktop/electron-builder.yml",
+    "apps/desktop/src/pages/SettingsPage.test.tsx",
+    "scripts/verify-release.mjs",
+    "scripts/package-portable.ps1",
+    "docs/tasks/2026-11-21-release-1.1.2.md",
+    "docs/tasks/evidence/release-1.1.2/**",
+    "apps/desktop/release/1.1.2-final-reviewed/**"
+  ],
+  "acceptance": [
+    "PR #14 merged after conflict resolution and successful CI",
+    "package and product version show 1.1.2",
+    "Runtime and Desktop tests/build pass",
+    "release verifier and Portable smoke pass",
+    "GitHub v1.1.2 contains verified assets and release notes",
+    "Desktop Portable 1.1.2 hash matches verified artifact",
+    "primary master contains merge and release documentation",
+    "this task worktree is removed after archiving required evidence"
+  ],
+  "rollback": "Restore master from merge commit and release manifest; delete only release artifacts or revert task commits through an authorized change. Preserve v1.1.1 and unrelated worktrees.",
+  "owner_acceptance": "Release v1.1.2 and Desktop Portable delivered by explicit request; real provider and code signing remain NOT_RUN; in-app updater asset-name compatibility is DEGRADED and documented.",
+  "verification": {
+    "pr14_ci": "PASS on PR #14; Runtime and Desktop SUCCESS; package skipped by workflow condition",
+    "runtime": "PASS: 119/119",
+    "desktop": "PASS: 142/142",
+    "build": "PASS: TypeScript and Vite",
+    "release": "PASS: GitHub v1.1.2 published with Setup, blockmap, Portable and manifest; tag points to a64716e",
+    "portable_smoke": "PASS: isolated user data/non-default ports; control and gateway health ok, including Desktop copy",
+    "desktop_copy": "PASS: 1.1.2 Portable on Desktop, hash matches manifest, isolated service smoke PASS",
+    "provider": "NOT_RUN",
+    "native_manual": "NOT_RUN: no UI interaction beyond packaged health smoke",
+    "release_url": "https://github.com/AiaiJei/Cx-Routing-Gateway/releases/tag/v1.1.2",
+    "code_signing": "NOT_RUN",
+    "updater_asset_name": "DEGRADED: GitHub canonicalized spaces to dots; shipped updater expects space-form installer; direct release download available",
+    "master": "PASS: primary master fast-forwarded to a64716e and includes release evidence commit",
+    "updater": "DEGRADED: GitHub canonicalized asset names; current updater expects space-form setup asset"
+  },
+  "pull_request": {
+    "number": 14,
+    "state": "MERGED",
+    "merge_commit": "a64716e1d16fa8d2430843ae0c38d593bd45be12",
+    "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/14"
+  },
+  "capability": {
+    "skills": [
+      "using-superpowers",
+      "awg-workspace-governance",
+      "verification-before-completion",
+      "finishing-a-development-branch"
+    ],
+    "repo_mcp": "NOT_RUN: no registered workspace_id",
+    "native_desktop": "NOT_RUN until Portable direct-launch smoke"
+  }
+}

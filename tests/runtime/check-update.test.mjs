@@ -5,7 +5,7 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { checkUpdate, installUpdate, verifyGitHubToken } from '../../scripts/check-update.mjs';
+import { checkUpdate, compareVersions, installUpdate, verifyGitHubToken } from '../../scripts/check-update.mjs';
 
 const token = 'github_pat_fixture_token_123456789';
 const repositoryContentsUrl = 'https://api.github.com/repos/AiaiJei/Cx-Routing-Gateway/contents';
@@ -42,17 +42,17 @@ function assertBearerOnly(request) {
   assert.equal(request.options.headers.authorization, `Bearer ${token}`);
 }
 
-test('the standalone update command clearly directs users to encrypted Desktop settings', async () => {
+test('the standalone update help describes public anonymous access', async () => {
   const result = await new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, ['scripts/check-update.mjs'], { stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(process.execPath, ['scripts/check-update.mjs', '--help'], { stdio: ['ignore', 'pipe', 'pipe'] });
     let output = '';
     child.stdout.on('data', (chunk) => { output += String(chunk); });
     child.stderr.on('data', (chunk) => { output += String(chunk); });
     child.on('error', reject);
     child.on('exit', (code) => resolve({ code, output }));
   });
-  assert.notEqual(result.code, 0);
-  assert.match(result.output, /configured in Desktop settings/i);
+  assert.equal(result.code, 0);
+  assert.match(result.output, /public GitHub Releases without a token/i);
 });
 
 test('verifyGitHubToken confirms Contents read access without returning the credential', async () => {
@@ -71,13 +71,22 @@ test('verifyGitHubToken rejects unauthorized, forbidden and inaccessible reposit
   }
 });
 
-test('update operations require a token and never make unauthenticated requests', async () => {
+test('token verification still requires a token while public release checks and downloads are anonymous', async () => {
   let called = false;
   const fetchImpl = async () => { called = true; throw new Error('unexpected request'); };
   await assert.rejects(() => verifyGitHubToken({ fetchImpl }), /token is required/i);
-  await assert.rejects(() => checkUpdate({ currentVersion: '1.0.3', fetchImpl }), /token is required/i);
-  await assert.rejects(() => installUpdate({ currentVersion: '1.0.3', fetchImpl }), /token is required/i);
   assert.equal(called, false);
+  const fixture = fetchFixture(release());
+  const result = await checkUpdate({ currentVersion: '1.0.3', fetchImpl: fixture.fetchImpl });
+  assert.equal(result.available, true);
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-public-update-'));
+  try {
+    const installed = await installUpdate({ currentVersion: '1.0.3', fetchImpl: fixture.fetchImpl, downloadDir: directory });
+    assert.equal(installed.sha256, digest);
+    assert.deepEqual(await fs.readFile(installed.path), bytes);
+    assert.equal(fixture.calls.length, 3);
+    for (const request of fixture.calls) assert.equal(request.options.headers.authorization, undefined);
+  } finally { await fs.rm(directory, { recursive: true, force: true }); }
 });
 
 test('GitHub access cannot be redirected to an arbitrary repository', async () => {
@@ -99,6 +108,43 @@ test('checkUpdate finds a higher stable GitHub release using the token header on
   assert.equal(calls[0].url, releaseUrl);
   assertBearerOnly(calls[0]);
   assert.equal(JSON.stringify(result).includes(token), false);
+});
+
+test('four-part product versions compare numerically and accept four-part release assets', async () => {
+  assert.equal(compareVersions('1.1.2.1', '1.1.2'), 1);
+  assert.equal(compareVersions('1.1.2', '1.1.2.0'), 0);
+  assert.equal(compareVersions('1.1.2.1', '1.1.3'), -1);
+  const fourPart = release({
+    tag_name: 'v1.1.2.1',
+    html_url: 'https://github.com/AiaiJei/Cx-Routing-Gateway/releases/tag/v1.1.2.1',
+    assets: [{ name: 'Cx-Routing Gateway Setup 1.1.2.1.exe', digest: `sha256:${digest}`, browser_download_url: 'https://github.com/AiaiJei/Cx-Routing-Gateway/releases/download/v1.1.2.1/Cx-Routing%20Gateway%20Setup%201.1.2.1.exe' }],
+  });
+  const { fetchImpl } = fetchFixture(fourPart);
+  const result = await checkUpdate({ currentVersion: '1.1.2', token, fetchImpl });
+  assert.equal(result.available, true);
+  assert.equal(result.version, '1.1.2.1');
+  assert.equal(result.installer.name, 'Cx-Routing Gateway Setup 1.1.2.1.exe');
+});
+
+test('checkUpdate and installUpdate accept GitHub canonicalized dotted installer asset names', async (t) => {
+  const installerName = 'Cx-Routing.Gateway.Setup.1.1.3.exe';
+  const dotted = release({
+    tag_name: 'v1.1.3',
+    html_url: 'https://github.com/AiaiJei/Cx-Routing-Gateway/releases/tag/v1.1.3',
+    assets: [{ name: installerName, digest: `sha256:${digest}`, browser_download_url: `https://github.com/AiaiJei/Cx-Routing-Gateway/releases/download/v1.1.3/${installerName}` }],
+  });
+  const checkFixture = fetchFixture(dotted);
+  const result = await checkUpdate({ currentVersion: '1.1.2', token, fetchImpl: checkFixture.fetchImpl });
+  assert.equal(result.available, true);
+  assert.equal(result.version, '1.1.3');
+  assert.equal(result.installer.name, installerName);
+  assert.equal(result.installer.sha256, digest);
+
+  const installFixture = fetchFixture(dotted);
+  const downloadDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-dotted-installer-'));
+  t.after(() => fs.rm(downloadDir, { recursive: true, force: true }));
+  await installUpdate({ currentVersion: '1.1.2', token, fetchImpl: installFixture.fetchImpl, downloadDir });
+  assert.equal(installFixture.calls[1].url, dotted.assets[0].browser_download_url);
 });
 
 test('checkUpdate reports no update for equal or newer installed versions', async () => {

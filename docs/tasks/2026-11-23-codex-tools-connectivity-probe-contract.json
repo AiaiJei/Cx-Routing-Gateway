@@ -1,0 +1,158 @@
+{
+  "contract_version": 1,
+  "task_id": "CXRG-CODEX-TOOLS-CONNECTIVITY-PROBE-2026-11-23",
+  "title": "Support Codex namespaced tools and transport-only failback probes",
+  "project": "Cx-Routing Gateway",
+  "repository": "AiaiJei/Cx-Routing-Gateway",
+  "status": "complete",
+  "stage": "complete",
+  "base": "master",
+  "base_sha": "f58341f5224224bea9ae7abf03818d9cadb4df47",
+  "branch": "codex/tool-definition-probe",
+  "worktree": ".worktree/codex-tool-definition-probe",
+  "authorization": {
+    "source": "The user continued the referenced Codex task after reporting that Responses-to-Chat still rejected Codex tools and asking that automatic failback probing only check URL connectivity. The referenced task records the unresolved tools error and the transport-only probe direction. The user explicitly requested a dedicated PR for the repair and now says to continue and complete it.",
+    "operations": [
+      "resume the existing task worktree and bind it to this contract",
+      "implement the approved adapter and transport-probe changes",
+      "verify against local fixtures without calling a real provider",
+      "commit and push the dedicated task branch",
+      "create one dedicated PR against master and attach it to this task",
+      "bump package, product, and build versions from 1.1.6 to 1.1.7 in PR #21",
+      "merge PR #21 after required checks pass and synchronize the primary master worktree",
+      "build and verify the Windows x64 1.1.7 Setup, blockmap, Portable, and manifest artifacts",
+      "publish GitHub Release v1.1.7 with verified assets and release notes",
+      "copy the verified Portable 1.1.7 executable to Desktop and verify its digest and isolated smoke"
+    ],
+    "not_authorized": [
+      "make real provider requests",
+      "rewrite or delete existing releases/tags, including v1.1.6",
+      "delete branches or worktrees or unrelated files"
+    ]
+  },
+  "scope": {
+    "include": [
+      "normalize Responses namespace groups containing function and custom tools for Chat and Messages targets",
+      "preserve original tool names, namespaces, explicit tool choice, tool-call results, and relevant history across non-streaming and streaming conversions",
+      "return field- and direction-specific errors for target-inexpressible or malformed tool definitions",
+      "replace the post-cooldown GET /v1/models probe with DNS validation and a bounded TCP or TLS connectivity check to approved addresses",
+      "retain circuit thresholds, cooldowns, generation isolation, and concurrent probe deduplication",
+      "task plan, evidence, independent review, and one dedicated PR",
+      "version 1.1.7 metadata, verified Windows x64 artifacts, GitHub release, master merge, and Desktop Portable delivery"
+    ],
+    "exclude": [
+      "credential persistence or routing-state changes already delivered in PR #19",
+      "protocol behavior outside the Codex tool and probe compatibility cases",
+      "failure thresholds, cooldown duration, retry policy, UI, or schema changes",
+      "model-level, HTTP-level, authentication, or token-usage health validation during failback probes",
+      "guaranteeing Chat/Mes model enforcement of arbitrary grammar constraints carried by freeform custom tools",
+      "real third-party provider calls"
+    ]
+  },
+  "authorized_paths": [
+    ".codex/awg-task.json",
+    "services/gateway/src/protocol-adapters.mjs",
+    "services/gateway/src/server.mjs",
+    "tests/runtime/protocol-adapters.test.mjs",
+    "tests/runtime/gateway-server.test.mjs",
+    "docs/superpowers/plans/2026-11-23-codex-tools-connectivity-probe.md",
+    "docs/tasks/2026-11-23-codex-tools-connectivity-probe-contract.json",
+    "docs/tasks/2026-11-23-codex-tools-connectivity-probe.md",
+    "docs/tasks/evidence/codex-tools-connectivity-probe/**",
+    ".superpowers/sdd/**",
+    "apps/desktop/package.json",
+    "apps/desktop/package-lock.json",
+    "apps/desktop/electron-builder.yml",
+    "apps/desktop/src/pages/SettingsPage.test.tsx",
+    "tests/runtime/release-manifest.test.mjs",
+    "scripts/verify-release.mjs",
+    "apps/desktop/release/1.1.7-final-reviewed/**",
+    "C:\\Users\\20142\\Desktop\\Cx-Routing Gateway Portable 1.1.7.exe"
+  ],
+  "acceptance": [
+    "Responses namespace function tools become valid Chat and Messages function definitions with a reversible target-name mapping",
+    "non-streaming function calls and explicit tool_choice restore the original name and namespace in the Responses reply",
+    "custom tools and tool-call history round-trip as custom_tool_call/custom_tool_call_output; streaming preserves namespace and custom input",
+    "unsupported built-in tool types and invalid definitions produce safe field- and direction-specific errors",
+    "recovery probes use approved DNS results and a bounded TCP connection for HTTP or verified TLS handshake for HTTPS; they do not fetch credentials or send HTTP requests",
+    "failed connectivity keeps the route on backup, successful connectivity permits preferred-route selection, and concurrent requests share one probe",
+    "focused tests, full Runtime suite, Desktop suite/build, syntax checks, diff checks, and independent review complete with evidence",
+    "one dedicated PR targets master and is merged after required checks pass",
+    "package, product, and build versions consistently report 1.1.7",
+    "primary master worktree is synchronized to the PR merge commit",
+    "GitHub v1.1.7 contains Setup, blockmap, Portable, and manifest assets that pass release verification and packaged smoke",
+    "Desktop Portable 1.1.7 matches the verified digest and passes isolated health smoke; existing 1.1.6 remains unchanged",
+    "no real provider request is made; provider-level acceptance remains NOT_RUN"
+  ],
+  "rollback": "Before publishing v1.1.7, preserve v1.1.6 and stop publication if build, manifest, packaged smoke, or Desktop-copy smoke fails. After publishing v1.1.7, do not rewrite it; use a corrective patch release. Preserve the task branch/worktree and unrelated files.",
+  "owner_acceptance": "NOT_RUN: authorized merge/release/Desktop delivery is complete and locally verified; no actual upstream provider call or user-observed Codex repair acceptance was run.",
+  "verification": {
+    "existing_worktree": "PASS: clean at base f58341f5224224bea9ae7abf03818d9cadb4df47",
+    "adapter_baseline": "PASS: 10/10",
+    "probe_baseline": "PASS: 3/3 focused failback tests",
+    "repo_mcp": "UNAVAILABLE: no .codex/repo-map.json or registered workspace_id; live source inspection used",
+    "task1_adapter": "PASS: 20/20; namespace/function/custom, declared and undeclared Chat/Messages tool choice, history, streaming, and malformed custom-format validation",
+    "task1_gateway": "PASS: 7/7 focused protocol integration tests",
+    "task2_probe": "PASS: 4/4 focused failback tests; refused TCP, HTTP-free recovery, deduplication, and timeout",
+    "implementation": "PASS: Tasks 1 and 2 complete; fresh Runtime 178/178, Desktop 158/158, Desktop build, adapter 20/20, probe 4/4, syntax, and diff checks passed",
+    "independent_review": "PASS: initial reviewer found two Important adapter validation gaps; both were fixed with RED/GREEN tests; read-only follow-up found no Critical or Important issues",
+    "pull_request": "PASS: PR #21 MERGED into master; head 9da930586a8575a97ca8809e2dec79fede3b18dd; Runtime and Desktop SUCCESS; package jobs SKIPPED by workflow condition",
+    "version_release_authorization": "AUTHORIZED: user requested increment by one, merge PR #21, publish latest GitHub version, and sync task worktree to primary master and Desktop",
+    "version_release_local_checks": "PASS: 1.1.7 metadata aligned; focused release 2/2, SettingsPage 13/13, Runtime 178/178, Desktop 158/158, Desktop build, syntax, JSON, and CRLF-aware diff checks",
+    "primary_master": "PASS: fast-forwarded to PR #21 merge commit 5455e0bd4c8b6397f1381ff2e31995d29e9e925e; unrelated untracked directories preserved",
+    "windows_x64_build": "PASS: Setup, blockmap, Portable, and verified manifest built in apps/desktop/release/1.1.7-final-reviewed; packaged smoke reports version 1.1.7; Portable isolated Local Control and Gateway health checks both pass",
+    "release_v1_1_7": "PASS: GitHub Release v1.1.7 published 2026-11-23; tag targets 5455e0bd4c8b6397f1381ff2e31995d29e9e925e; four remote assets match local SHA-256 digests; unsigned because no signing certificate is configured",
+    "desktop_v1_1_7": "PASS: C:\\Users\\20142\\Desktop\\Cx-Routing Gateway Portable 1.1.7.exe; 115026279 bytes; SHA-256 73cab66224659675791271533bd1ba788861a7466f0fa3c3be994fa5a8128386; matches build and GitHub; copied-file isolated health smoke passed; 1.1.6 preserved",
+    "provider": "NOT_RUN: no real third-party provider/model request was made"
+  },
+  "capability": {
+    "skills": [
+      "using-superpowers",
+      "awg-workspace-governance",
+      "awg-repo-map",
+      "systematic-debugging",
+      "test-driven-development",
+      "using-git-worktrees",
+      "writing-plans",
+      "executing-plans",
+      "verification-before-completion",
+      "requesting-code-review",
+      "receiving-code-review",
+      "finishing-a-development-branch"
+    ],
+    "repo_mcp": "UNAVAILABLE: no registered workspace_id; live source inspection used",
+    "subagent_review": "AVAILABLE: one read-only reviewer completed initial and follow-up reviews; follow-up found no Critical or Important issues"
+  },
+  "pull_request": {
+    "number": 21,
+    "state": "MERGED",
+    "base": "master",
+    "branch": "codex/tool-definition-probe",
+    "head_sha": "9da930586a8575a97ca8809e2dec79fede3b18dd",
+    "merge_commit": "5455e0bd4c8b6397f1381ff2e31995d29e9e925e",
+    "checks": {
+      "runtime": "SUCCESS",
+      "desktop": "SUCCESS",
+      "package": "SKIPPED by workflow condition"
+    }
+  },
+  "release": {
+    "tag": "v1.1.7",
+    "target": "5455e0bd4c8b6397f1381ff2e31995d29e9e925e",
+    "published_at": "2026-11-23T10:35:22Z",
+    "assets": [
+      {"name": "Cx-Routing.Gateway.Setup.1.1.7.exe", "bytes": 126507930, "sha256": "e44e3bc616b4c7b999287925f4c5bf7890f98674e0801caefc5f9d466b968723"},
+      {"name": "Cx-Routing.Gateway.Setup.1.1.7.exe.blockmap", "bytes": 133177, "sha256": "2dedfa29a3f13bdc01dfe99cbfb25b0699c1be037227adb6fcdb60f1d06dbdb8"},
+      {"name": "Cx-Routing.Gateway.Portable.1.1.7.exe", "bytes": 115026279, "sha256": "73cab66224659675791271533bd1ba788861a7466f0fa3c3be994fa5a8128386"},
+      {"name": "manifest.json", "bytes": 2275, "sha256": "968fb548fc4cc3cd599f85c943255491568343686d9346204de9c8703702eeeb"}
+    ],
+    "signed": false
+  },
+  "revisions": [
+    {
+      "date": "2026-11-23",
+      "request": "版本号递增1，提交合并PR#；发布最新版本到Github，同步最新版本到本地桌面；任务工作树合并到主工作树",
+      "authorization": "Supersedes the earlier no-merge/no-version/no-release boundary for this task only. Authorizes version 1.1.7 in PR #21, merge after checks, primary master synchronization, GitHub v1.1.7 publication, and verified Desktop Portable delivery. Keeps real provider calls and deletion of branches/worktrees/out-of-scope files unauthorized."
+    }
+  ]
+}

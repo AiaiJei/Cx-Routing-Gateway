@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { performance } from 'node:perf_hooks';
 import { createRequestMetrics } from '../../services/gateway/src/request-metrics.mjs';
 
 const frame = (data, event = '') => `${event ? `event: ${event}\r\n` : ''}data: ${JSON.stringify(data)}\r\n\r\n`;
@@ -81,5 +82,22 @@ test('Mes totals stay unknown when cache components are missing or invalid', () 
     const metrics = createRequestMetrics({ protocol: 'Mes', stream: false, startedAt: 100 });
     metrics.observeJson({ usage: { input_tokens: 10, output_tokens: 6, cache_read_input_tokens: cache, cache_creation_input_tokens: 0 } });
     assert.deepEqual(metrics.snapshot().tokens, { input: 10, output: 6, cacheWrite: 0 });
+  }
+});
+
+test('default stream metrics ignore wall-clock jumps', async () => {
+  const originalDateNow = Date.now;
+  const startedAt = performance.now();
+  let wallTime = startedAt;
+  Date.now = () => wallTime;
+  try {
+    const metrics = createRequestMetrics({ protocol: 'Chat', stream: true, startedAt });
+    await new Promise(resolve => setTimeout(resolve, 20));
+    wallTime = startedAt - 10_000;
+    metrics.push(Buffer.from(frame({ choices: [{ delta: { content: 'first' } }] })));
+    assert.ok(metrics.snapshot().firstTokenMs > 0, `expected monotonic elapsed time, got ${metrics.snapshot().firstTokenMs}`);
+    assert.ok(metrics.snapshot().firstTokenMs < 1000);
+  } finally {
+    Date.now = originalDateNow;
   }
 });

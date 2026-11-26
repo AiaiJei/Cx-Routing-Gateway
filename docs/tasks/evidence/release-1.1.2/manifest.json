@@ -1,0 +1,65 @@
+{
+  "product": "Cx-Routing Gateway",
+  "version": "1.1.2",
+  "packageVersion": "1.1.2",
+  "platform": "win32",
+  "generatedAt": "2026-11-20T21:56:56.920Z",
+  "signed": false,
+  "artifacts": [
+    {
+      "path": "win-unpacked/Cx-Routing Gateway.exe",
+      "bytes": 249906688,
+      "sha256": "5e5914454057ea7bf36ead6b5686542f7edf6eb76bf1ee93cecf911c79946920"
+    },
+    {
+      "path": "win-unpacked/resources/app.asar",
+      "bytes": 13837081,
+      "sha256": "2638a1f28cbac4d6f152eef2c84de6cea6d6a4b08a66e7d8274cd645b80d92e4"
+    },
+    {
+      "path": "win-unpacked/resources/runtime/services/local-control/src/server.mjs",
+      "bytes": 24245,
+      "sha256": "06f87c70e8a4b2c7757a939c8a8265e50c36ebe44cdd55b6514f0a1310d069d1"
+    },
+    {
+      "path": "win-unpacked/resources/runtime/services/gateway/src/server.mjs",
+      "bytes": 41836,
+      "sha256": "033c66bd336049a4e77e8378f0b5b3f32c18c6e34ab58eb3da7eb3c113512803"
+    },
+    {
+      "path": "win-unpacked/resources/runtime/services/gateway/src/request-metrics.mjs",
+      "bytes": 5343,
+      "sha256": "5a96bd5bfa1452e0ab3ac7ea738525d54ecdfac61a10ea552f85b3dd5ff94d13"
+    },
+    {
+      "path": "win-unpacked/resources/runtime/packages/shared/src/config-store.mjs",
+      "bytes": 2964,
+      "sha256": "943faf4105edb1244962a9b55369cb45739f8ea220ba844c2380d0e5805b744e"
+    },
+    {
+      "path": "win-unpacked/resources/runtime/packages/shared/src/secret-vault.mjs",
+      "bytes": 2765,
+      "sha256": "fcc710c47148918701a62983acd7bdf571c81b9e9dbd61839c0f5a1a67f9d6be"
+    },
+    {
+      "path": "win-unpacked/resources/runtime/scripts/check-update.mjs",
+      "bytes": 7119,
+      "sha256": "b86287db215e76de468a556166fa9ad02e2ada71f397fbbd0d4ee088ad042d9a"
+    },
+    {
+      "path": "Cx-Routing Gateway Setup 1.1.2.exe",
+      "bytes": 126500260,
+      "sha256": "5e1c54e0ee3b4a2489b58af58c408b32603f2032e52928aae3ff40f39fee5db7"
+    },
+    {
+      "path": "Cx-Routing Gateway Setup 1.1.2.exe.blockmap",
+      "bytes": 133031,
+      "sha256": "a88852d293e50ebfe62661a4433487283654e900256e0d69f0cc8775a568f5df"
+    },
+    {
+      "path": "Cx-Routing Gateway Portable 1.1.2.exe",
+      "bytes": 115017091,
+      "sha256": "cbfaff999880c2b39830740548bd8b0d8384a21ce779f66ce80a85ec2743a43c"
+    }
+  ]
+}

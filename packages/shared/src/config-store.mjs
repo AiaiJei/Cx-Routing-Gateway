@@ -1,5 +1,19 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import os from 'node:os';
+import { acquireConfigMutex } from './config-lock.mjs';
+
+const LEGACY_LOCK_STALE_MS = 60_000;
+
+function processIsAlive(pid) {
+  if (!Number.isSafeInteger(pid) || pid < 1) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error.code !== 'ESRCH';
+  }
+}
 
 export const emptyConfig = () => ({
   version: 1,
@@ -16,7 +30,7 @@ export class ConfigStore {
     this.writeQueue = Promise.resolve();
   }
 
-  async read() {
+  async read({ initialize = true } = {}) {
     try {
       const value = JSON.parse(await fs.readFile(this.filePath, 'utf8'));
       if (value.version !== 1 || !Array.isArray(value.upstreams) || !Array.isArray(value.routes) || !Array.isArray(value.clientKeys)) {
@@ -26,9 +40,8 @@ export class ConfigStore {
       return value;
     } catch (error) {
       if (error.code !== 'ENOENT') throw error;
-      const initial = emptyConfig();
-      await this.write(initial, false);
-      return initial;
+      if (!initialize) return emptyConfig();
+      return this.update(config => config);
     }
   }
 
@@ -36,7 +49,7 @@ export class ConfigStore {
     const operation = this.writeQueue.then(async () => {
       const release = await this.acquireLock();
       try {
-        const current = await this.read();
+        const current = await this.read({ initialize: false });
         const next = await mutator(structuredClone(current));
         if (!next || next.version !== 1) throw new Error('Invalid configuration update');
         await this.write(next, true);
@@ -47,19 +60,69 @@ export class ConfigStore {
     return operation;
   }
 
+  async recoverStaleLock() {
+    // Only Windows has a crash-released cross-process mutex in this runtime.
+    if (process.platform !== 'win32') return false;
+    const lockPath = `${this.filePath}.lock`;
+    await fs.mkdir(path.dirname(this.filePath), { recursive: true });
+    const releaseMutex = await acquireConfigMutex(this.filePath, { waitMs: 0 });
+    if (!releaseMutex) return false;
+    try {
+      const stat = await fs.stat(lockPath);
+      const lockContents = await fs.readFile(lockPath, 'utf8');
+      let ownerPid;
+      try { ownerPid = JSON.parse(lockContents).pid; } catch {}
+      if (Number.isSafeInteger(ownerPid) && ownerPid > 0) {
+        if (processIsAlive(ownerPid)) return false;
+      } else {
+        // A PID-less legacy writer may still be alive for hours. Only an empty lock
+        // from before this OS boot can be established as orphaned.
+        const bootTime = Date.now() - os.uptime() * 1000;
+        if (stat.size !== 0 || lockContents !== '' || stat.mtimeMs >= bootTime - LEGACY_LOCK_STALE_MS) return false;
+      }
+      await fs.rm(lockPath);
+      return true;
+    } catch (error) {
+      if (error.code === 'ENOENT') return false;
+      throw error;
+    } finally {
+      await releaseMutex();
+    }
+  }
+
   async acquireLock() {
     const lockPath = `${this.filePath}.lock`;
-    for (let attempt = 0; attempt < 100; attempt += 1) {
-      try {
-        await fs.mkdir(path.dirname(this.filePath), { recursive: true });
-        const handle = await fs.open(lockPath, 'wx');
-        return async () => { await handle.close(); await fs.rm(lockPath, { force: true }); };
-      } catch (error) {
-        if (error.code !== 'EEXIST') throw error;
-        await new Promise((resolve) => setTimeout(resolve, 25));
+    await fs.mkdir(path.dirname(this.filePath), { recursive: true });
+    const releaseMutex = await acquireConfigMutex(this.filePath);
+    if (!releaseMutex) throw new Error('Configuration store is busy');
+    try {
+      for (let attempt = 0; attempt < 100; attempt += 1) {
+        try {
+          const handle = await fs.open(lockPath, 'wx');
+          try {
+            await handle.writeFile(JSON.stringify({ pid: process.pid, createdAt: Date.now() }));
+          } catch (error) {
+            await handle.close();
+            await fs.rm(lockPath, { force: true });
+            throw error;
+          }
+          let released;
+          return () => released ??= (async () => {
+            try {
+              try { await handle.close(); }
+              finally { await fs.rm(lockPath, { force: true }); }
+            } finally { await releaseMutex(); }
+          })();
+        } catch (error) {
+          if (error.code !== 'EEXIST') throw error;
+          await new Promise((resolve) => setTimeout(resolve, 25));
+        }
       }
+      throw new Error('Configuration store is busy');
+    } catch (error) {
+      await releaseMutex();
+      throw error;
     }
-    throw new Error('Configuration store is busy');
   }
 
   async write(value, keepBackup) {

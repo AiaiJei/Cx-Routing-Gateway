@@ -4,7 +4,11 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dns from 'node:dns/promises';
-import net from 'node:net';
+import { validateUpstreamDestination } from '../../../packages/shared/src/destination-policy.mjs';
+import { createClientKeyService } from './client-key-service.mjs';
+import { saveRouteBatch } from './route-service.mjs';
+import { updateRouteCapabilities } from '../../../packages/shared/src/model-capabilities.cjs';
+import { updateRouteReasoning } from '../../../packages/shared/src/reasoning-policy.mjs';
 
 const MAX_BODY = 1024 * 1024;
 const protocols = new Set(['Res', 'Mes', 'Chat']);
@@ -32,7 +36,7 @@ async function bodyOf(req) {
 }
 
 function publicState(config) {
-  return { ...config, clientKeys: config.clientKeys.map(({ keyHash, ...key }) => key) };
+  return { ...config, clientKeys: config.clientKeys.map(({ keyHash, secretRef, ...key }) => key) };
 }
 
 function requireProtocol(value) {
@@ -47,37 +51,8 @@ function profileFor(protocol, input = {}) {
   return { providerId, apiProfile };
 }
 
-function classifyAddress(raw) {
-  const address = String(raw).toLowerCase().replace(/^::ffff:/, '');
-  if (net.isIP(address) === 4) {
-    const octets = address.split('.').map(Number);
-    const [first, second] = octets;
-    const privateNetwork = first === 10 || first === 127 || (first === 172 && second >= 16 && second <= 31) || (first === 192 && second === 168) || (first === 100 && second >= 64 && second <= 127);
-    const linkLocal = first === 169 && second === 254;
-    const unspecified = first === 0;
-    return { privateNetwork, linkLocal, metadata: address === '169.254.169.254', unspecified };
-  }
-  const privateNetwork = address === '::1' || address.startsWith('fc') || address.startsWith('fd');
-  const linkLocal = address.startsWith('fe80:');
-  const unspecified = address === '::';
-  return { privateNetwork, linkLocal, metadata: address === 'fd00:ec2::254', unspecified };
-}
-
-async function validateBaseUrl(raw, allowPrivateNetwork = false, lookup = dns.lookup) {
-  const value = new URL(raw);
-  if (!['http:', 'https:'].includes(value.protocol) || value.username || value.password || value.hash) throw Object.assign(new Error('Invalid upstream URL'), { statusCode: 400 });
-  const host = value.hostname.replace(/^\[|\]$/g, '').toLowerCase();
-  const hostClass = host === 'localhost' ? { privateNetwork: true, linkLocal: false, metadata: false, unspecified: false } : classifyAddress(host);
-  if (hostClass.metadata || hostClass.linkLocal || hostClass.unspecified || (hostClass.privateNetwork && !allowPrivateNetwork)) throw Object.assign(new Error('Private or metadata upstream requires explicit trust'), { statusCode: 400 });
-  const addresses = (await lookup(host, { all: true })).map((record) => record.address.toLowerCase()).sort();
-  if (!addresses.length) throw Object.assign(new Error('Upstream host did not resolve'), { statusCode: 400 });
-  const classes = addresses.map((address) => classifyAddress(address));
-  if (classes.some((addressClass) => addressClass.metadata || addressClass.linkLocal || addressClass.unspecified)) throw Object.assign(new Error('Resolved upstream address is not trusted'), { statusCode: 400 });
-  const hasPrivate = classes.some((addressClass) => addressClass.privateNetwork);
-  const hasPublic = classes.some((addressClass) => !addressClass.privateNetwork);
-  if (hasPrivate && hasPublic) throw Object.assign(new Error('Mixed public and private DNS answers are not trusted'), { statusCode: 400 });
-  if (hasPrivate && !allowPrivateNetwork) throw Object.assign(new Error('Resolved upstream address is not trusted'), { statusCode: 400 });
-  return { value, addresses };
+async function validateBaseUrl(raw, allowPrivateNetwork = false, lookup = dns.lookup, approvedAddresses = []) {
+  return validateUpstreamDestination(raw, { trustedPrivateNetwork: allowPrivateNetwork, lookup, approvedAddresses });
 }
 
 function requestJsonAtApprovedAddress(rawUrl, headers, approvedAddresses, timeoutMs = 5000) {
@@ -124,6 +99,7 @@ function authorize(req, controlToken) {
 export function createControlServer({ store, vault, controlToken = process.env.CXRG_CONTROL_TOKEN, allowUnauthenticated = false, dnsLookup = dns.lookup } = {}) {
   if (!store || !vault) throw new Error('Control server requires store and vault');
   if (!controlToken && !allowUnauthenticated) throw new Error('CXRG_CONTROL_TOKEN is required for local-control');
+  const clientKeys = createClientKeyService({ store, vault });
   return http.createServer(async (req, res) => {
     try {
       const url = new URL(req.url, 'http://127.0.0.1');
@@ -137,6 +113,14 @@ export function createControlServer({ store, vault, controlToken = process.env.C
         const status = url.searchParams.get('status');
         const logs = config.usage.filter((item) => !status || item.status === status).slice(-limit).reverse();
         return send(res, 200, { logs });
+      }
+      if (req.method === 'DELETE' && url.pathname === '/v1/control/logs') {
+        let removedCount = 0;
+        await store.update((config) => {
+          removedCount = config.usage.length;
+          return { ...config, usage: [] };
+        });
+        return send(res, 200, { deleted: true, removedCount });
       }
       if (req.method === 'GET' && url.pathname === '/v1/control/metrics') {
         const usage = (await store.read()).usage || [];
@@ -167,54 +151,30 @@ export function createControlServer({ store, vault, controlToken = process.env.C
         return send(res, 201, upstream);
       }
       if (req.method === 'POST' && url.pathname === '/v1/control/routes/batch') {
-        const { inboundProtocol, outboundProtocol, targets, editId, failover } = await bodyOf(req);
+        const input = await bodyOf(req);
+        const { inboundProtocol, outboundProtocol, targets, failover } = input;
         requireProtocol(inboundProtocol);
         requireProtocol(outboundProtocol);
         if (!Array.isArray(targets) || !targets.length || targets.length > 512) return send(res, 400, { error: 'invalid_targets' });
         if (failover !== undefined && (!failover || !Number.isInteger(failover.failureThreshold) || failover.failureThreshold < 1 || failover.failureThreshold > 100 || !Array.isArray(failover.statusClasses) || !failover.statusClasses.length || failover.statusClasses.some(value => value !== 4 && value !== 5) || new Set(failover.statusClasses).size !== failover.statusClasses.length)) return send(res, 400, { error: 'invalid_failover_policy' });
         let saved;
         await store.update(config => {
-          const original = editId && config.routes.find(route => route.id === editId);
-          if (editId && !original) throw Object.assign(new Error('route_not_found'), { statusCode: 404 });
-          const groups = new Map();
-          for (const target of targets) {
-            if (!target || typeof target.modelId !== 'string' || !target.modelId.trim() || !config.upstreams.some(item => item.id === target.upstreamId)) throw Object.assign(new Error('invalid_target'), { statusCode: 400 });
-            const list = groups.get(target.modelId) ?? [];
-            if (!list.some(item => item.upstreamId === target.upstreamId && item.modelId === target.modelId)) list.push({ upstreamId: target.upstreamId, modelId: target.modelId });
-            groups.set(target.modelId, list);
-          }
-          const retained = config.routes.filter(route => route.id !== editId);
-          const originalTargets = original?.targets?.length ? original.targets : original ? [{ upstreamId: original.upstreamId, modelId: original.modelId }] : [];
-          const preserveModel = originalTargets.find(target => groups.has(target.modelId))?.modelId ?? (original ? targets[0].modelId : undefined);
-          saved = [];
-          for (const [modelId, selection] of groups) {
-            const previous = original && modelId === preserveModel ? original : undefined;
-            const alias = previous?.alias ?? modelId;
-            const existingIndex = retained.findIndex(route => route.enabled && route.inboundProtocol === inboundProtocol && route.alias === alias);
-            const existing = existingIndex >= 0 ? retained[existingIndex] : undefined;
-            if (existing && (previous || existing.outboundProtocol !== outboundProtocol || existing.modelId !== modelId)) throw Object.assign(new Error('route_conflict'), { statusCode: 409 });
-            const base = previous ?? existing;
-            const priorTargets = existing ? (existing.targets?.length ? existing.targets : [{ upstreamId: existing.upstreamId, modelId: existing.modelId }]) : [];
-            const merged = [...selection];
-            for (const item of priorTargets) if (!merged.some(target => target.upstreamId === item.upstreamId && target.modelId === item.modelId)) merged.push(item);
-            const policy = failover ? { failureThreshold: failover.failureThreshold, statusClasses: failover.statusClasses, cooldownSeconds: 60 } : base?.failover ?? { failureThreshold: 3, statusClasses: [4, 5], cooldownSeconds: 60 };
-            const route = { ...base, id: base?.id ?? `route_${crypto.randomUUID()}`, alias, enabled: base?.enabled ?? true, inboundProtocol, outboundProtocol, upstreamId: merged[0].upstreamId, modelId: merged[0].modelId, targets: merged, failover: policy, allowLossy: base?.allowLossy ?? false };
-            if (existing) retained.splice(existingIndex, 1);
-            saved.push(route);
-          }
-          return { ...config, routes: [...retained, ...saved] };
+          const result = saveRouteBatch(config, input);
+          saved = result.routes;
+          return result.config;
         });
         return send(res, 200, { routes: saved });
       }
       if (req.method === 'POST' && parts[2] === 'routes' && parts.length === 3) {
         const input = await bodyOf(req);
         requireProtocol(input.inboundProtocol); requireProtocol(input.outboundProtocol);
-        const config = await store.read();
-        if (!config.upstreams.some((item) => item.id === input.upstreamId)) throw Object.assign(new Error('Unknown upstream'), { statusCode: 400 });
-        if (config.routes.some((item) => item.enabled && item.alias === input.alias && item.inboundProtocol === input.inboundProtocol)) return send(res, 409, { error: 'route_conflict' });
-        const route = { id: `route_${crypto.randomUUID()}`, alias: String(input.alias || ''), inboundProtocol: input.inboundProtocol, outboundProtocol: input.outboundProtocol, upstreamId: input.upstreamId, modelId: String(input.modelId || ''), enabled: input.enabled !== false, allowLossy: input.allowLossy === true };
+        const route = updateRouteCapabilities(updateRouteReasoning({ id: `route_${crypto.randomUUID()}`, alias: String(input.alias || ''), inboundProtocol: input.inboundProtocol, outboundProtocol: input.outboundProtocol, upstreamId: input.upstreamId, modelId: String(input.modelId || ''), enabled: input.enabled !== false, allowLossy: input.allowLossy === true }, input), input);
         if (!route.alias || !route.modelId) throw Object.assign(new Error('Route alias and model are required'), { statusCode: 400 });
-        await store.update((value) => ({ ...value, routes: [...value.routes, route] }));
+        await store.update((value) => {
+          if (!value.upstreams.some((item) => item.id === route.upstreamId)) throw Object.assign(new Error('Unknown upstream'), { statusCode: 400 });
+          if (route.enabled && value.routes.some((item) => item.enabled && item.alias === route.alias && item.inboundProtocol === route.inboundProtocol)) throw Object.assign(new Error('route_conflict'), { statusCode: 409 });
+          return { ...value, routes: [...value.routes, route] };
+        });
         return send(res, 201, route);
       }
       if ((req.method === 'PATCH' || req.method === 'DELETE') && parts[2] === 'upstreams' && parts[3]) {
@@ -223,36 +183,81 @@ export function createControlServer({ store, vault, controlToken = process.env.C
         const current = config.upstreams.find((item) => item.id === id);
         if (!current) return send(res, 404, { error: 'not_found' });
         if (req.method === 'DELETE') {
-          if (config.routes.some((route) => route.enabled && (route.upstreamId === id || route.targets?.some(target => target.upstreamId === id)))) return send(res, 409, { error: 'upstream_in_use' });
-          await store.update((value) => ({ ...value, upstreams: value.upstreams.filter((item) => item.id !== id) }));
-          if (current.credentialRef) await vault.remove(current.credentialRef);
+          let deletedUpstream;
+          await store.update((value) => {
+            deletedUpstream = value.upstreams.find((item) => item.id === id);
+            if (!deletedUpstream) throw Object.assign(new Error('not_found'), { statusCode: 404 });
+            const routes = value.routes
+              .filter((route) => route.upstreamId === id || (Array.isArray(route.targets) && route.targets.some((target) => target?.upstreamId === id)))
+              .map(({ id: routeId, alias, inboundProtocol }) => ({ id: routeId, alias, inboundProtocol }));
+            if (routes.length) throw Object.assign(new Error('upstream_in_use'), { statusCode: 409, routes });
+            return { ...value, upstreams: value.upstreams.filter((item) => item.id !== id) };
+          });
+          if (deletedUpstream.credentialRef) await vault.remove(deletedUpstream.credentialRef);
           return send(res, 200, { id, deleted: true });
         }
         const input = await bodyOf(req);
         if (input.protocol) requireProtocol(input.protocol);
-        const next = { ...current, ...Object.fromEntries(['name', 'baseUrl', 'protocol', 'enabled'].filter((key) => input[key] !== undefined).map((key) => [key, input[key]])) };
-        if (input.protocol) Object.assign(next, profileFor(input.protocol, input));
-        else if (input.providerId !== undefined || input.apiProfile !== undefined) Object.assign(next, profileFor(current.protocol, { providerId: input.providerId ?? current.providerId, apiProfile: input.apiProfile ?? current.apiProfile }));
-        if (input.baseUrl) { const destination = await validateBaseUrl(input.baseUrl, input.allowPrivateNetwork === true, dnsLookup); next.baseUrl = input.baseUrl.replace(/\/$/, ''); next.approvedAddresses = destination.addresses; next.trustedPrivateNetwork = input.allowPrivateNetwork === true; }
-        if (input.allowPrivateNetwork !== undefined) next.trustedPrivateNetwork = input.allowPrivateNetwork === true;
-        if (input.apiKey) { if (current.credentialRef) await vault.remove(current.credentialRef); next.credentialRef = await vault.put(input.apiKey); }
-        await store.update((value) => ({ ...value, upstreams: value.upstreams.map((item) => item.id === id ? next : item) }));
-        return send(res, 200, next);
+        if (input.baseUrl !== undefined && (typeof input.baseUrl !== 'string' || !input.baseUrl.trim())) throw Object.assign(new Error('Invalid upstream URL'), { statusCode: 400 });
+        if (input.apiKey !== undefined && typeof input.apiKey !== 'string') throw Object.assign(new Error('Invalid upstream key'), { statusCode: 400 });
+        const baseUrl = input.baseUrl === undefined ? current.baseUrl : input.baseUrl.trim();
+        const shouldValidateDestination = input.baseUrl !== undefined || input.allowPrivateNetwork !== undefined;
+        const trustedPrivateNetwork = input.allowPrivateNetwork === undefined ? current.trustedPrivateNetwork === true : input.allowPrivateNetwork === true;
+        let destination;
+        if (shouldValidateDestination) {
+          if (typeof baseUrl !== 'string' || !baseUrl.trim()) throw Object.assign(new Error('Invalid upstream URL'), { statusCode: 400 });
+          try { destination = await validateBaseUrl(baseUrl, trustedPrivateNetwork, dnsLookup); }
+          catch (error) { if (!error.statusCode) error.statusCode = 400; throw error; }
+        }
+        const replacementCredentialRef = input.apiKey ? await vault.put(input.apiKey) : undefined;
+        let replacedCredentialRef;
+        let updatedUpstream;
+        try {
+          await store.update((value) => {
+            const latest = value.upstreams.find((item) => item.id === id);
+            if (!latest) throw Object.assign(new Error('not_found'), { statusCode: 404 });
+            if (shouldValidateDestination && input.baseUrl === undefined && latest.baseUrl !== current.baseUrl) throw Object.assign(new Error('Upstream changed while validating its destination'), { statusCode: 409 });
+            if (input.baseUrl !== undefined && input.allowPrivateNetwork === undefined && (latest.trustedPrivateNetwork === true) !== (current.trustedPrivateNetwork === true)) throw Object.assign(new Error('Upstream trust changed while validating its destination'), { statusCode: 409 });
+            const next = { ...latest, ...Object.fromEntries(['name', 'baseUrl', 'protocol', 'enabled'].filter((key) => input[key] !== undefined).map((key) => [key, input[key]])) };
+            if (input.protocol) Object.assign(next, profileFor(input.protocol, input));
+            else if (input.providerId !== undefined || input.apiProfile !== undefined) Object.assign(next, profileFor(latest.protocol, { providerId: input.providerId ?? latest.providerId, apiProfile: input.apiProfile ?? latest.apiProfile }));
+            if (destination) {
+              next.baseUrl = baseUrl.replace(/\/$/, '');
+              next.approvedAddresses = destination.addresses;
+              next.trustedPrivateNetwork = trustedPrivateNetwork;
+            }
+            if (input.allowPrivateNetwork !== undefined) next.trustedPrivateNetwork = input.allowPrivateNetwork === true;
+            if (replacementCredentialRef) {
+              replacedCredentialRef = latest.credentialRef;
+              next.credentialRef = replacementCredentialRef;
+            }
+            updatedUpstream = next;
+            return { ...value, upstreams: value.upstreams.map((item) => item.id === id ? next : item) };
+          });
+        } catch (error) {
+          if (replacementCredentialRef) await vault.remove(replacementCredentialRef).catch(() => {});
+          throw error;
+        }
+        if (replacementCredentialRef && replacedCredentialRef) await vault.remove(replacedCredentialRef).catch(() => {});
+        return send(res, 200, updatedUpstream);
       }
       if (req.method === 'PATCH' && parts[2] === 'routes' && parts[3]) {
         const id = parts[3];
         const input = await bodyOf(req);
-        const config = await store.read();
-        const current = config.routes.find((item) => item.id === id);
-        if (!current) return send(res, 404, { error: 'not_found' });
         if (input.inboundProtocol) requireProtocol(input.inboundProtocol);
         if (input.outboundProtocol) requireProtocol(input.outboundProtocol);
-        if (input.upstreamId && !config.upstreams.some((item) => item.id === input.upstreamId)) throw Object.assign(new Error('Unknown upstream'), { statusCode: 400 });
-        const next = { ...current, ...Object.fromEntries(['alias', 'inboundProtocol', 'outboundProtocol', 'upstreamId', 'modelId', 'enabled', 'allowLossy'].filter((key) => input[key] !== undefined).map((key) => [key, input[key]])) };
-        if (!next.alias || !next.modelId) throw Object.assign(new Error('Route alias and model are required'), { statusCode: 400 });
-        if (next.enabled && config.routes.some((item) => item.id !== id && item.enabled && item.alias === next.alias && item.inboundProtocol === next.inboundProtocol)) return send(res, 409, { error: 'route_conflict' });
-        await store.update((value) => ({ ...value, routes: value.routes.map((item) => item.id === id ? next : item) }));
-        return send(res, 200, next);
+        let updatedRoute;
+        await store.update((value) => {
+          const current = value.routes.find((item) => item.id === id);
+          if (!current) throw Object.assign(new Error('not_found'), { statusCode: 404 });
+          const next = updateRouteCapabilities(updateRouteReasoning({ ...current, ...Object.fromEntries(['alias', 'inboundProtocol', 'outboundProtocol', 'upstreamId', 'modelId', 'enabled', 'allowLossy'].filter((key) => input[key] !== undefined).map((key) => [key, input[key]])) }, input), input);
+          if (!next.alias || !next.modelId) throw Object.assign(new Error('Route alias and model are required'), { statusCode: 400 });
+          if (!value.upstreams.some((item) => item.id === next.upstreamId) || (next.targets !== undefined && (!Array.isArray(next.targets) || next.targets.some((target) => !target || !value.upstreams.some((item) => item.id === target.upstreamId))))) throw Object.assign(new Error('Unknown upstream'), { statusCode: 400 });
+          if (next.enabled && value.routes.some((item) => item.id !== id && item.enabled && item.alias === next.alias && item.inboundProtocol === next.inboundProtocol)) throw Object.assign(new Error('route_conflict'), { statusCode: 409 });
+          updatedRoute = next;
+          return { ...value, routes: value.routes.map((item) => item.id === id ? next : item) };
+        });
+        return send(res, 200, updatedRoute);
       }
       if (req.method === 'DELETE' && parts[2] === 'routes' && parts[3]) {
         const id = parts[3];
@@ -265,9 +270,12 @@ export function createControlServer({ store, vault, controlToken = process.env.C
         const config = await store.read();
         const upstream = config.upstreams.find((item) => item.id === parts[3]);
         if (!upstream) return send(res, 404, { error: 'not_found' });
-        const destination = await validateBaseUrl(upstream.baseUrl, upstream.trustedPrivateNetwork === true, dnsLookup);
-        const approved = upstream.approvedAddresses || [];
-        if (approved.length && (approved.length !== destination.addresses.length || approved.some((address, index) => address !== destination.addresses[index]))) return send(res, 502, { ok: false, error: 'destination_changed' });
+        let destination;
+        try {
+          destination = await validateBaseUrl(upstream.baseUrl, upstream.trustedPrivateNetwork === true, dnsLookup, upstream.approvedAddresses || []);
+        } catch (error) {
+          return send(res, 502, { ok: false, error: error.code === 'destination_changed' ? 'destination_changed' : 'destination_untrusted' });
+        }
         try {
           const headers = {};
           const secret = upstream.credentialRef ? await vault.get(upstream.credentialRef) : undefined;
@@ -281,34 +289,19 @@ export function createControlServer({ store, vault, controlToken = process.env.C
           return send(res, 502, { ok: false, error: error.code === 'timeout' ? 'timeout' : 'unavailable' });
         }
       }
-      if (req.method === 'POST' && parts[2] === 'client-keys' && parts.length === 3) {
-        const input = await bodyOf(req);
-        const key = `cxrg_${crypto.randomBytes(24).toString('base64url')}`;
-        const scope = Array.isArray(input.scope) ? input.scope.filter((item) => typeof item === 'string' && item.trim()).slice(0, 100) : [];
-        const keyRecord = { id: `key_${crypto.randomUUID()}`, name: String(input.name || 'Client key'), scope, keyHash: crypto.createHash('sha256').update(key).digest('hex'), createdAt: new Date().toISOString(), enabled: true };
-        await store.update((value) => ({ ...value, clientKeys: [...value.clientKeys, keyRecord] }));
-        return send(res, 201, { id: keyRecord.id, name: keyRecord.name, scope, key, createdAt: keyRecord.createdAt, enabled: true });
-      }
-      if (req.method === 'POST' && parts[2] === 'client-keys' && parts[3] && parts[4] === 'rotate') {
-        const id = parts[3];
-        const config = await store.read();
-        const current = config.clientKeys.find((item) => item.id === id);
-        if (!current) return send(res, 404, { error: 'not_found' });
-        const key = `cxrg_${crypto.randomBytes(24).toString('base64url')}`;
-        const rotatedAt = new Date().toISOString();
-        await store.update((value) => ({ ...value, clientKeys: value.clientKeys.map((item) => item.id === id ? { ...item, keyHash: crypto.createHash('sha256').update(key).digest('hex'), enabled: true, rotatedAt } : item) }));
-        return send(res, 200, { id, name: current.name, scope: current.scope || [], key, rotatedAt, enabled: true });
-      }
-      if (req.method === 'DELETE' && parts[2] === 'client-keys' && parts[3]) {
-        const id = parts[3];
-        const config = await store.read();
-        if (!config.clientKeys.some((item) => item.id === id)) return send(res, 404, { error: 'not_found' });
-        await store.update((value) => ({ ...value, clientKeys: value.clientKeys.map((item) => item.id === id ? { ...item, enabled: false } : item) }));
-        return send(res, 200, { id, enabled: false });
+      if (parts[0] === 'v1' && parts[1] === 'control' && parts[2] === 'client-keys') {
+        if (parts.length === 3 && req.method === 'GET') return send(res, 200, await clientKeys.list());
+        if (parts.length === 3 && req.method === 'POST') return send(res, 201, await clientKeys.create(await bodyOf(req)));
+        if (parts.length === 4 && parts[3] === 'match' && req.method === 'POST') return send(res, 200, await clientKeys.match(await bodyOf(req)));
+        if (parts.length === 5 && parts[4] === 'secret' && req.method === 'GET') return send(res, 200, await clientKeys.secret(parts[3]));
+        if (parts.length === 5 && parts[4] === 'secret' && req.method === 'POST') return send(res, 200, await clientKeys.retain(parts[3], await bodyOf(req)));
+        if (parts.length === 5 && parts[4] === 'rotate' && req.method === 'POST') return send(res, 200, await clientKeys.rotate(parts[3]));
+        if (parts.length === 5 && parts[4] === 'permanent' && req.method === 'DELETE') return send(res, 200, await clientKeys.delete(parts[3]));
+        if (parts.length === 4 && req.method === 'DELETE') return send(res, 200, await clientKeys.revoke(parts[3]));
       }
       return send(res, 404, { error: 'not_found' });
     } catch (error) {
-      return send(res, error.statusCode || 500, { error: error.statusCode ? error.message : 'internal_error' });
+      return send(res, error.statusCode || 500, { error: error.statusCode ? error.message : 'internal_error', ...(error.routes ? { routes: error.routes } : {}) });
     }
   });
 }

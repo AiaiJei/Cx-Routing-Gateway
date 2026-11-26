@@ -6,6 +6,7 @@ import { RoutesPage } from "./pages/RoutesPage";
 import { LogsPage } from "./pages/LogsPage";
 import { CredentialsPage } from "./pages/CredentialsPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { CodexPage } from "./pages/CodexPage";
 
 export function App() {
   return (
@@ -16,6 +17,7 @@ export function App() {
         <Route path="/routes" element={<RoutesPage />} />
         <Route path="/logs" element={<LogsPage />} />
         <Route path="/credentials" element={<CredentialsPage />} />
+        <Route path="/codex" element={<CodexPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<h1 className="page-title">页面不存在</h1>} />
       </Routes>

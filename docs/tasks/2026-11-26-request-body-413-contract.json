@@ -3,10 +3,10 @@
   "project_id": "cx-routing-gateway",
   "repo_id": "aiaijei-cx-routing-gateway",
   "task_id": "CXRG-REQUEST-BODY-413-2026-11-21",
-  "contract_revision": 3,
+  "contract_revision": 4,
   "state": "active",
   "date": "2026-11-26",
-  "owner_authorization": "合并到最新版本，并更新发布的版本。同步发布到本地桌面；",
+  "owner_authorization": "Owner explicitly authorized merge to current master, incremented published version, and syncing the release to the local Desktop.",
   "supersedes_revision": 2,
   "target": {
     "pull_request": 13,
@@ -15,7 +15,11 @@
     "base": "master",
     "verified_latest_master": "606d069e7b53efa492c86e32856d334d313fbaeb",
     "previous_release": "1.1.10",
-    "new_release": "1.1.11"
+    "new_release": "1.1.11",
+    "latest_master": "606d069e7b53efa492c86e32856d334d313fbaeb",
+    "release_previous": "1.1.10",
+    "release_version": "1.1.11",
+    "preReleaseHead": "a3199a1fc236148cf0c9e5e8c5a40f4059e95370"
   },
   "scope_paths": [
     ".codex/awg-task.json",
@@ -56,7 +60,9 @@
       "Reconcile PR #13 with latest master without replacing newer protocol, failover, credential, metrics or Desktop features.",
       "Bound inbound request bodies at default 64 MiB with validated override and explicit 413 including limitBytes/requestId; preserve upstream 413 attribution.",
       "Run focused, Runtime, Desktop, production build, independent review and final-head CI before merge.",
-      "Merge PR #13, fast-forward primary master while preserving Overview local contract, publish v1.1.11 with hashes, copy a separately named Portable exe to Desktop and smoke the exact copy."
+      "Merge PR #13, fast-forward primary master while preserving Overview local contract, publish v1.1.11 with hashes, copy a separately named Portable exe to Desktop and smoke the exact copy.",
+      "Merge PR #13 only after latest-master conflict resolution, full tests, Desktop validation, and independent review.",
+      "Publish release v1.1.11 with verified artifact hashes, then copy a distinct Portable executable to the resolved Desktop folder and smoke-test that exact copy."
     ],
     "exclude": [
       "Concurrency/queueing redesign",
@@ -74,7 +80,11 @@
     "More than current 4 MiB and below configured limit reaches local mock upstream intact.",
     "Boundary and oversized declared/chunked requests return readable bounded 413 without upstream calls; valid UTF-8 preserved; no indefinite drain wait.",
     "Latest master features and product version consistency retained; tests, build, isolated packaged/Portable health and review pass.",
-    "PR merged to up-to-date master; v1.1.11 GitHub assets match local SHA-256; Desktop Portable copy matches published executable and passes isolated health."
+    "PR merged to up-to-date master; v1.1.11 GitHub assets match local SHA-256; Desktop Portable copy matches published executable and passes isolated health.",
+    "All product version metadata, release verifier assertions, settings tests, and lockfile root metadata agree on 1.1.11.",
+    "Final head CI passes before PR merge.",
+    "Published v1.1.11 asset names and SHA-256 match local release artifacts.",
+    "The separately named Desktop Portable copy matches the published asset digest and passes isolated health smoke."
   ],
   "rollback": "Preserve pre-release snapshots and original dirty patch. Revert task commits for source rollback; old 1.1.10 Desktop Portable remains available. Do not delete or overwrite user files or modify live data.",
   "preservation": {
@@ -84,12 +94,30 @@
     "overview_contract": "Keep primary-root local ignored .codex/awg-task.json and untracked Overview contract unchanged during fast-forward."
   },
   "verification": {
-    "implementation": "NOT_RUN",
-    "independent_review": "NOT_RUN",
-    "merged": "NOT_RUN",
+    "latest_master_merge": "PASS: origin/master 606d069 incorporated; conflict resolutions reviewed; merge commit pending",
+    "focused_body_tests": "PASS: 6/6 including >4 MiB, unfinished declared/chunked oversize, and invalid config types",
+    "runtime_tests": "PASS: 516/516 on final source and release version",
+    "desktop_tests": "PASS: 319/319",
+    "desktop_build": "PASS: TypeScript and Vite production build",
+    "release_manifest_test": "PASS: 2/2 for 1.1.11",
+    "independent_review": "PASS: independent static reviewer APPROVE, no remaining findings after P1 correction",
+    "electron_distribution": "PASS: Electron 45.3.4 cached ZIP SHA-256 matches official SHASUMS256.txt",
+    "package": "PASS: 13-artifact manifest; unpackaged version 1.1.11 smoke PASS; Portable isolated local-control and gateway health PASS",
+    "release_signed": false,
+    "github_ci": "NOT_AVAILABLE: latest master currently has zero GitHub Actions workflows",
     "published": "NOT_RUN",
-    "desktop_smoke": "NOT_RUN",
+    "desktop_copy": "NOT_RUN",
+    "live_gateway_4318": "NOT_RUN",
     "live_provider": "NOT_RUN",
     "owner_acceptance": "PENDING"
+  },
+  "release_candidate": {
+    "directory": "apps/desktop/release/1.1.11-413",
+    "manifest": "apps/desktop/release/1.1.11-413/manifest.json",
+    "checksums": "apps/desktop/release/1.1.11-413/SHA256SUMS.txt",
+    "portable_sha256": "b871f47c87b5282f3660771dba4310d10c9571908193689f1b2d7d908892a214",
+    "installer_sha256": "7095bc8d2209fff2d5c7aa6ce33f673dd98120eb1105716402b8b14e74e384d9",
+    "blockmap_sha256": "1e1fdcf31f9b43d5b3e39520548230f200028650ff4da59144dd16119bc48d1e",
+    "signed": false
   }
 }

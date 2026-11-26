@@ -2,10 +2,99 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { LogsPage } from "./LogsPage";
-import { defaultWorkspaceClient } from "../data/workspace-client";
+import { defaultWorkspaceClient, mapRuntimeState } from "../data/workspace-client";
 import { workspaceFixtures } from "../data/fixtures";
 import type { WorkspaceFixtures } from "../domain/types";
 import "../styles/app.css";
+
+it.each([200, 201])("keeps a partially delivered HTTP %s stream failed and explains its interruption in the row and detail", async (gatewayStatus) => {
+  const snapshot = mapRuntimeState({
+    settings: { gatewayHost: "127.0.0.1", gatewayPort: 4318 }, upstreams: [], routes: [], clientKeys: [],
+    usage: [{ requestId: "partial", createdAt: "2026-11-23T10:00:00.000Z", inboundProtocol: "Res", outboundProtocol: "Res", status: "failed", stream: true, upstreamStatus: 200, gatewayStatus, streamFailurePhase: "upstream_body", firstTokenMs: 25, durationMs: 100, errorCode: "upstream_connection_reset", providerMessage: "private-provider-error", responseBody: "private-body" }],
+  });
+  const getWorkspace = vi.spyOn(defaultWorkspaceClient, "getWorkspace").mockResolvedValue(snapshot);
+  try {
+    const user = userEvent.setup();
+    render(<LogsPage />);
+    const detail = await screen.findByRole("button", { name: "查看 partial" });
+    const row = detail.closest("tr")!;
+    expect(within(row).getByText(/流已中断/)).toHaveClass("status-negative");
+    expect(row).not.toHaveTextContent("成功");
+    await user.click(within(row).getByRole("button", { name: /状态.*流已中断/ }));
+    const tooltip = screen.getByRole("tooltip");
+    expect(tooltip).toHaveTextContent("上游 HTTP 200");
+    expect(tooltip).toHaveTextContent(`下游 HTTP ${gatewayStatus}`);
+    expect(tooltip).toHaveTextContent("读取上游响应体时");
+    expect(tooltip).toHaveTextContent(`HTTP ${gatewayStatus} 不代表流完整完成`);
+    if (gatewayStatus === 201) expect(tooltip).not.toHaveTextContent("HTTP 200 不代表流完整完成");
+    expect(tooltip).not.toHaveTextContent("502");
+    await user.keyboard("{Escape}");
+    await user.click(detail);
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent(`${gatewayStatus} · 流已中断`);
+    expect(dialog).toHaveTextContent("上游 HTTP 200");
+    expect(dialog).toHaveTextContent(`下游 HTTP ${gatewayStatus}`);
+    expect(dialog).toHaveTextContent(`HTTP ${gatewayStatus} 不代表流完整完成`);
+    expect(dialog).toHaveTextContent("读取上游响应体时");
+    expect(dialog).not.toHaveTextContent("502");
+    expect(document.body).not.toHaveTextContent(/private-provider-error|private-body/);
+  } finally {
+    getWorkspace.mockRestore();
+  }
+});
+
+it("shows a wire 502 after upstream headers as failure without claiming a partial downstream 200", async () => {
+  const snapshot = mapRuntimeState({
+    settings: { gatewayHost: "127.0.0.1", gatewayPort: 4318 }, upstreams: [], routes: [], clientKeys: [],
+    usage: [{ requestId: "before-downstream", createdAt: "2026-11-23T10:00:00.000Z", inboundProtocol: "Res", outboundProtocol: "Res", status: "failed", stream: true, upstreamStatus: 200, gatewayStatus: 502, streamFailurePhase: "upstream_body", errorCode: "upstream_connection_reset" }],
+  });
+  const getWorkspace = vi.spyOn(defaultWorkspaceClient, "getWorkspace").mockResolvedValue(snapshot);
+  try {
+    const user = userEvent.setup();
+    render(<LogsPage />);
+    const detail = await screen.findByRole("button", { name: "查看 before-downstream" });
+    const row = detail.closest("tr")!;
+    expect(within(row).getByRole("button", { name: /状态/ })).toHaveTextContent(/^502$/);
+    await user.click(detail);
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent("上游 HTTP 200");
+    expect(dialog).toHaveTextContent("下游 HTTP 502");
+    expect(dialog).toHaveTextContent("读取上游响应体时");
+    expect(dialog).not.toHaveTextContent(/流已中断|下游 HTTP 200|HTTP 200 不代表流完整完成/);
+  } finally {
+    getWorkspace.mockRestore();
+  }
+});
+
+it("shows stream-stage timings and keeps historical request details readable", async () => {
+  const snapshot = mapRuntimeState({
+    settings: { gatewayHost: "127.0.0.1", gatewayPort: 4318 }, upstreams: [], routes: [], clientKeys: [],
+    usage: [
+      { requestId: "timed", createdAt: "2026-11-24T10:00:00.000Z", inboundProtocol: "Res", outboundProtocol: "Chat", status: "completed", stream: true, durationMs: 400, firstTokenMs: 120, upstreamHeadersMs: 45, upstreamFirstByteMs: 95, upstreamBodyMs: 150, upstreamChunkCount: 4, gatewayProcessingMs: 3.5 },
+      { requestId: "legacy-timing", createdAt: "2026-11-23T10:00:00.000Z", inboundProtocol: "Res", outboundProtocol: "Res", status: "completed", stream: true, durationMs: 220, firstTokenMs: 80 },
+    ],
+  });
+  const getWorkspace = vi.spyOn(defaultWorkspaceClient, "getWorkspace").mockResolvedValue(snapshot);
+  try {
+    const user = userEvent.setup();
+    render(<LogsPage />);
+    await user.click(await screen.findByRole("button", { name: "查看 timed" }));
+    let dialog = screen.getByRole("dialog");
+    for (const [label, value] of [["上游响应头", "45 ms"], ["上游首字节", "95 ms"], ["上游响应体", "150 ms"], ["上游数据块", "4"], ["网关处理", "4 ms"]]) {
+      const term = within(dialog).getByText(label);
+      expect(term.parentElement?.querySelector("dd")).toHaveTextContent(value);
+    }
+    await user.keyboard("{Escape}");
+    await user.click(screen.getByRole("button", { name: "查看 legacy-timing" }));
+    dialog = screen.getByRole("dialog");
+    for (const label of ["上游响应头", "上游首字节", "上游响应体", "上游数据块", "网关处理"]) {
+      const term = within(dialog).getByText(label);
+      expect(term.parentElement?.querySelector("dd")).toHaveTextContent("—");
+    }
+  } finally {
+    getWorkspace.mockRestore();
+  }
+});
 
 describe("LogsPage", () => {
   it("filters sample logs and resets the filter", async () => {
@@ -24,7 +113,7 @@ describe("LogsPage", () => {
     const user = userEvent.setup();
     render(<LogsPage />);
     await screen.findByRole("searchbox", { name: "搜索请求日志" });
-    expect(screen.getByText("失败（模拟）")).toHaveClass("status-badge", "status-negative");
+    expect(screen.getByText("504")).toHaveClass("status-badge", "status-negative");
     const failed = screen.getByRole("button", { name: "失败" });
     expect(failed).toHaveAttribute("aria-pressed", "false");
     await user.click(failed);
@@ -47,6 +136,10 @@ describe("LogsPage", () => {
     const tableViewport = container.querySelector(".table-scroll");
     expect(tableViewport).not.toBeNull();
     expect(getComputedStyle(tableViewport!).contain).toContain("paint");
+    const table = container.querySelector(".logs-table")!;
+    expect(table.querySelectorAll("col")).toHaveLength(10);
+    expect(getComputedStyle(table).tableLayout).toBe("fixed");
+    expect(table).toHaveClass("logs-table");
   });
 
   it("opens a redacted detail view without exposing request or response bodies", async () => {
@@ -60,6 +153,54 @@ describe("LogsPage", () => {
     expect(dialog).toHaveTextContent("Desktop client ·••••");
     expect(dialog).toHaveTextContent("请求和响应正文未记录");
     expect(screen.getByRole("button", { name: "关闭弹窗" })).toHaveTextContent("×");
+  });
+
+  it("shows the upstream service as 来源 and keeps the masked credential in details only", async () => {
+    const user = userEvent.setup();
+    render(<LogsPage />);
+    await screen.findByRole("searchbox", { name: "搜索请求日志" });
+    const table = within(screen.getByRole("region", { name: "请求日志列表" })).getByRole("table");
+    expect(within(table).getByRole("columnheader", { name: "来源" })).toBeVisible();
+    expect(within(table).queryByRole("columnheader", { name: "入口凭证" })).not.toBeInTheDocument();
+    expect(within(table).getAllByText("Northstar AI")).toHaveLength(2);
+    expect(within(table).queryByText(/Desktop client/)).not.toBeInTheDocument();
+    await user.click(within(table).getByRole("button", { name: "查看 req-7d3a9f21" }));
+    const dialog = screen.getByRole("dialog", { name: "请求 req-7d3a9f21 详情" });
+    expect(dialog).toHaveTextContent("入口凭证");
+    expect(dialog).toHaveTextContent("Desktop client ·••••");
+  });
+
+  it("shows 推理 immediately after 来源 and uses a dash when absent", async () => {
+    const user = userEvent.setup();
+    render(<LogsPage />);
+    await screen.findByRole("searchbox", { name: "搜索请求日志" });
+    const table = within(screen.getByRole("region", { name: "请求日志列表" })).getByRole("table");
+    const headers = within(table).getAllByRole("columnheader").map((header) => header.textContent);
+    expect(headers.indexOf("推理")).toBe(headers.indexOf("来源") + 1);
+    const firstRow = within(table).getAllByRole("row")[1];
+    expect(within(firstRow).getByText("high")).toBeVisible();
+    const missingRow = within(table).getAllByRole("row")[2];
+    expect(missingRow.textContent).toContain("-");
+    await user.click(within(firstRow).getByRole("button", { name: "查看 req-7d3a9f21" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("推理");
+    expect(screen.getByRole("dialog")).toHaveTextContent("high");
+  });
+
+  it("renames 结果 to 状态 and discloses HTTP status and sanitized error details", async () => {
+    const user = userEvent.setup();
+    render(<LogsPage />);
+    await screen.findByRole("searchbox", { name: "搜索请求日志" });
+    const table = within(screen.getByRole("region", { name: "请求日志列表" })).getByRole("table");
+    expect(within(table).getByRole("columnheader", { name: "状态" })).toBeVisible();
+    expect(within(table).queryByRole("columnheader", { name: "结果" })).not.toBeInTheDocument();
+    const failed = within(table).getByRole("button", { name: /状态 504/ });
+    await user.hover(failed);
+    expect(screen.getByRole("tooltip")).toHaveTextContent("HTTP");
+    await user.unhover(failed);
+    await user.click(within(table).getByRole("button", { name: "查看 req-29ab10ce" }));
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent("错误信息");
+    expect(dialog).toHaveTextContent("上游响应超时（示例错误）");
   });
 });
 
@@ -237,4 +378,87 @@ describe("request log refresh", () => {
     expect(screen.getByRole("button", { name: "查看 after-midnight" })).toBeVisible();
     expect(screen.queryByRole("button", { name: "查看 before-midnight" })).not.toBeInTheDocument();
   });
+});
+
+describe("request log clearing", () => {
+  function liveSnapshot(): WorkspaceFixtures {
+    return { ...structuredClone(workspaceFixtures), meta: { live: true, source: "runtime" } };
+  }
+
+  function restoreClient(original: Partial<typeof defaultWorkspaceClient>) {
+    for (const key of Object.keys(defaultWorkspaceClient)) {
+      if (!(key in original)) delete (defaultWorkspaceClient as any)[key];
+    }
+    Object.assign(defaultWorkspaceClient, original);
+  }
+
+  it("keeps clearing unavailable in fixture mode", async () => {
+    render(<LogsPage />);
+    await screen.findByRole("searchbox", { name: "搜索请求日志" });
+    expect(screen.queryByRole("button", { name: "清空日志" })).not.toBeInTheDocument();
+  });
+
+  it("confirms clearing all logs regardless of filters, then refreshes the list", async () => {
+    const original = { ...defaultWorkspaceClient };
+    let latest = liveSnapshot();
+    const clearRequestLogs = vi.fn(async () => {
+      latest = { ...latest, logs: [] };
+      return { deleted: true as const, removedCount: 3 };
+    });
+    Object.assign(defaultWorkspaceClient, { getWorkspace: async () => latest, clearRequestLogs });
+    try {
+      const user = userEvent.setup();
+      render(<LogsPage />);
+      const search = await screen.findByRole("searchbox", { name: "搜索请求日志" });
+      await user.type(search, "req-29ab");
+      await user.click(screen.getByRole("button", { name: "清空日志" }));
+      const dialog = screen.getByRole("dialog", { name: "清空请求日志" });
+      expect(dialog).toHaveTextContent("全部请求日志");
+      expect(dialog).toHaveTextContent("当前筛选不会限制清空范围");
+      await user.click(within(dialog).getByRole("button", { name: "取消" }));
+      expect(clearRequestLogs).not.toHaveBeenCalled();
+      expect(screen.getByRole("button", { name: "查看 req-29ab10ce" })).toBeVisible();
+
+      await user.click(screen.getByRole("button", { name: "清空日志" }));
+      await user.click(screen.getByRole("button", { name: "确认清空" }));
+      expect(clearRequestLogs).toHaveBeenCalledOnce();
+      expect(await screen.findByRole("status")).toHaveTextContent("已清空全部请求日志，共移除 3 条");
+      expect(await screen.findByText("没有匹配的请求记录")).toBeVisible();
+      expect(screen.getByRole("searchbox", { name: "搜索请求日志" })).toHaveValue("req-29ab");
+    } finally {
+      restoreClient(original);
+    }
+  });
+
+  it("keeps request rows and reports a useful error when clearing fails", async () => {
+    const original = { ...defaultWorkspaceClient };
+    Object.assign(defaultWorkspaceClient, {
+      getWorkspace: async () => liveSnapshot(),
+      clearRequestLogs: vi.fn(async () => { throw new Error("磁盘只读"); }),
+    });
+    try {
+      const user = userEvent.setup();
+      render(<LogsPage />);
+      await screen.findByRole("searchbox", { name: "搜索请求日志" });
+      await user.click(screen.getByRole("button", { name: "清空日志" }));
+      await user.click(screen.getByRole("button", { name: "确认清空" }));
+      expect(await screen.findByRole("alert")).toHaveTextContent("清空请求日志失败：磁盘只读");
+      expect(screen.getByRole("button", { name: "查看 req-7d3a9f21" })).toBeVisible();
+    } finally {
+      restoreClient(original);
+    }
+  });
+});
+
+it("scopes a single focus indicator to the request-log search", async () => {
+  render(<LogsPage />);
+  const search = await screen.findByRole("searchbox", { name: "搜索请求日志" });
+  search.focus();
+  expect(search.closest(".request-logs-toolbar")).not.toBeNull();
+  const rules = Array.from(document.styleSheets).flatMap((sheet) => Array.from(sheet.cssRules)) as CSSStyleRule[];
+  const fieldFocus = rules.find((rule) => rule.selectorText === ".request-logs-toolbar .search-field:focus-within");
+  const inputFocus = rules.find((rule) => rule.selectorText === ".request-logs-toolbar .search-field .geist-input:focus-visible");
+  expect(fieldFocus?.style.outline).toBe("none");
+  expect(fieldFocus?.style.getPropertyValue("border-color")).toBe("var(--accent)");
+  expect(inputFocus?.style.outline).toBe("none");
 });

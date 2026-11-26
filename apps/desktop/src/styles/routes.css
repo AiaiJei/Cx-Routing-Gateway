@@ -73,3 +73,44 @@
 .route-action-edit { grid-column: 2; }
 .route-action-toggle { grid-column: 3; }
 .route-action-delete { grid-column: 4; }
+
+/* Route editing uses the existing form/select tokens; selected providers wrap by content. */
+.route-editor { min-width: 0; }
+.route-editor-fields { display: grid; gap: 14px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.route-editor p { margin: 0; }
+.route-editor fieldset { min-width: 0; }
+.route-upstream-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.route-upstream-option { display: inline-flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; min-height: 44px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-control); color: var(--text); font-size: 13px; cursor: pointer; }
+.route-upstream-option:has(input:checked) { background: var(--active); border-color: var(--control); }
+.route-upstream-option > span { min-width: 0; overflow-wrap: anywhere; }
+.route-upstream-option small { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
+.route-editor input[type="checkbox"] { flex: none; width: 16px; height: 16px; margin: 0; padding: 0; accent-color: var(--text); }
+.route-protocol-grid, .route-range-values { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.route-protocol-grid > label, .route-range-values > label { display: grid; gap: 6px; min-width: 0; color: var(--muted); font-size: 12px; }
+.route-reasoning-settings { display: grid; gap: 12px; min-width: 0; }
+.route-reasoning-settings > .section-title { font-size: 14px; }
+.route-model-policy legend { max-width: 100%; color: var(--text); overflow-wrap: anywhere; }
+.route-model-targets, .route-model-warning { font-size: 12px; line-height: 1.6; color: var(--muted); overflow-wrap: anywhere; }
+.route-model-warning { padding: 8px 10px; background: var(--raised); border-radius: var(--radius-control); }
+.route-range-toggle { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 38px; font-size: 13px; }
+.route-range-values { margin: 0; padding: 0; border: 0; }
+.route-range-values:disabled { opacity: .55; }
+.route-editor .custom-select-trigger { min-height: 40px; }
+.route-editor .priority-actions { flex-shrink: 0; }
+.route-editor .helper-text { line-height: 1.65; }
+.route-capabilities { display: grid; gap: 10px; margin: 8px 0 0; padding: 12px 0 0; border: 0; border-top: 1px solid var(--border); }
+.route-capabilities > legend { padding: 0 6px 0 0; font-size: 12px; }
+.route-capability-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.route-capability-grid > label { display: grid; gap: 6px; min-width: 0; color: var(--muted); font-size: 12px; }
+.route-capability-grid input { min-width: 0; width: 100%; min-height: 40px; font-variant-numeric: tabular-nums; }
+.route-capability-efforts { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.route-capability-efforts label { display: inline-flex; align-items: center; gap: 7px; min-height: 32px; font-size: 12px; }
+.route-capability-efforts .helper-text { flex-basis: 100%; }
+.route-capabilities > .geist-button { justify-self: start; }
+@media (max-width: 600px) {
+  .route-protocol-grid, .route-range-values, .route-capability-grid { grid-template-columns: minmax(0, 1fr); }
+  .route-upstream-option { flex: 1 1 150px; }
+  .route-editor .custom-select-trigger, .route-editor .geist-button { min-height: 44px; }
+  .route-editor-fields { gap: 16px; }
+  .route-capability-grid input, .route-capability-efforts label { min-height: 44px; }
+}

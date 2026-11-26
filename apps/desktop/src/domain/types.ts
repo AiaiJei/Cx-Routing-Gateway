@@ -10,11 +10,26 @@ export type Upstream = {
   models: string[];
 };
 
+export type UpstreamUpdateInput = Pick<Upstream, "name" | "baseUrl"> & { apiKey?: string };
+
+export type ReasoningEffort = "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
+export type ReasoningRange = { min: ReasoningEffort; max: ReasoningEffort };
+export type ModelCapabilities = {
+  contextWindow?: number;
+  maxOutputTokens?: number;
+  inputModalities?: ("text" | "image")[];
+  reasoningEfforts?: ReasoningEffort[];
+  tools?: boolean;
+};
+
 export type ModelRouteSelection = {
   inboundProtocol: Protocol;
   outboundProtocol: Protocol;
   targets: { upstreamId: string; modelId: string }[];
   editId?: string;
+  replaceTargets?: boolean;
+  modelReasoning?: ({ modelId: string } & (ReasoningRange | { clear: true }))[];
+  modelCapabilities?: { modelId: string; capabilities: ModelCapabilities | null }[];
   failover?: { failureThreshold: number; statusClasses: number[] };
 };
 
@@ -25,10 +40,14 @@ export type ModelRoute = {
   targets: { upstreamId: string; upstreamModel: string }[];
   outboundProtocol: Protocol;
   enabled: boolean;
+  reasoning?: ReasoningRange;
+  capabilities?: ModelCapabilities;
   failover?: { failureThreshold: number; statusClasses: number[]; cooldownSeconds?: number };
 };
 
 export type RequestTokens = Partial<Record<'input' | 'output' | 'cacheRead' | 'cacheWrite' | 'total' | 'reasoning' | 'inputAudio' | 'outputAudio' | 'cacheWrite5m' | 'cacheWrite1h', number>>;
+
+export type StreamFailurePhase = "upstream_headers" | "upstream_body" | "downstream_closed";
 
 export type CallLog = {
   id: string;
@@ -36,11 +55,21 @@ export type CallLog = {
   model: string;
   credential: string;
   upstream: string;
+  reasoning?: string;
+  httpStatus?: number;
+  upstreamStatus?: number;
+  gatewayStatus?: number;
+  streamFailurePhase?: StreamFailurePhase;
   direction: string;
   status: "成功（模拟）" | "失败（模拟）" | "成功" | "失败";
   durationMs: number | null;
   stream?: boolean;
   firstTokenMs?: number;
+  upstreamHeadersMs?: number;
+  upstreamFirstByteMs?: number;
+  upstreamBodyMs?: number;
+  upstreamChunkCount?: number;
+  gatewayProcessingMs?: number;
   tokens?: RequestTokens;
   error?: string;
 };

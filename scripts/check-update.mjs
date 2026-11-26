@@ -20,13 +20,13 @@ function requireRepository(repository) {
 
 function versionParts(value) {
   const normalized = String(value).replace(/^v/, '');
-  if (!/^\d+\.\d+\.\d+$/.test(normalized)) throw new Error(`Invalid version: ${value}`);
-  return normalized.split('.').map(Number);
+  if (!/^\d+(?:\.\d+){2,3}$/.test(normalized)) throw new Error(`Invalid version: ${value}`);
+  return normalized.split('.').map(Number).concat([0]).slice(0, 4);
 }
 
 export function compareVersions(left, right) {
   const a = versionParts(left); const b = versionParts(right);
-  for (let index = 0; index < 3; index += 1) if (a[index] !== b[index]) return a[index] > b[index] ? 1 : -1;
+  for (let index = 0; index < 4; index += 1) if (a[index] !== b[index]) return a[index] > b[index] ? 1 : -1;
   return 0;
 }
 
@@ -34,7 +34,7 @@ function authorizationHeaders(token) {
   return {
     accept: 'application/vnd.github+json',
     'x-github-api-version': '2022-11-28',
-    authorization: `Bearer ${requireToken(token)}`,
+    ...(token === undefined ? {} : { authorization: `Bearer ${requireToken(token)}` }),
   };
 }
 
@@ -65,29 +65,28 @@ export async function verifyGitHubToken({ token, repository = DEFAULT_REPOSITORY
 
 function releaseVersion(release) {
   if (!release || typeof release !== 'object' || release.draft !== false || release.prerelease !== false) throw new Error('GitHub latest release is not a stable published release');
-  if (typeof release.tag_name !== 'string' || !/^v\d+\.\d+\.\d+$/.test(release.tag_name)) throw new Error('GitHub release has an invalid version tag');
+  if (typeof release.tag_name !== 'string' || !/^v\d+(?:\.\d+){2,3}$/.test(release.tag_name)) throw new Error('GitHub release has an invalid version tag');
   const expectedUrl = `https://github.com/${DEFAULT_REPOSITORY}/releases/tag/${release.tag_name}`;
   if (release.html_url !== expectedUrl) throw new Error('GitHub release URL is invalid');
   return release.tag_name.slice(1);
 }
 
 function installerAsset(release, version) {
-  const expectedName = `Cx-Routing Gateway Setup ${version}.exe`;
-  const asset = Array.isArray(release.assets) ? release.assets.find((item) => item?.name === expectedName) : null;
-  if (!asset || typeof asset.browser_download_url !== 'string') throw new Error(`GitHub release is missing ${expectedName}`);
+  const expectedNames = [`Cx-Routing Gateway Setup ${version}.exe`, `Cx-Routing.Gateway.Setup.${version}.exe`];
+  const asset = Array.isArray(release.assets) ? release.assets.find((item) => expectedNames.includes(item?.name)) : null;
+  if (!asset || typeof asset.browser_download_url !== 'string') throw new Error(`GitHub release is missing ${expectedNames[0]}`);
   if (!/^sha256:[a-f\d]{64}$/i.test(asset.digest || '')) throw new Error('GitHub release installer has no valid SHA-256 digest');
   const url = new URL(asset.browser_download_url);
   const expectedPath = `/AiaiJei/Cx-Routing-Gateway/releases/download/v${version}/`;
   let urlFilename;
   try { urlFilename = decodeURIComponent(url.pathname.slice(url.pathname.lastIndexOf('/') + 1)); } catch { throw new Error('GitHub release installer URL is invalid'); }
-  if (url.protocol !== 'https:' || url.hostname !== 'github.com' || !url.pathname.startsWith(expectedPath) || urlFilename !== expectedName || url.search || url.hash) {
+  if (url.protocol !== 'https:' || url.hostname !== 'github.com' || !url.pathname.startsWith(expectedPath) || urlFilename !== asset.name || url.search || url.hash) {
     throw new Error('GitHub release installer URL is invalid');
   }
-  return { name: expectedName, url: url.href, sha256: asset.digest.slice('sha256:'.length).toLowerCase() };
+  return { name: asset.name, url: url.href, sha256: asset.digest.slice('sha256:'.length).toLowerCase() };
 }
 
 async function fetchLatestRelease({ repository, token, fetchImpl }) {
-  requireToken(token);
   requireRepository(repository);
   let response;
   try {
@@ -144,6 +143,11 @@ export async function installUpdate({ currentVersion, token, repository = DEFAUL
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  console.error('GitHub update checks require a token configured in Desktop settings.');
-  process.exitCode = 1;
+  if (process.argv.includes('--help')) console.log('Check public GitHub Releases without a token: node scripts/check-update.mjs');
+  else {
+    try {
+      const packageData = JSON.parse(await fs.readFile(new URL('../apps/desktop/package.json', import.meta.url), 'utf8'));
+      console.log(JSON.stringify(await checkUpdate({ currentVersion: packageData.cxrgProductVersion })));
+    } catch (error) { console.error(error.message); process.exitCode = 1; }
+  }
 }
