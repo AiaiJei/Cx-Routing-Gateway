@@ -34,7 +34,7 @@ function authorizationHeaders(token) {
   return {
     accept: 'application/vnd.github+json',
     'x-github-api-version': '2022-11-28',
-    authorization: `Bearer ${requireToken(token)}`,
+    ...(token === undefined ? {} : { authorization: `Bearer ${requireToken(token)}` }),
   };
 }
 
@@ -87,7 +87,6 @@ function installerAsset(release, version) {
 }
 
 async function fetchLatestRelease({ repository, token, fetchImpl }) {
-  requireToken(token);
   requireRepository(repository);
   let response;
   try {
@@ -144,6 +143,11 @@ export async function installUpdate({ currentVersion, token, repository = DEFAUL
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  console.error('GitHub update checks require a token configured in Desktop settings.');
-  process.exitCode = 1;
+  if (process.argv.includes('--help')) console.log('Check public GitHub Releases without a token: node scripts/check-update.mjs');
+  else {
+    try {
+      const packageData = JSON.parse(await fs.readFile(new URL('../apps/desktop/package.json', import.meta.url), 'utf8'));
+      console.log(JSON.stringify(await checkUpdate({ currentVersion: packageData.cxrgProductVersion })));
+    } catch (error) { console.error(error.message); process.exitCode = 1; }
+  }
 }

@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { normalizeContent, serializeContent } from './protocol-media.mjs';
 
 function featureError(field, direction, code = 'unsupported_feature') {
   const error = Object.assign(new Error('Unsupported protocol feature'), { code, statusCode: 400 });
@@ -11,6 +12,16 @@ function unsupportedToolType(type, direction) {
   const error = featureError('tools.type', direction);
   if (!['function', 'custom', 'namespace', 'tool_search'].includes(type)
     && typeof type === 'string' && /^[A-Za-z0-9_-]{1,48}$/.test(type)) error.toolType = type;
+  if (type === 'web_search' || type === 'web_search_preview') {
+    error.message = 'Hosted web_search requires a Responses upstream. Reapply Gateway setup to disable web_search for cross-protocol routes, or use a direct Responses provider.';
+  }
+  return error;
+}
+
+function unsupportedInputType(type, direction) {
+  const error = featureError('input.type', direction);
+  if (typeof type === 'string' && /^[A-Za-z0-9_-]{1,48}$/.test(type)) error.itemType = type;
+  error.message = 'This Responses history item cannot be converted. Start a new session for this Gateway route, or continue with a compatible Responses provider.';
   return error;
 }
 
@@ -56,10 +67,17 @@ function normalizeToolChoice(protocol, value, direction, tools = []) {
     if (matches.length !== 1) throw featureError('tool_choice', direction);
     return { mode: 'function', name: targetToolName(matches[0]) };
   }
+  if (protocol === 'Res' && value.type === 'custom' && typeof value.name === 'string') {
+    const matches = tools.filter(tool => tool.kind === 'custom' && tool.name === value.name && (value.namespace ? tool.namespace === value.namespace : !tool.namespace));
+    if (matches.length !== 1) throw featureError('tool_choice', direction);
+    return { mode: 'function', name: targetToolName(matches[0]) };
+  }
   if (typeof value === 'object' && value.type === 'function' && typeof (value.function?.name || value.name) === 'string') {
     const name = value.function?.name || value.name;
     if (protocol === 'Res') {
-      const matches = tools.filter((tool) => tool.kind !== 'tool_search' && tool.name === name && (value.namespace ? tool.namespace === value.namespace : !tool.namespace));
+      const named = tools.filter((tool) => tool.kind !== 'tool_search' && tool.name === name && (value.namespace ? tool.namespace === value.namespace : !tool.namespace));
+      const functions = named.filter(tool => (tool.kind || 'function') === 'function');
+      const matches = functions.length ? functions : named.filter(tool => tool.kind === 'custom');
       if (matches.length !== 1) throw featureError('tool_choice', direction);
       return { mode: 'function', name: targetToolName(matches[0]) };
     }
@@ -193,9 +211,19 @@ function serializedToolValue(value) {
   return typeof value === 'string' ? value : JSON.stringify(value ?? {});
 }
 
-function toolResultContent(value) {
-  if (Array.isArray(value) && value.every((part) => ['text', 'input_text', 'output_text'].includes(part?.type))) return textParts(value);
+function toolResultContent(value, direction) {
+  if (Array.isArray(value) && (!value.length || value.some((part) => part && typeof part === 'object' && 'type' in part))) {
+    return normalizeContent('Res', value, () => featureError('input.output', direction));
+  }
   return serializedToolValue(value);
+}
+
+function functionHistoryArguments(value, direction) {
+  const serialized = serializedToolValue(value);
+  let parsed;
+  try { parsed = JSON.parse(serialized); } catch { throw featureError('input.function_call.arguments', direction); }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw featureError('input.function_call.arguments', direction);
+  return serialized;
 }
 
 function searchArguments(value, direction) {
@@ -214,56 +242,102 @@ function searchArguments(value, direction) {
 function normalizeMessages(protocol, body, direction, tools = []) {
   const messages = [];
   if (protocol === 'Res') {
+    const reasoningMetadata = [];
+    const crossProtocol = direction === 'Res->Chat' || direction === 'Res->Mes';
+    let ignoredOpaqueReasoning = 0;
+    let separateAssistant = false;
     const raw = typeof body.input === 'string' ? [{ role: 'user', content: body.input }] : (body.input || []);
+    if (!Array.isArray(raw)) throw featureError('input', direction);
     for (const item of raw) {
+      if (!item || typeof item !== 'object' || Array.isArray(item)) throw featureError('input', direction);
       if (item.type === 'additional_tools') continue;
+      if (item.type === 'reasoning') {
+        if (item.encrypted_content !== undefined && typeof item.encrypted_content !== 'string') throw featureError('input.reasoning.encrypted_content', direction);
+        const opaqueReasoning = typeof item.encrypted_content === 'string' && item.encrypted_content.length > 0;
+        const summary = item.summary ?? [];
+        if (!Array.isArray(summary) || summary.some(part => part?.type !== 'summary_text' || typeof part.text !== 'string')) throw featureError('input.reasoning.summary', direction);
+        const content = item.content ?? [];
+        if (!Array.isArray(content) || content.some(part => part?.type !== 'reasoning_text' || typeof part.text !== 'string')) throw featureError('input.reasoning.content', direction);
+        if (crossProtocol && opaqueReasoning) ignoredOpaqueReasoning += 1;
+        if (summary.length || content.length || (!crossProtocol && item.encrypted_content !== undefined)) {
+          const metadata = { type: 'reasoning', ...(typeof item.id === 'string' ? { id: item.id } : {}), summary: summary.map(part => ({ type: 'summary_text', text: part.text })), ...(content.length ? { content: content.map(part => ({ type: 'reasoning_text', text: part.text })) } : {}), ...(['in_progress', 'completed', 'incomplete'].includes(item.status) ? { status: item.status } : {}), ...(!crossProtocol && item.encrypted_content !== undefined ? { encrypted_content: item.encrypted_content } : {}) };
+          reasoningMetadata.push({ messageIndex: messages.filter(message => message.role !== 'system' && message.role !== 'developer').length, item: metadata });
+        }
+        if (summary.length || content.length || opaqueReasoning) separateAssistant = true;
+        continue;
+      }
       if (item.type === 'tool_search_output') {
+        if (item.execution !== undefined && item.execution !== 'client') throw featureError('input.execution', direction);
         messages.push({ role: 'tool', id: item.call_id, content: JSON.stringify({ status: item.status || 'completed', tools: item.tools || [] }) });
       }
-      else if (item.type === 'function_call_output' || item.type === 'custom_tool_call_output') messages.push({ role: 'tool', id: item.call_id, content: toolResultContent(item.output) });
+      else if (item.type === 'function_call_output' || item.type === 'custom_tool_call_output') messages.push({ role: 'tool', id: item.call_id, content: toolResultContent(item.output, direction) });
       else if (['function_call', 'custom_tool_call', 'tool_search_call'].includes(item.type)) {
         const kind = item.type === 'tool_search_call' ? 'tool_search' : item.type === 'custom_tool_call' ? 'custom' : 'function';
+        if (item.status === 'incomplete' || item.status === 'in_progress') throw featureError('input.' + item.type + '.status', direction);
         const name = kind === 'tool_search' ? 'tool_search' : item.name;
         const tool = toolForResponsesCall(tools, name, item.namespace, kind);
         if (kind === 'tool_search' && !tool) throw featureError('input.tool_search_call', direction);
         if (kind === 'tool_search' && item.execution !== undefined && item.execution !== 'client') throw featureError('input.execution', direction);
         const input = typeof item.input === 'string' ? item.input : JSON.stringify(item.input ?? '');
         const previous = messages.at(-1);
-        const assistant = previous?.role === 'assistant' ? previous : { role: 'assistant' };
+        const assistant = previous?.role === 'assistant' && !separateAssistant ? previous : { role: 'assistant' };
+        separateAssistant = false;
         if (assistant !== previous) messages.push(assistant);
         assistant.toolCalls ??= [];
         assistant.toolCalls.push({
           id: item.call_id || item.id,
           name: tool ? targetToolName(tool) : item.name,
           ...(item.namespace ? { namespace: item.namespace } : {}),
-          ...(kind === 'custom' ? { kind, input, arguments: JSON.stringify({ input }) } : { arguments: serializedToolValue(kind === 'tool_search' ? searchArguments(item.arguments, direction) : item.arguments) }),
+          ...(kind === 'custom' ? { kind, input, arguments: JSON.stringify({ input }) } : { arguments: kind === 'tool_search' ? serializedToolValue(searchArguments(item.arguments, direction)) : functionHistoryArguments(item.arguments, direction) }),
           index: assistant.toolCalls.length,
         });
       }
       else {
-        if (Array.isArray(item.content) && item.content.some((part) => !['input_text', 'output_text', 'text'].includes(part?.type))) throw featureError('input.content', direction);
-        messages.push({ role: item.role || 'user', content: textParts(item.content || item) });
+        if (item.type !== undefined && item.type !== 'message') throw unsupportedInputType(item.type, direction);
+        if (!['system', 'developer', 'user', 'assistant'].includes(item.role)) throw featureError('input.role', direction);
+        messages.push({ role: item.role, content: normalizeContent('Res', item.content, () => featureError('input.content', direction), { allowImages: !['system', 'developer'].includes(item.role) }) });
+        separateAssistant = false;
       }
     }
-    return { messages, instructions: typeof body.instructions === 'string' ? body.instructions : undefined };
+    const instructions = [typeof body.instructions === 'string' ? body.instructions : '', ...messages.filter(item => item.role === 'system' || item.role === 'developer').map(item => item.content)].filter(Boolean).join('\n') || undefined;
+    return { messages: messages.filter(item => item.role !== 'system' && item.role !== 'developer'), instructions, ...(reasoningMetadata.length ? { reasoningMetadata } : {}), ...(ignoredOpaqueReasoning ? { compatibilityWarnings: [{ code: 'opaque_reasoning_ignored', count: ignoredOpaqueReasoning }] } : {}) };
   }
+  if (body.messages !== undefined && !Array.isArray(body.messages)) throw featureError('messages', direction);
   if (protocol === 'Mes') {
     for (const item of body.messages || []) {
+      if (!item || typeof item !== 'object' || Array.isArray(item) || !['user', 'assistant'].includes(item.role)) throw featureError('messages', direction);
       if (typeof item.content === 'string') { messages.push({ role: item.role, content: item.content }); continue; }
-      const blocks = Array.isArray(item.content) ? item.content : [];
-      if (blocks.some((part) => !['text', 'input_text', 'output_text', 'tool_use', 'tool_result'].includes(part?.type))) throw featureError('messages.content', direction);
-      const toolCalls = blocks.filter((part) => part.type === 'tool_use').map((call, index) => ({ id: call.id, name: call.name, arguments: JSON.stringify(call.input || {}), index }));
-      const toolResults = blocks.filter((part) => part.type === 'tool_result').map((result) => ({ role: 'tool', id: result.tool_use_id, content: textParts(result.content) }));
-      if (textParts(blocks)) messages.push({ role: item.role, content: textParts(blocks) });
-      if (toolCalls.length) messages.push({ role: 'assistant', toolCalls });
-      messages.push(...toolResults);
+      if (!Array.isArray(item.content)) throw featureError('messages.content', direction);
+      let pending = [];
+      const flush = () => {
+        if (pending.length) {
+          const content = normalizeContent('Mes', pending, () => featureError('messages.content', direction));
+          if (content.length) messages.push({ role: item.role, content });
+          pending = [];
+        }
+      };
+      for (const part of item.content) {
+        if (part?.type === 'tool_use') {
+          flush();
+          const previous = messages.at(-1);
+          const assistant = previous?.role === 'assistant' && previous.toolCalls ? previous : { role: 'assistant', toolCalls: [] };
+          if (assistant !== previous) messages.push(assistant);
+          assistant.toolCalls.push({ id: part.id, name: part.name, arguments: JSON.stringify(part.input || {}), index: assistant.toolCalls.length });
+        } else if (part?.type === 'tool_result') {
+          flush();
+          messages.push({ role: 'tool', id: part.tool_use_id, content: normalizeContent('Mes', part.content, () => featureError('messages.tool_result.content', direction)) });
+        } else pending.push(part);
+      }
+      flush();
     }
-    return { messages, instructions: textParts(body.system) || undefined };
+    return { messages, instructions: normalizeContent('Mes', body.system, () => featureError('system', direction), { allowImages: false }) || undefined };
   }
   for (const item of body.messages || []) {
-    if (item.role === 'tool') messages.push({ role: 'tool', id: item.tool_call_id, content: textParts(item.content) });
-    else if (item.tool_calls?.length) messages.push({ role: 'assistant', content: textParts(item.content), toolCalls: item.tool_calls.map((call, index) => ({ id: call.id, name: call.function?.name, arguments: call.function?.arguments || '{}', index })) });
-    else messages.push({ role: item.role, content: textParts(item.content) });
+    if (!item || typeof item !== 'object' || Array.isArray(item) || !['system', 'developer', 'user', 'assistant', 'tool'].includes(item.role)) throw featureError('messages', direction);
+    const content = normalizeContent('Chat', item.content, () => featureError('messages.content', direction), { allowImages: item.role === 'user' });
+    if (item.role === 'tool') messages.push({ role: 'tool', id: item.tool_call_id, content });
+    else if (item.tool_calls?.length) messages.push({ role: 'assistant', content, toolCalls: item.tool_calls.map((call, index) => ({ id: call.id, name: call.function?.name, arguments: call.function?.arguments || '{}', index })) });
+    else messages.push({ role: item.role, content });
   }
   const instructions = messages.filter((item) => item.role === 'system' || item.role === 'developer').map((item) => item.content).join('\n') || undefined;
   return { messages: messages.filter((item) => item.role !== 'system' && item.role !== 'developer'), instructions };
@@ -278,10 +352,21 @@ export function parseRequest(protocol, body, profile = {}) {
   if (body.modalities) throw featureError('modalities', direction);
   const tools = normalizeTools(protocol, protocol === 'Res' ? collectResponsesTools(body, direction) : body.tools, direction);
   const parsed = normalizeMessages(protocol, body, direction, tools);
+  const compatibilityWarnings = [...(parsed.compatibilityWarnings || [])];
+  let omittedImageDetail = 0;
+  for (const message of parsed.messages) {
+    const images = Array.isArray(message.content) ? message.content.filter(part => part.type === 'image') : [];
+    if (images.length && direction.endsWith('->Chat') && message.role !== 'user') {
+      const field = protocol === 'Res' ? message.role === 'tool' ? 'input.output' : 'input.content' : message.role === 'tool' ? 'messages.tool_result.content' : 'messages.content';
+      throw featureError(field, direction);
+    }
+    if (direction.endsWith('->Mes')) omittedImageDetail += images.filter(part => part.detail === 'high' || part.detail === 'low').length;
+  }
+  if (omittedImageDetail) compatibilityWarnings.push({ code: 'image_detail_omitted', count: omittedImageDetail });
   const responseFormat = protocol === 'Res' ? normalizeResponseFormat(body.text?.format, direction) : normalizeResponseFormat(body.response_format, direction);
-  const effort = protocol === 'Res' ? body.reasoning?.effort : protocol === 'Mes' ? body.output_config?.effort : undefined;
+  const effort = protocol === 'Res' ? body.reasoning?.effort : protocol === 'Mes' ? body.output_config?.effort : body.reasoning_effort;
   const reasoningEffort = typeof effort === 'string' && effort.trim().length <= 32 ? effort.trim() || undefined : undefined;
-  return { messages: parsed.messages, instructions: parsed.instructions, tools, toolChoice: normalizeToolChoice(protocol, body.tool_choice, direction, tools), responseFormat, reasoningEffort, maxTokens: protocol === 'Res' ? body.max_output_tokens : protocol === 'Mes' ? body.max_tokens : (body.max_completion_tokens ?? body.max_tokens), stream: body.stream === true, candidateCount };
+  return { messages: parsed.messages, instructions: parsed.instructions, ...(parsed.reasoningMetadata ? { reasoningMetadata: parsed.reasoningMetadata } : {}), ...(compatibilityWarnings.length ? { compatibilityWarnings } : {}), tools, toolChoice: normalizeToolChoice(protocol, body.tool_choice, direction, tools), responseFormat, reasoningEffort, maxTokens: protocol === 'Res' ? body.max_output_tokens : protocol === 'Mes' ? body.max_tokens : (body.max_completion_tokens ?? body.max_tokens), stream: body.stream === true, candidateCount };
 }
 
 function serializeTools(protocol, tools) {
@@ -301,15 +386,41 @@ function serializeChoice(protocol, choice) {
   return choice.mode;
 }
 
+function serializeChatMessages(normalized) {
+  const messages = normalized.instructions ? [{ role: 'system', content: normalized.instructions }, ...normalized.messages] : normalized.messages;
+  const serialized = [];
+  for (const item of messages) {
+    let message;
+    if (item.role === 'tool') {
+      if (Array.isArray(item.content)) throw featureError('messages.tool.content', '->Chat');
+      message = { role: 'tool', tool_call_id: item.id, content: item.content };
+    } else {
+      if (item.role !== 'user' && Array.isArray(item.content) && item.content.some(part => part.type === 'image')) throw featureError('messages.content', '->Chat');
+      const content = serializeContent('Chat', item.content, item.role);
+      message = item.toolCalls?.length ? { role: 'assistant', content: content || null, tool_calls: item.toolCalls.map((call) => ({ id: call.id, type: 'function', function: { name: call.name, arguments: call.arguments } })) } : { role: item.role, content };
+    }
+    const previous = serialized.at(-1);
+    if (message.role === 'assistant' && previous?.role === 'assistant' && (previous.tool_calls?.length || message.tool_calls?.length)) {
+      // Chat keeps text and calls on one assistant turn; results must follow it.
+      if (Array.isArray(previous.content) || Array.isArray(message.content)) {
+        const blocks = value => Array.isArray(value) ? value : value ? [{ type: 'text', text: value }] : [];
+        previous.content = [...blocks(previous.content), ...blocks(message.content)];
+      } else previous.content = ((previous.content || '') + (message.content || '')) || null;
+      previous.tool_calls = [...(previous.tool_calls || []), ...(message.tool_calls || [])];
+    } else serialized.push(message);
+  }
+  return serialized;
+}
+
 export function serializeRequest(protocol, normalized, model) {
   const messages = normalized.messages;
   if (protocol === 'Chat') {
-    const chatMessages = normalized.instructions ? [{ role: 'system', content: normalized.instructions }, ...messages] : messages;
-    const payload = { model, messages: chatMessages.map((item) => item.role === 'tool' ? { role: 'tool', tool_call_id: item.id, content: item.content } : item.toolCalls?.length ? { role: 'assistant', content: item.content || null, tool_calls: item.toolCalls.map((call) => ({ id: call.id, type: 'function', function: { name: call.name, arguments: call.arguments } })) } : { role: item.role, content: item.content }) };
+    const payload = { model, messages: serializeChatMessages(normalized) };
     const tools = serializeTools(protocol, normalized.tools); if (tools) payload.tools = tools;
     const choice = serializeChoice(protocol, normalized.toolChoice); if (choice) payload.tool_choice = choice;
     if (normalized.responseFormat) payload.response_format = normalized.responseFormat.type === 'json_schema' ? { type: 'json_schema', json_schema: { name: normalized.responseFormat.name, schema: normalized.responseFormat.schema, ...(normalized.responseFormat.strict === undefined ? {} : { strict: normalized.responseFormat.strict }) } } : normalized.responseFormat;
     if (normalized.maxTokens) payload.max_completion_tokens = normalized.maxTokens;
+    if (normalized.reasoningEffort) payload.reasoning_effort = normalized.reasoningEffort;
     return payload;
   }
   if (protocol === 'Mes') {
@@ -319,16 +430,16 @@ export function serializeRequest(protocol, normalized, model) {
       if (item.role === 'tool') {
         const previous = mesMessages.at(-1);
         if (previous?.role === 'user' && Array.isArray(previous.content) && previous.content.every((part) => part.type === 'tool_result')) {
-          previous.content.push({ type: 'tool_result', tool_use_id: item.id, content: item.content });
+          previous.content.push({ type: 'tool_result', tool_use_id: item.id, content: serializeContent('Mes', item.content) });
         } else {
-          mesMessages.push({ role: 'user', content: [{ type: 'tool_result', tool_use_id: item.id, content: item.content }] });
+          mesMessages.push({ role: 'user', content: [{ type: 'tool_result', tool_use_id: item.id, content: serializeContent('Mes', item.content) }] });
         }
       } else if (item.toolCalls?.length) {
-        const content = item.content ? [{ type: 'text', text: item.content }] : [];
+        const content = Array.isArray(item.content) ? serializeContent('Mes', item.content, item.role) : item.content ? [{ type: 'text', text: item.content }] : [];
         content.push(...item.toolCalls.map((call) => ({ type: 'tool_use', id: call.id, name: call.name, input: JSON.parse(call.arguments || '{}') })));
         mesMessages.push({ role: 'assistant', content });
       } else {
-        mesMessages.push({ role: item.role, content: item.content });
+        mesMessages.push({ role: item.role, content: serializeContent('Mes', item.content, item.role) });
       }
     }
     const payload = { model, messages: mesMessages, max_tokens: normalized.maxTokens || 1024 };
@@ -343,7 +454,14 @@ export function serializeRequest(protocol, normalized, model) {
     }
     return payload;
   }
-  const payload = { model, input: messages.map((item) => item.role === 'tool' ? { type: 'function_call_output', call_id: item.id, output: item.content } : item.toolCalls?.length ? item.toolCalls.map((call) => ({ type: 'function_call', call_id: call.id, name: call.name, arguments: call.arguments })) : { role: item.role, content: item.content }).flat() };
+  const input = messages.flatMap((item, messageIndex) => {
+    const metadata = (normalized.reasoningMetadata || []).filter(entry => entry.messageIndex === messageIndex).map(entry => entry.item);
+    if (item.role === 'tool') return [...metadata, { type: 'function_call_output', call_id: item.id, output: serializeContent('Res', item.content) }];
+    const content = item.toolCalls?.length && !item.content ? [] : [{ role: item.role, content: serializeContent('Res', item.content, item.role) }];
+    return [...metadata, ...content, ...(item.toolCalls || []).map(call => ({ type: 'function_call', call_id: call.id, name: call.name, arguments: call.arguments }))];
+  });
+  input.push(...(normalized.reasoningMetadata || []).filter(entry => entry.messageIndex === messages.length).map(entry => entry.item));
+  const payload = { model, input };
   if (normalized.instructions) payload.instructions = normalized.instructions;
   const tools = serializeTools(protocol, normalized.tools); if (tools) payload.tools = tools;
   const choice = serializeChoice(protocol, normalized.toolChoice); if (choice) payload.tool_choice = choice;
@@ -354,12 +472,11 @@ export function serializeRequest(protocol, normalized, model) {
 }
 
 function customInputFromArguments(argumentsText) {
-  if (typeof argumentsText !== 'string') return JSON.stringify(argumentsText ?? '');
   try {
-    const parsed = JSON.parse(argumentsText);
+    const parsed = typeof argumentsText === 'string' ? JSON.parse(argumentsText) : argumentsText;
     if (typeof parsed?.input === 'string') return parsed.input;
   } catch {}
-  return argumentsText;
+  throw Object.assign(new Error('Invalid upstream custom tool input'), { code: 'upstream_error', statusCode: 502 });
 }
 
 function restoreToolCall(call, toolContext) {
@@ -367,32 +484,56 @@ function restoreToolCall(call, toolContext) {
   if (!tool) return call;
   const restored = { ...call, name: tool.name, targetName: targetToolName(tool), kind: tool.kind || 'function' };
   if (tool.namespace) restored.namespace = tool.namespace;
-  if (tool.kind === 'custom') restored.input = customInputFromArguments(call.arguments);
+  if (tool.kind === 'custom') restored.input = typeof call.input === 'string' ? call.input : customInputFromArguments(call.arguments);
   return restored;
 }
 
-function parseResponseToolCalls(calls, toolContext) {
-  return calls.map((call) => restoreToolCall(call, toolContext));
+function parseResponseToolCalls(calls, toolContext, finishReason) {
+  return calls.filter(call => {
+    const kind = toolContext.find(item => targetToolName(item) === call.name)?.kind || call.kind;
+    return !incompleteReason(finishReason) || !['custom', 'tool_search'].includes(kind);
+  }).map((call) => restoreToolCall(call, toolContext));
 }
 
 function incompleteReason(finishReason) {
   if (finishReason === 'length' || finishReason === 'max_tokens') return 'max_output_tokens';
-  if (finishReason === 'content_filter') return 'content_filter';
+  if (finishReason === 'content_filter' || finishReason === 'refusal') return 'content_filter';
   return null;
+}
+
+function responsesFinishReason(body) {
+  if (body.status === 'failed') throw Object.assign(new Error('Upstream response reported an error'), { code: 'upstream_error', statusCode: 502 });
+  if (body.status !== 'incomplete') return body.status;
+  if (body.incomplete_details?.reason === 'max_output_tokens') return 'length';
+  if (body.incomplete_details?.reason === 'content_filter') return 'content_filter';
+  throw Object.assign(new Error('Upstream response has an unsupported incomplete reason'), { code: 'upstream_error', statusCode: 502 });
+}
+
+function chatFinishReason(finishReason, hasTools) {
+  const incomplete = incompleteReason(finishReason);
+  if (incomplete) return incomplete === 'max_output_tokens' ? 'length' : 'content_filter';
+  return hasTools ? 'tool_calls' : 'stop';
+}
+
+function messagesFinishReason(finishReason, hasTools) {
+  const incomplete = incompleteReason(finishReason);
+  if (incomplete) return incomplete === 'max_output_tokens' ? 'max_tokens' : 'refusal';
+  return hasTools ? 'tool_use' : 'end_turn';
 }
 
 export function parseResponse(protocol, body, toolContext = []) {
   if (protocol === 'Chat') {
     const message = body.choices?.[0]?.message || {};
-    return { id: body.id, text: textParts(message.content) || (typeof message.refusal === 'string' ? message.refusal : ''), finishReason: body.choices?.[0]?.finish_reason, toolCalls: parseResponseToolCalls((message.tool_calls || []).map((call, index) => ({ id: call.id, name: call.function?.name, arguments: call.function?.arguments || '{}', index })), toolContext), usage: body.usage };
+    return { id: body.id, text: textParts(message.content) || (typeof message.refusal === 'string' ? message.refusal : ''), finishReason: body.choices?.[0]?.finish_reason, toolCalls: parseResponseToolCalls((message.tool_calls || []).map((call, index) => ({ id: call.id, name: call.function?.name, arguments: call.function?.arguments || '{}', index })), toolContext, body.choices?.[0]?.finish_reason), usage: body.usage };
   }
-  if (protocol === 'Mes') return { id: body.id, text: textParts(body.content), finishReason: body.stop_reason, toolCalls: parseResponseToolCalls((body.content || []).filter((item) => item.type === 'tool_use').map((call, index) => ({ id: call.id, name: call.name, arguments: JSON.stringify(call.input || {}), index })), toolContext), usage: body.usage };
-  return { id: body.id, text: textParts(body.output?.find((item) => item.type === 'message')?.content), finishReason: body.status, toolCalls: parseResponseToolCalls((body.output || []).filter((item) => item.type === 'function_call' || item.type === 'custom_tool_call').map((call, index) => ({ id: call.call_id, name: call.name, namespace: call.namespace, kind: call.type === 'custom_tool_call' ? 'custom' : 'function', arguments: call.arguments || '{}', input: call.input, index })), toolContext), usage: body.usage };
+  if (protocol === 'Mes') return { id: body.id, text: textParts(body.content), finishReason: body.stop_reason, toolCalls: parseResponseToolCalls((body.content || []).filter((item) => item.type === 'tool_use').map((call, index) => ({ id: call.id, name: call.name, arguments: JSON.stringify(call.input || {}), index })), toolContext, body.stop_reason), usage: body.usage };
+  const finishReason = responsesFinishReason(body);
+  return { id: body.id, text: textParts(body.output?.find((item) => item.type === 'message')?.content), finishReason, toolCalls: parseResponseToolCalls((body.output || []).filter((item) => item.type === 'function_call' || item.type === 'custom_tool_call').map((call, index) => ({ id: call.call_id, name: call.name, namespace: call.namespace, kind: call.type === 'custom_tool_call' ? 'custom' : 'function', arguments: call.arguments || '{}', input: call.input, index })), toolContext, finishReason), usage: body.usage };
 }
 
 export function serializeResponse(protocol, normalized, requestId) {
-  if (protocol === 'Chat') return { id: normalized.id || 'chatcmpl_' + requestId, object: 'chat.completion', choices: [{ index: 0, message: normalized.toolCalls?.length ? { role: 'assistant', content: null, tool_calls: normalized.toolCalls.map((call) => ({ id: call.id, type: 'function', function: { name: targetToolName(call), arguments: call.kind === 'custom' ? JSON.stringify({ input: call.input ?? customInputFromArguments(call.arguments) }) : call.arguments } })) } : { role: 'assistant', content: normalized.text }, finish_reason: normalized.toolCalls?.length ? 'tool_calls' : 'stop' }], usage: normalized.usage };
-  if (protocol === 'Mes') return { id: normalized.id || 'msg_' + requestId, type: 'message', role: 'assistant', content: normalized.toolCalls?.length ? normalized.toolCalls.map((call) => ({ type: 'tool_use', id: call.id, name: targetToolName(call), input: call.kind === 'custom' ? { input: call.input ?? customInputFromArguments(call.arguments) } : JSON.parse(call.arguments || '{}') })) : [{ type: 'text', text: normalized.text }], stop_reason: normalized.toolCalls?.length ? 'tool_use' : 'end_turn', usage: normalized.usage };
+  if (protocol === 'Chat') return { id: normalized.id || 'chatcmpl_' + requestId, object: 'chat.completion', choices: [{ index: 0, message: normalized.toolCalls?.length ? { role: 'assistant', content: normalized.text || null, tool_calls: normalized.toolCalls.map((call) => ({ id: call.id, type: 'function', function: { name: targetToolName(call), arguments: call.kind === 'custom' ? JSON.stringify({ input: call.input ?? customInputFromArguments(call.arguments) }) : call.arguments } })) } : { role: 'assistant', content: normalized.text }, finish_reason: chatFinishReason(normalized.finishReason, normalized.toolCalls?.length) }], usage: normalized.usage };
+  if (protocol === 'Mes') return { id: normalized.id || 'msg_' + requestId, type: 'message', role: 'assistant', content: [...(normalized.text ? [{ type: 'text', text: normalized.text }] : []), ...(normalized.toolCalls || []).map((call) => ({ type: 'tool_use', id: call.id, name: targetToolName(call), input: call.kind === 'custom' ? { input: call.input ?? customInputFromArguments(call.arguments) } : JSON.parse(call.arguments || '{}') }))], stop_reason: messagesFinishReason(normalized.finishReason, normalized.toolCalls?.length), usage: normalized.usage };
   const reason = incompleteReason(normalized.finishReason);
   const status = reason ? 'incomplete' : 'completed';
   const output = [];
@@ -436,11 +577,12 @@ export function parseStreamEvent(protocol, eventName, payload, state = {}) {
     return events[0] || { type: 'ignore' };
   }
   if (protocol === 'Mes') {
+    if (eventName === 'content_block_start' && payload.content_block?.type === 'text' && payload.content_block.text) return { type: 'text', text: payload.content_block.text };
     if (eventName === 'content_block_start' && payload.content_block?.type === 'tool_use') {
       const index = Number.isInteger(payload.index) ? payload.index : (state.nextToolIndex || 0);
       state.nextToolIndex = Math.max(state.nextToolIndex || 0, index + 1);
       state.sawTool = true;
-      return { type: 'tools', tools: [{ index, id: payload.content_block.id, name: payload.content_block.name }] };
+      return { type: 'tools', tools: [{ index, id: payload.content_block.id, name: payload.content_block.name, ...(Object.keys(payload.content_block.input || {}).length ? { arguments: JSON.stringify(payload.content_block.input) } : {}) }] };
     }
     if (payload.delta?.type === 'input_json_delta') {
       const index = Number.isInteger(payload.index) ? payload.index : Math.max(0, (state.nextToolIndex || 1) - 1);
@@ -459,8 +601,10 @@ export function parseStreamEvent(protocol, eventName, payload, state = {}) {
     return { type: 'tools', tools: [{ index, id: payload.item.call_id || payload.item.id, name: payload.item.name }] };
   }
   if (eventName === 'response.function_call_arguments.delta') { state.sawTool = true; return { type: 'tools', tools: [{ index: payload.output_index ?? 0, arguments: payload.delta || '' }] }; }
-  if (['response.output_text.delta', 'response.refusal.delta', 'response.reasoning_text.delta'].includes(eventName)) return { type: 'text', text: payload.delta || '' };
+  if (['response.output_text.delta', 'response.refusal.delta'].includes(eventName)) return { type: 'text', text: payload.delta || '' };
   if (eventName === 'response.completed' || eventName === 'response.done') return { type: 'done', finishReason: 'completed' };
+  if (eventName === 'response.incomplete') return { type: 'done', finishReason: responsesFinishReason({ ...payload.response, status: 'incomplete' }) };
+  if (eventName === 'response.failed' || eventName === 'error') throw Object.assign(new Error('Upstream stream reported an error'), { code: 'upstream_error', statusCode: 502 });
   return { type: 'ignore' };
 }
 
@@ -592,16 +736,18 @@ function serializeResponsesStreamEvent(event, requestId, state) {
   if (event.type === 'text') return streamResponsesText(event.text, requestId, state);
   if (event.type === 'tools') return streamResponsesTools(event.tools, requestId, state);
   if (event.type !== 'done') return '';
-  const pending = [...state.responseCalls.values()].filter(call => !call.item);
-  if ((!state.responseItems.length && !pending.length) || pending.some(call => !call.name)) {
+  const buffered = [...state.responseCalls.values()].filter(call => !call.item);
+  const reason = incompleteReason(event.finishReason);
+  if ((!state.responseItems.length && !buffered.length && reason !== 'max_output_tokens') || buffered.some(call => !call.name)) {
     throw Object.assign(new Error('Converted stream has no complete output items'), { code: 'upstream_error', statusCode: 502 });
   }
+  // Custom/search wrappers are executable only after a successful complete turn.
+  const pending = reason ? buffered.filter(call => call.kind === 'function') : buffered;
   // Buffered custom and search calls receive their index when their added event is emitted.
   for (const call of pending) {
     call.outputIndex = state.responseItems.length;
     state.responseItems.push(call);
   }
-  const reason = incompleteReason(event.finishReason);
   const status = reason ? 'incomplete' : 'completed';
   const result = state.responseItems.map(entry => finishResponsesItem(entry, requestId, status));
   const start = writeResponseStart(requestId, state);
@@ -611,20 +757,63 @@ function serializeResponsesStreamEvent(event, requestId, state) {
   });
 }
 
+function serializeMessagesStreamEvent(event, requestId, state) {
+  const output = state.messagesOutput ??= { started: false, completed: false, blocks: [], tools: new Map() };
+  if (output.completed || !['text', 'tools', 'done'].includes(event.type)) return '';
+  let wire = '';
+  if (!output.started) {
+    output.started = true;
+    wire += convertedResponseFrame('message_start', { message: {
+      id: 'msg_' + requestId, type: 'message', role: 'assistant', model: state.model || '', content: [],
+      stop_reason: null, stop_sequence: null, usage: { input_tokens: 0, output_tokens: 0 },
+    } });
+  }
+  const startBlock = content_block => {
+    const index = output.blocks.length;
+    output.blocks.push(index);
+    wire += convertedResponseFrame('content_block_start', { index, content_block });
+    return index;
+  };
+  if (event.type === 'text' && event.text) {
+    if (output.textIndex === undefined) output.textIndex = startBlock({ type: 'text', text: '' });
+    wire += convertedResponseFrame('content_block_delta', { index: output.textIndex, delta: { type: 'text_delta', text: event.text } });
+  } else if (event.type === 'tools') {
+    for (const tool of event.tools) {
+      const key = tool.index ?? 0;
+      let call = output.tools.get(key);
+      if (!call) {
+        call = { id: tool.id, name: tool.name, arguments: '' };
+        output.tools.set(key, call);
+      }
+      call.id ??= tool.id;
+      call.name ??= tool.name;
+      call.arguments += tool.arguments || '';
+      if (!call.name) continue;
+      const first = call.index === undefined;
+      if (first) call.index = startBlock({ type: 'tool_use', id: call.id || 'tool_' + requestId + '_' + key, name: call.name, input: {} });
+      const partial_json = first ? call.arguments : tool.arguments;
+      if (partial_json) wire += convertedResponseFrame('content_block_delta', { index: call.index, delta: { type: 'input_json_delta', partial_json } });
+    }
+  } else if (event.type === 'done') {
+    if ([...output.tools.values()].some(call => call.index === undefined)) throw Object.assign(new Error('Converted stream has an incomplete tool call'), { code: 'upstream_error', statusCode: 502 });
+    output.completed = true;
+    for (const index of output.blocks) wire += convertedResponseFrame('content_block_stop', { index });
+    const stop_reason = messagesFinishReason(event.finishReason, output.tools.size);
+    wire += convertedResponseFrame('message_delta', { delta: { stop_reason, stop_sequence: null }, usage: { output_tokens: state.usage?.output_tokens || 0 } });
+    wire += convertedResponseFrame('message_stop', {});
+  }
+  return wire;
+}
+
 export function serializeStreamEvent(protocol, event, requestId, state = {}) {
   if (event.type === 'batch') return event.events.map(item => serializeStreamEvent(protocol, item, requestId, state)).join('');
   if (protocol === 'Chat') {
-    if (event.type === 'done') return 'data: ' + JSON.stringify({ id: 'chatcmpl_' + requestId, object: 'chat.completion.chunk', choices: [{ index: 0, delta: {}, finish_reason: event.finishReason === 'end_turn' ? 'stop' : event.finishReason === 'tool_use' || event.finishReason === 'tool_calls' ? 'tool_calls' : event.finishReason || 'stop' }] }) + '\n\ndata: [DONE]\n\n';
+    if (event.type === 'done') return 'data: ' + JSON.stringify({ id: 'chatcmpl_' + requestId, object: 'chat.completion.chunk', choices: [{ index: 0, delta: {}, finish_reason: chatFinishReason(event.finishReason, state.sawTool || event.finishReason === 'tool_calls' || event.finishReason === 'tool_use') }] }) + '\n\ndata: [DONE]\n\n';
     if (event.type === 'text') return 'data: ' + JSON.stringify({ id: 'chatcmpl_' + requestId, object: 'chat.completion.chunk', choices: [{ index: 0, delta: { content: event.text }, finish_reason: null }] }) + '\n\n';
     if (event.type === 'tools') return event.tools.map((tool) => 'data: ' + JSON.stringify({ id: 'chatcmpl_' + requestId, object: 'chat.completion.chunk', choices: [{ index: 0, delta: { tool_calls: [{ index: tool.index, ...(tool.id ? { id: tool.id, type: 'function' } : {}), function: { ...(tool.name ? { name: tool.name } : {}), arguments: tool.arguments || '' } }] }, finish_reason: null }] }) + '\n\n').join('');
     return '';
   }
-  if (protocol === 'Mes') {
-    if (event.type === 'done') return 'event: message_stop\ndata: {"type":"message_stop"}\n\n';
-    if (event.type === 'text') return 'event: content_block_delta\ndata: ' + JSON.stringify({ type: 'content_block_delta', delta: { type: 'text_delta', text: event.text } }) + '\n\n';
-    if (event.type === 'tools') return event.tools.map((tool) => (tool.id || tool.name ? 'event: content_block_start\ndata: ' + JSON.stringify({ type: 'content_block_start', index: tool.index, content_block: { type: 'tool_use', id: tool.id || 'tool_' + requestId + '_' + tool.index, name: tool.name || '', input: {} } }) + '\n\n' : '') + (tool.arguments ? 'event: content_block_delta\ndata: ' + JSON.stringify({ type: 'content_block_delta', index: tool.index, delta: { type: 'input_json_delta', partial_json: tool.arguments } }) + '\n\n' : '')).join('');
-    return '';
-  }
+  if (protocol === 'Mes') return serializeMessagesStreamEvent(event, requestId, state);
   return serializeResponsesStreamEvent(event, requestId, state);
 }
 

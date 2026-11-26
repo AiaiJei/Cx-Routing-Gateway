@@ -5,7 +5,17 @@ import ipcModule from '../../apps/desktop/electron/github-update-ipc.cjs';
 const { registerGitHubUpdateIpc } = ipcModule;
 const token = 'github_pat_ipc_test_123456';
 
-function setup({ trusted = true, tokenConfigured = true, verifyStoredToken = async () => true, updateError, installError } = {}) {
+test('public release IPC checks and installs without reading old private repository credentials', async () => {
+  const { handlers, calls, installed } = setup({ tokenConfigured: false, publicRead: true });
+  const checked = await handlers.get('runtime:check-update')({ sender: {} });
+  assert.equal(checked.publicRead, true);
+  const result = await handlers.get('runtime:install-update')({ sender: {} });
+  assert.equal(result.installed, true);
+  assert.deepEqual(calls, [['checkUpdate', '1.1.2', undefined], ['installUpdate', '1.1.2', undefined]]);
+  assert.equal(installed.length, 1);
+});
+
+function setup({ trusted = true, tokenConfigured = true, publicRead = false, verifyStoredToken = async () => true, updateError, installError } = {}) {
   const handlers = new Map();
   const calls = [];
   const tokenService = {
@@ -30,6 +40,7 @@ function setup({ trusted = true, tokenConfigured = true, verifyStoredToken = asy
   };
   const installed = [];
   registerGitHubUpdateIpc({
+    publicRead,
     ipcMain: { handle: (channel, handler) => handlers.set(channel, handler) },
     isTrustedSender: () => trusted,
     getTokenService: () => tokenService,

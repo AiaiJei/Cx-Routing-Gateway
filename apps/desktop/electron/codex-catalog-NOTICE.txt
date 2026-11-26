@@ -1,0 +1,7 @@
+Codex generic fallback coding-agent instructions
+Copyright OpenAI and contributors. Licensed under Apache License, Version 2.0.
+Source: https://github.com/openai/codex/blob/rust-v0.167.0/codex-rs/models-manager/prompt.md
+Pinned tag commit: cb41599ccbe371272892f156286a236aa097bada
+Local file codex-fallback-prompt.txt is an unmodified copy. License: codex-catalog-LICENSE.txt.
+Used only as the mandatory generic model catalogue instructions for custom Gateway routes.
+No model-specific policy, Guardian overrides, reasoning capability, context window or account entitlements are copied.

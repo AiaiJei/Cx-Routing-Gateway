@@ -4,7 +4,7 @@ const { fail } = require("./codex-errors.cjs");
 const isPrefix = (prefix, parts) => prefix.length <= parts.length && prefix.every((part, index) => part === parts[index]);
 const keyParts = node => node.keys.map(key => key.type === "TOMLBare" ? key.name : key.value);
 const keySource = parts => parts.map(part => JSON.stringify(part)).join(".");
-const scalarSource = value => typeof value === "boolean" ? String(value) : JSON.stringify(value);
+const scalarSource = value => value && typeof value === "object" && typeof value.tomlRaw === "string" ? value.tomlRaw : typeof value === "boolean" ? String(value) : JSON.stringify(value);
 
 // The AST supplies structural paths/ranges. Existing scalar source is never
 // round-tripped through JS numbers or Date, so precision and TOML types survive.

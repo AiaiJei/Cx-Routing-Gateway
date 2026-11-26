@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { RoutesPage } from "./RoutesPage";
 import { defaultWorkspaceClient } from "../data/workspace-client";
@@ -18,14 +18,33 @@ async function selectModels(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByLabelText("Northstar AI"));
   await user.click(screen.getByLabelText("Lantern Labs"));
   await user.click(screen.getByRole("button", { name: "加载已选上游模型" }));
-  await user.click(screen.getByRole("combobox", { name: "Northstar AI 模型" }));
+  await user.click(screen.getByRole("combobox", { name: "统一模型" }));
   await user.click(screen.getByRole("option", { name: "northstar-fast" }));
   await user.click(screen.getByRole("option", { name: "northstar-large" }));
-  await user.click(screen.getByRole("combobox", { name: "Lantern Labs 模型" }));
+
   await user.click(screen.getByRole("option", { name: "lantern-haiku" }));
+  await user.click(screen.getByRole("combobox", { name: "统一模型" }));
 }
 
 describe("route model families", () => {
+  it("retains and shows per-model capabilities when saving a preview route", async () => {
+    const user = userEvent.setup();
+    const data = structuredClone(workspaceFixtures);
+    data.routes = [];
+    vi.spyOn(defaultWorkspaceClient, "getWorkspace").mockResolvedValue(data);
+    render(<RoutesPage />);
+    await user.click(await screen.findByRole("button", { name: "添加路由" }));
+    await user.click(screen.getByRole("checkbox", { name: "Northstar AI" }));
+    await user.click(screen.getByRole("button", { name: "加载已选上游模型" }));
+    await user.click(screen.getByRole("combobox", { name: "统一模型" }));
+    await user.click(screen.getByRole("option", { name: "northstar-fast" }));
+    await user.click(screen.getByRole("combobox", { name: "统一模型" }));
+    await user.type(screen.getByRole("textbox", { name: "northstar-fast 上下文窗口" }), "128000");
+    await user.type(screen.getByRole("textbox", { name: "northstar-fast 最大输出" }), "32000");
+    await user.click(screen.getByRole("button", { name: "保存路由" }));
+    expect(await screen.findByText(/上下文 128000 · 最大输出 32000/)).toBeVisible();
+  });
+
   it("filters every family with correct counts and keeps an empty category recoverable", async () => {
     const user = userEvent.setup();
     const data = liveWorkspace();
@@ -66,7 +85,7 @@ describe("route model families", () => {
     } finally { defaultWorkspaceClient.deleteRoute = original; }
   });
 
-  it("saves selections from different families and keeps upstream filters independent", async () => {
+  it("saves a unified model union across families and de-duplicates shared model IDs", async () => {
     const user = userEvent.setup();
     const data = liveWorkspace();
     data.upstreams[0].models = ["gpt-6-astra", "claude-sonnet-5"];
@@ -74,7 +93,7 @@ describe("route model families", () => {
     vi.spyOn(defaultWorkspaceClient, "getWorkspace").mockImplementation(async () => structuredClone(data));
     const original = defaultWorkspaceClient.saveModelRoutes;
     const save = vi.fn(async (selection: ModelRouteSelection) => {
-      data.routes = selection.targets.map((target, index) => ({ id: String(index), alias: target.modelId, inboundProtocol: selection.inboundProtocol, outboundProtocol: selection.outboundProtocol, enabled: true, targets: [{ upstreamId: target.upstreamId, upstreamModel: target.modelId }] }));
+      data.routes = ["gpt-6-astra", "claude-sonnet-5", "gemini-2.5-pro"].map((model, index) => ({ id: String(index), alias: model, inboundProtocol: selection.inboundProtocol, outboundProtocol: selection.outboundProtocol, enabled: true, targets: [{ upstreamId: "up-northstar", upstreamModel: model }] }));
     });
     defaultWorkspaceClient.saveModelRoutes = save;
     try {
@@ -83,23 +102,23 @@ describe("route model families", () => {
       await user.click(screen.getByLabelText("Northstar AI"));
       await user.click(screen.getByLabelText("Lantern Labs"));
       await user.click(screen.getByRole("button", { name: "加载已选上游模型" }));
-      const first = screen.getByRole("group", { name: "Northstar AI 模型分类" });
-      const second = screen.getByRole("group", { name: "Lantern Labs 模型分类" });
+      const first = screen.getByRole("group", { name: "统一模型分类" });
       await user.click(within(first).getByRole("button", { name: "gpt 1" }));
-      await user.click(screen.getByRole("combobox", { name: "Northstar AI 模型" }));
+      await user.click(screen.getByRole("combobox", { name: "统一模型" }));
       await user.click(screen.getByRole("option", { name: "gpt-6-astra" }));
       await user.click(within(first).getByRole("button", { name: "claude 1" }));
-      await user.click(screen.getByRole("combobox", { name: "Northstar AI 模型" }));
+      await user.click(screen.getByRole("combobox", { name: "统一模型" }));
       await user.click(screen.getByRole("option", { name: "claude-sonnet-5" }));
-      expect(within(second).getByRole("button", { name: "全部 2" })).toHaveAttribute("aria-pressed", "true");
-      await user.click(within(second).getByRole("button", { name: "gemini 1" }));
-      await user.click(screen.getByRole("combobox", { name: "Lantern Labs 模型" }));
+      await user.click(within(first).getByRole("button", { name: "gemini 1" }));
+      await user.click(screen.getByRole("combobox", { name: "统一模型" }));
+
       await user.click(screen.getByRole("option", { name: "gemini-2.5-pro" }));
       await user.click(screen.getByRole("button", { name: "保存路由" }));
-      expect(await screen.findByText("已保存 3 个上游模型配置。")).toBeVisible();
+      expect(await screen.findByText(/已保存 3 个统一模型。/)).toHaveTextContent("如需更新 Codex 模型能力，请到 Codex 页面重新保存并启用网关，再完整退出并重启 Codex。");
       expect(save).toHaveBeenCalledWith(expect.objectContaining({ targets: [
         { upstreamId: "up-northstar", modelId: "gpt-6-astra" },
         { upstreamId: "up-northstar", modelId: "claude-sonnet-5" },
+        { upstreamId: "up-lantern", modelId: "gpt-6-astra" },
         { upstreamId: "up-lantern", modelId: "gemini-2.5-pro" },
       ] }));
       const filters = screen.getByRole("group", { name: "路由模型分类" });
@@ -222,7 +241,7 @@ describe("RoutesPage", () => {
       const dialog = screen.getByRole("dialog");
       expect(within(dialog).queryByText(/示例|模拟|仅当前页面会话/)).not.toBeInTheDocument();
       await user.click(screen.getByRole("button", { name: "保存路由" }));
-      expect(await screen.findByText("已保存 3 个上游模型配置。")).toBeVisible();
+      expect(await screen.findByText(/已保存 3 个统一模型。/)).toHaveTextContent("如需更新 Codex 模型能力，请到 Codex 页面重新保存并启用网关，再完整退出并重启 Codex。");
       expect(save).toHaveBeenCalledTimes(1);
       expect(save.mock.calls[0][0].targets).toEqual([
         { upstreamId: "up-northstar", modelId: "northstar-fast" },
@@ -247,9 +266,7 @@ describe("RoutesPage", () => {
       await user.click(screen.getByLabelText("Northstar AI"));
       await user.click(screen.getByLabelText("Lantern Labs"));
       await user.click(screen.getByRole("button", { name: "加载已选上游模型" }));
-      await user.click(screen.getByRole("combobox", { name: "Northstar AI 模型" }));
-      await user.click(screen.getByRole("option", { name: "northstar-fast" }));
-      await user.click(screen.getByRole("combobox", { name: "Lantern Labs 模型" }));
+      await user.click(screen.getByRole("combobox", { name: "统一模型" }));
       await user.click(screen.getByRole("option", { name: "northstar-fast" }));
       await user.click(screen.getByRole("button", { name: "提高 Lantern Labs 优先级" }));
       const threshold = screen.getByRole("spinbutton", { name: "连续失败次数" });
@@ -272,7 +289,7 @@ describe("RoutesPage", () => {
       await user.click(screen.getByRole("button", { name: "保存路由" }));
       expect(await screen.findByRole("alert")).toHaveTextContent("同名模型");
       expect(screen.getByRole("dialog")).toBeVisible();
-      expect(screen.getByRole("combobox", { name: "Northstar AI 模型" })).toHaveTextContent("已选 2 个模型");
+      expect(screen.getByRole("combobox", { name: "统一模型" })).toHaveTextContent("已选 3 个模型");
       expect(screen.getByRole("button", { name: "保存路由" })).toBeEnabled();
     } finally { defaultWorkspaceClient.saveModelRoutes = original; }
   });
@@ -288,9 +305,141 @@ describe("RoutesPage", () => {
       const user = userEvent.setup(); render(<RoutesPage />);
       await user.click(await screen.findByRole("button", { name: "编辑" }));
       expect(screen.queryByLabelText("客户端模型别名")).not.toBeInTheDocument();
-      expect(screen.getByRole("combobox", { name: "Northstar AI 模型" })).toHaveTextContent("northstar-fast");
+      expect(screen.getByRole("combobox", { name: "统一模型" })).toHaveTextContent("northstar-fast");
       await user.click(screen.getByRole("button", { name: "保存路由" }));
       expect(save).toHaveBeenCalledWith(expect.objectContaining({ editId: "old", targets: [{ upstreamId: "up-northstar", modelId: "northstar-fast" }] }));
     } finally { defaultWorkspaceClient.saveModelRoutes = original; }
   });
+});
+
+
+describe("unified route ranges", () => {
+  async function selectRange(user: ReturnType<typeof userEvent.setup>, model: string, min: string, max: string) {
+    await user.click(screen.getByRole("checkbox", { name: `限制 ${model} 推理区间` }));
+    await user.click(screen.getByRole("combobox", { name: `${model} 最低强度` }));
+    await user.click(screen.getByRole("option", { name: min }));
+    await user.click(screen.getByRole("combobox", { name: `${model} 最高强度` }));
+    await user.click(screen.getByRole("option", { name: max }));
+  }
+
+  it("shows one model choice for shared IDs and saves distinct explicit per-model policies", async () => {
+    const data = liveWorkspace(); data.upstreams[1].models.push("northstar-fast");
+    vi.spyOn(defaultWorkspaceClient, "getWorkspace").mockResolvedValue(data);
+    const original = defaultWorkspaceClient.saveModelRoutes; const save = vi.fn(async (_selection: ModelRouteSelection) => ({})); defaultWorkspaceClient.saveModelRoutes = save;
+    try {
+      const user = userEvent.setup(); render(<RoutesPage />); await screen.findByText("本机运行时路由"); await selectModels(user);
+      await user.click(screen.getByRole("combobox", { name: "统一模型" }));
+      expect(screen.getAllByRole("option", { name: "northstar-fast" })).toHaveLength(1);
+      await user.click(screen.getByRole("combobox", { name: "统一模型" }));
+      const protocols = screen.getByRole("group", { name: "协议设置" });
+      expect(within(protocols).getAllByRole("combobox")).toHaveLength(2);
+      await selectRange(user, "northstar-fast", "low", "xhigh");
+      await selectRange(user, "northstar-large", "high", "max");
+      await user.click(screen.getByRole("button", { name: "保存路由" }));
+      expect(save).toHaveBeenCalledWith(expect.objectContaining({ replaceTargets: true, modelReasoning: [
+        { modelId: "northstar-fast", min: "low", max: "xhigh" }, { modelId: "northstar-large", min: "high", max: "max" }, { modelId: "lantern-haiku", clear: true },
+      ] }));
+      expect(save.mock.calls[0][0].targets).toContainEqual({ upstreamId: "up-lantern", modelId: "northstar-fast" });
+    } finally { defaultWorkspaceClient.saveModelRoutes = original; }
+  });
+
+  it("removes models with no remaining upstream and never adds a model-less upstream target", async () => {
+    const data = liveWorkspace(); vi.spyOn(defaultWorkspaceClient, "getWorkspace").mockResolvedValue(data);
+    const original = defaultWorkspaceClient.saveModelRoutes; const save = vi.fn(async (_selection: ModelRouteSelection) => ({})); defaultWorkspaceClient.saveModelRoutes = save;
+    try {
+      const user = userEvent.setup(); render(<RoutesPage />); await screen.findByText("本机运行时路由"); await selectModels(user);
+      await user.click(screen.getByLabelText("Northstar AI"));
+      expect(screen.getByRole("combobox", { name: "统一模型" })).toHaveTextContent("lantern-haiku");
+      expect(screen.queryByRole("checkbox", { name: "限制 northstar-fast 推理区间" })).not.toBeInTheDocument();
+      await user.click(screen.getByLabelText("Northstar AI"));
+      await user.click(screen.getByRole("button", { name: "保存路由" }));
+      expect(save).toHaveBeenCalledWith(expect.objectContaining({ replaceTargets: true, targets: [{ upstreamId: "up-lantern", modelId: "lantern-haiku" }] }));
+    } finally { defaultWorkspaceClient.saveModelRoutes = original; }
+  });
+
+  it("keeps original undiscovered targets visible, remembers edit policy and restores saved values after cancel", async () => {
+    const data = liveWorkspace(); data.upstreams[0].models = [];
+    data.routes = [{ id: "old", alias: "custom-alias", enabled: false, inboundProtocol: "Res", outboundProtocol: "Chat", reasoning: { min: "medium", max: "max" }, targets: [{ upstreamId: "up-northstar", upstreamModel: "old-model" }] }];
+    vi.spyOn(defaultWorkspaceClient, "getWorkspace").mockResolvedValue(data);
+    const original = defaultWorkspaceClient.saveModelRoutes; const save = vi.fn(async (_selection: ModelRouteSelection) => ({})); defaultWorkspaceClient.saveModelRoutes = save;
+    try {
+      const user = userEvent.setup(); render(<RoutesPage />); await user.click(await screen.findByRole("button", { name: "编辑" }));
+      expect(screen.getByText(/未在当前发现列表中/)).toBeVisible();
+      expect(screen.getByRole("combobox", { name: "old-model 最低强度" })).toHaveTextContent("medium");
+      await user.click(screen.getByRole("checkbox", { name: "限制 old-model 推理区间" }));
+      await user.click(screen.getByRole("button", { name: "取消" }));
+      await user.click(screen.getByRole("button", { name: "编辑" }));
+      expect(screen.getByRole("checkbox", { name: "限制 old-model 推理区间" })).toBeChecked();
+      await user.click(screen.getByLabelText("Lantern Labs"));
+      await user.click(screen.getByRole("button", { name: "保存路由" }));
+      expect(save).toHaveBeenCalledWith(expect.objectContaining({ editId: "old", targets: [{ upstreamId: "up-northstar", modelId: "old-model" }], modelReasoning: [{ modelId: "old-model", min: "medium", max: "max" }] }));
+      expect(screen.getByRole("row", { name: /custom-alias/ })).toHaveTextContent("已停用");
+    } finally { defaultWorkspaceClient.saveModelRoutes = original; }
+  });
+
+  it("blocks reversed ranges, omits persistent and preserves choices on save failure", async () => {
+    vi.spyOn(defaultWorkspaceClient, "getWorkspace").mockResolvedValue(liveWorkspace());
+    const original = defaultWorkspaceClient.saveModelRoutes; const save = vi.fn(async () => { throw new Error("写入失败，请重试"); }); defaultWorkspaceClient.saveModelRoutes = save;
+    try {
+      const user = userEvent.setup(); render(<RoutesPage />); await screen.findByText("本机运行时路由"); await selectModels(user);
+      await selectRange(user, "northstar-fast", "max", "low");
+      await user.click(screen.getByRole("combobox", { name: "northstar-fast 最高强度" }));
+      expect(screen.getAllByRole("option").map(item => item.textContent)).toEqual(["none", "minimal", "low", "medium", "high", "xhigh", "max"]);
+      expect(screen.queryByRole("option", { name: "persistent" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("option", { name: "ultra" })).not.toBeInTheDocument();
+      expect(screen.getByText(/Ultra 是 Codex 界面别名/)).toBeVisible();
+      await user.click(screen.getByRole("combobox", { name: "northstar-fast 最高强度" }));
+      await user.click(screen.getByRole("button", { name: "保存路由" }));
+      expect(await screen.findByRole("alert")).toHaveTextContent("最低强度不能高于最高强度"); expect(save).not.toHaveBeenCalled();
+      await user.click(screen.getByRole("combobox", { name: "northstar-fast 最高强度" })); await user.click(screen.getByRole("option", { name: "max" }));
+      await user.click(screen.getByRole("button", { name: "保存路由" }));
+      expect(await screen.findByRole("alert")).toHaveTextContent("写入失败");
+      expect(screen.getByRole("combobox", { name: "northstar-fast 最低强度" })).toHaveTextContent("max");
+      expect(screen.getByRole("combobox", { name: "统一模型" })).toHaveTextContent("已选 3 个模型");
+    } finally { defaultWorkspaceClient.saveModelRoutes = original; }
+  });
+
+  it("clears a legacy policy explicitly and prevents duplicate saves and closing while saving", async () => {
+    const data = liveWorkspace(); data.routes = [{ id: "old", alias: "custom", enabled: true, inboundProtocol: "Res", outboundProtocol: "Res", reasoning: { min: "low", max: "high" }, targets: [{ upstreamId: "up-northstar", upstreamModel: "northstar-fast" }] }];
+    vi.spyOn(defaultWorkspaceClient, "getWorkspace").mockResolvedValue(data);
+    let finish!: (value: unknown) => void; const original = defaultWorkspaceClient.saveModelRoutes; const save = vi.fn(() => new Promise(resolve => { finish = resolve; })); defaultWorkspaceClient.saveModelRoutes = save;
+    try {
+      const user = userEvent.setup(); render(<RoutesPage />); await user.click(await screen.findByRole("button", { name: "编辑" }));
+      await user.click(screen.getByRole("checkbox", { name: "限制 northstar-fast 推理区间" }));
+      await user.click(screen.getByRole("button", { name: "保存路由" }));
+      expect(save).toHaveBeenCalledWith(expect.objectContaining({ modelReasoning: [{ modelId: "northstar-fast", clear: true }] }));
+      expect(screen.getByRole("button", { name: "保存中…" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "取消" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "关闭弹窗" })).toBeDisabled();
+      await user.keyboard("{Escape}"); expect(screen.getByRole("dialog")).toBeVisible(); expect(save).toHaveBeenCalledTimes(1);
+      await act(async () => finish({})); expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    } finally { defaultWorkspaceClient.saveModelRoutes = original; }
+  });
+});
+
+
+it("keeps Escape inside an open selector, then closes the editor and restores trigger focus", async () => {
+  vi.spyOn(defaultWorkspaceClient, "getWorkspace").mockResolvedValue(liveWorkspace());
+  const user = userEvent.setup(); render(<RoutesPage />);
+  const trigger = await screen.findByRole("button", { name: "添加路由" }); await user.click(trigger);
+  const protocol = screen.getByRole("combobox", { name: "客户端协议 / 入站" });
+  protocol.focus(); await user.keyboard("{ArrowDown}{ArrowDown}{Enter}");
+  expect(protocol).toHaveTextContent("Mes");
+  await user.keyboard("{ArrowDown}{Escape}");
+  expect(screen.getByRole("dialog")).toBeVisible(); expect(protocol).toHaveAttribute("aria-expanded", "false");
+  await user.keyboard("{Escape}");
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument(); expect(trigger).toHaveFocus();
+});
+
+
+it("starts a newly enabled interval at none through max without offering ultra", async () => {
+  vi.spyOn(defaultWorkspaceClient, "getWorkspace").mockResolvedValue(liveWorkspace());
+  const user = userEvent.setup(); render(<RoutesPage />); await screen.findByText("本机运行时路由"); await selectModels(user);
+  await user.click(screen.getByRole("checkbox", { name: "限制 northstar-fast 推理区间" }));
+  expect(screen.getByRole("combobox", { name: "northstar-fast 最低强度" })).toHaveTextContent("none");
+  expect(screen.getByRole("combobox", { name: "northstar-fast 最高强度" })).toHaveTextContent("max");
+  await user.click(screen.getByRole("combobox", { name: "northstar-fast 最高强度" }));
+  const values = screen.getAllByRole("option").map(option => option.textContent);
+  expect(values.at(-1)).toBe("max");
+  expect(values).not.toContain("ultra");
 });

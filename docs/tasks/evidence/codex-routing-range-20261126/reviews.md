@@ -1,0 +1,9 @@
+# Revision6 independent reviews
+
+- Runtime: PASS. Initial Important same-batch active custom-alias conflict reproduced; fixed with candidate-vs-saved check and atomic409, independent6-case probePASS. Later seven-wire-level correction reviewedPASS; prior policies/legacymerge/replaceTargets/auth/log/failover checks retained.
+- Protocol: PASS. Empty tokenlimit, incomplete/malformed function history, truncated/malformed custom/search calls, official custom choice and function/custom same-name forced choice were all reproduced, fixed and independently reviewed. No remaining blocker in protocol scope. Realprovider capability remainsNOT_RUN.
+- UI: PASS. Protocol-specific policy drafts and active-vs-disabled route policy lookup fixed from independent repros; each re-reviewPASS. Final seven-level vocabulary/helper/types/options/default/help reviewedPASS. Wide/narrow and native screens performed bycoordinator separately.
+- Native: PASS. Range/outboundprojection/catalogcompatibility and sevenlevels reviewed. Missed final route revalidation and backupsearchrestore fixed. Rejected stale restore metadata writes fixed. Final semanticfingerprint/source-vs-targetguard independently verified with three exact probes: rejectedstale backup keepslibrarybytes/directlive; restorecommitted+finalizeEACCES+hooks+restartdirect restorescached andretainshooks; pendinguncommitted+externallive remainslive. No remainingP1/P2.
+- Final cross-layer review: PASS, no additional integration blocker. UI→Control→Gateway→native contracts and package inclusion consistent. Final frozen-source Runtime468/468, Desktop292/292/build/audit0 and actualclient evidence verified separately bycoordinator.
+
+Reviews use source/diffs and isolated/memory probes; no userconfiguration/auth/provider access. Terminal tools are not AWGMCP-enforced. No commits/push/merge.

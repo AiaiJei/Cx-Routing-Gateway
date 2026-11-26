@@ -12,11 +12,24 @@ export type Upstream = {
 
 export type UpstreamUpdateInput = Pick<Upstream, "name" | "baseUrl"> & { apiKey?: string };
 
+export type ReasoningEffort = "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
+export type ReasoningRange = { min: ReasoningEffort; max: ReasoningEffort };
+export type ModelCapabilities = {
+  contextWindow?: number;
+  maxOutputTokens?: number;
+  inputModalities?: ("text" | "image")[];
+  reasoningEfforts?: ReasoningEffort[];
+  tools?: boolean;
+};
+
 export type ModelRouteSelection = {
   inboundProtocol: Protocol;
   outboundProtocol: Protocol;
   targets: { upstreamId: string; modelId: string }[];
   editId?: string;
+  replaceTargets?: boolean;
+  modelReasoning?: ({ modelId: string } & (ReasoningRange | { clear: true }))[];
+  modelCapabilities?: { modelId: string; capabilities: ModelCapabilities | null }[];
   failover?: { failureThreshold: number; statusClasses: number[] };
 };
 
@@ -27,6 +40,8 @@ export type ModelRoute = {
   targets: { upstreamId: string; upstreamModel: string }[];
   outboundProtocol: Protocol;
   enabled: boolean;
+  reasoning?: ReasoningRange;
+  capabilities?: ModelCapabilities;
   failover?: { failureThreshold: number; statusClasses: number[]; cooldownSeconds?: number };
 };
 

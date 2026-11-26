@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { encryptedStorage } from './codex-direct-fixture.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -16,7 +17,7 @@ const { createCodexRuntimeClient } = require('../../apps/desktop/electron/codex-
 const { createCodexConfigService } = require('../../apps/desktop/electron/codex-config-service.cjs');
 const { registerCodexIpc } = require('../../apps/desktop/electron/codex-ipc.cjs');
 const { fail } = require('../../apps/desktop/electron/codex-errors.cjs');
-const fixtureRoot = path.resolve('.tmp/codex-route-management-20261125');
+const fixtureRoot = path.resolve('.tmp/codex-direct-management-20261126');
 const clientKey = 'cxrg_local_ipc_key';
 async function listen(t, server) {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -45,12 +46,12 @@ async function fixture(t) {
 test('Codex native IPC validates a scoped Key through actual Gateway and roundtrips isolated configuration', async t => {
   const { dir, runtimeClient, gatewayPort } = await fixture(t);
   const codexHome = path.join(dir, 'codex-home');
-  const service = createCodexConfigService({ codexHome, ...runtimeClient });
+  const service = createCodexConfigService({ safeStorage: encryptedStorage(), platform: "win32", profilesPath:path.join(codexHome,'direct-profiles.enc'), codexHome, ...runtimeClient });
   const handlers = new Map();
   registerCodexIpc({ ipcMain: { handle: (name, handler) => handlers.set(name, handler) }, isTrustedSender: event => event.trusted, getService: () => service });
-  const preview = await handlers.get('runtime:codex-preview')({ trusted: true }, { routeId: 'res-1' });
+  const preview = await handlers.get('runtime:codex-preview')({ trusted: true }, { mode: 'gateway', routeIds: ['res-1'], defaultRouteId: 'res-1' });
   assert.equal(preview.baseUrl, 'http://127.0.0.1:' + gatewayPort + '/v1');
-  const status = await handlers.get('runtime:codex-apply')({ trusted: true }, { routeId: 'res-1', clientKey, expectedRevision: preview.revision });
+  const status = await handlers.get('runtime:codex-apply')({ trusted: true }, { mode: 'gateway', routeIds: ['res-1'], defaultRouteId: 'res-1', clientKey, expectedRevision: preview.revision });
   assert.equal(status.configured, true);
   assert.equal(status.model, 'coding-model');
   assert.ok(!JSON.stringify(status).includes(clientKey));
@@ -72,6 +73,25 @@ test('Codex native route validation rejects disabled, non-Responses, ambiguous a
   await assert.rejects(runtimeClient.getRoute('res-1'), { code: 'CODEX_ROUTE_UNAVAILABLE' });
   await store.update(config => ({ ...config, routes: [config.routes[0]], upstreams: [] }));
   await assert.rejects(runtimeClient.getRoute('res-1'), { code: 'CODEX_ROUTE_UNAVAILABLE' });
+});
+
+test('Codex route selection resolves multiple aliases from one coherent Control snapshot', async () => {
+  let reads = 0;
+  const client = createCodexRuntimeClient({
+    getControlPort: () => 4319, getGatewayPort: () => 4318,
+    getControlToken: () => 'local-control-test', isRuntimeReady: () => true,
+    fetchImpl: async () => {
+      reads += 1;
+      return new Response(JSON.stringify({
+        routes: ['a', 'b'].map(id => ({ id, alias: 'model-' + id, enabled: true, inboundProtocol: 'Res', outboundProtocol: 'Chat', upstreamId: 'up', modelId: 'remote-' + id })),
+        upstreams: [{ id: 'up', enabled: true }],
+      }));
+    },
+  });
+  assert.deepEqual(await client.getRoutes(['a', 'b']), { routes: [{ id: 'a', model: 'model-a', outboundProtocol: 'Chat' }, { id: 'b', model: 'model-b', outboundProtocol: 'Chat' }], baseUrl: 'http://127.0.0.1:4318/v1' });
+  assert.equal(reads, 1);
+  await assert.rejects(client.getRoutes(['a', 'a']), { code: 'CODEX_INPUT_INVALID' });
+  assert.equal(reads, 1);
 });
 
 test('Codex native key validation rejects revoked Keys and model scope mismatches without changing files', async t => {
@@ -123,6 +143,28 @@ test('Codex IPC stable errors survive Electron message-only transport without le
   });
 });
 
+test('Codex official client IPC gates sender and forwards only fixed manager actions', async () => {
+  const handlers = new Map();
+  const inputs = [];
+  const clientStatus = { available: true, version: '0.167.0', auth: 'signed_out', login: 'idle' };
+  registerCodexIpc({
+    ipcMain: { handle: (name, handler) => handlers.set(name, handler) },
+    isTrustedSender: event => event.trusted,
+    getService: () => ({}),
+    getClientManager: () => ({
+      getStatus: async () => clientStatus,
+      startLogin: async input => { inputs.push(input); return { ...clientStatus, login: 'pending' }; },
+      cancelLogin: async () => clientStatus,
+    }),
+  });
+  assert.deepEqual(await handlers.get('runtime:codex-client-status')({ trusted: true }), clientStatus);
+  assert.equal((await handlers.get('runtime:codex-login')({ trusted: true }, { expectedRevision: 'missing' })).login, 'pending');
+  assert.deepEqual(inputs, [{ expectedRevision: 'missing' }]);
+  assert.deepEqual(await handlers.get('runtime:codex-cancel-login')({ trusted: true }), clientStatus);
+  await assert.rejects(handlers.get('runtime:codex-login')({ trusted: false }, { expectedRevision: 'missing' }), { code: 'CODEX_INPUT_INVALID' });
+  assert.equal(inputs.length, 1);
+});
+
 test('Codex native runtime client fails closed for unavailable runtime, redirects, invalid JSON and oversized replies', async t => {
   const unavailable = createCodexRuntimeClient({ getControlPort: () => 4319, getGatewayPort: () => 4318, getControlToken: () => '', isRuntimeReady: () => false });
   await assert.rejects(unavailable.getRoute('res-1'), { code: 'CODEX_RUNTIME_UNAVAILABLE' });
@@ -144,7 +186,7 @@ test('Codex native runtime client fails closed for unavailable runtime, redirect
   assert.equal(leaked, false);
 });
 
-test('Codex preload exposes only the four fixed native channels with structured arguments', async () => {
+test('Codex preload exposes fixed configuration and client channels with structured arguments', async () => {
   const source = await fs.readFile(path.resolve('apps/desktop/electron/preload.cjs'), 'utf8');
   let controls;
   const calls = [];
@@ -154,13 +196,37 @@ test('Codex preload exposes only the four fixed native channels with structured 
   } });
   assert.equal(typeof controls.getCodexStatus, 'function');
   await controls.getCodexStatus();
-  await controls.previewCodexConfig({ routeId: 'res-1' });
-  await controls.applyCodexConfig({ routeId: 'res-1', clientKey, expectedRevision: 'missing' });
+  await controls.previewCodexConfig({ mode: 'gateway', routeIds: ['res-1'], defaultRouteId: 'res-1' });
+  await controls.applyCodexConfig({ mode: 'gateway', routeIds: ['res-1'], defaultRouteId: 'res-1', clientKey, expectedRevision: 'missing' });
   await controls.restoreCodexConfig({ backupId: 'backup-id', expectedRevision: 'revision' });
+  await controls.getCodexClientStatus();
+  await controls.startCodexLogin({ expectedRevision: 'missing' });
+  await controls.cancelCodexLogin();
+  await controls.getCodexDirectProfiles();
+  await controls.saveCodexDirectProfile({ expectedRevision: 'missing', name: 'Direct' });
+  await controls.importCodexDirectProfile({ expectedRevision: 'missing', expectedConfigRevision: 'missing' });
+  await controls.duplicateCodexDirectProfile({ expectedRevision: 'missing', id: 'profile' });
+  await controls.deleteCodexDirectProfile({ expectedRevision: 'missing', id: 'profile' });
+  await controls.getCodexGatewayPreferences();
+  await controls.saveCodexGatewayPreferences({ expectedRevision: 'missing', routeIds: [], defaultRouteId: '', credentialSource: 'current' });
+  await controls.getCodexGatewayCredentials();
+  await controls.retainCodexGatewayCredential({ id: 'key-id', fromCurrent: true });
   assert.deepEqual(calls, [
     ['runtime:codex-status'],
-    ['runtime:codex-preview', { routeId: 'res-1' }],
-    ['runtime:codex-apply', { routeId: 'res-1', clientKey, expectedRevision: 'missing' }],
+    ['runtime:codex-preview', { mode: 'gateway', routeIds: ['res-1'], defaultRouteId: 'res-1' }],
+    ['runtime:codex-apply', { mode: 'gateway', routeIds: ['res-1'], defaultRouteId: 'res-1', clientKey, expectedRevision: 'missing' }],
     ['runtime:codex-restore', { backupId: 'backup-id', expectedRevision: 'revision' }],
+    ['runtime:codex-client-status'],
+    ['runtime:codex-login', { expectedRevision: 'missing' }],
+    ['runtime:codex-cancel-login'],
+    ['runtime:codex-direct-profiles'],
+    ['runtime:codex-direct-save', { expectedRevision: 'missing', name: 'Direct' }],
+    ['runtime:codex-direct-import', { expectedRevision: 'missing', expectedConfigRevision: 'missing' }],
+    ['runtime:codex-direct-duplicate', { expectedRevision: 'missing', id: 'profile' }],
+    ['runtime:codex-direct-delete', { expectedRevision: 'missing', id: 'profile' }],
+    ['runtime:codex-gateway-preferences'],
+    ['runtime:codex-gateway-preferences-save', { expectedRevision: 'missing', routeIds: [], defaultRouteId: '', credentialSource: 'current' }],
+    ['runtime:codex-gateway-credentials'],
+    ['runtime:codex-gateway-credential-retain', { id: 'key-id', fromCurrent: true }],
   ]);
 });

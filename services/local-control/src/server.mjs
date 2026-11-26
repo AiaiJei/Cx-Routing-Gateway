@@ -5,6 +5,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dns from 'node:dns/promises';
 import { validateUpstreamDestination } from '../../../packages/shared/src/destination-policy.mjs';
+import { createClientKeyService } from './client-key-service.mjs';
+import { saveRouteBatch } from './route-service.mjs';
+import { updateRouteCapabilities } from '../../../packages/shared/src/model-capabilities.cjs';
+import { updateRouteReasoning } from '../../../packages/shared/src/reasoning-policy.mjs';
 
 const MAX_BODY = 1024 * 1024;
 const protocols = new Set(['Res', 'Mes', 'Chat']);
@@ -32,7 +36,7 @@ async function bodyOf(req) {
 }
 
 function publicState(config) {
-  return { ...config, clientKeys: config.clientKeys.map(({ keyHash, ...key }) => key) };
+  return { ...config, clientKeys: config.clientKeys.map(({ keyHash, secretRef, ...key }) => key) };
 }
 
 function requireProtocol(value) {
@@ -95,6 +99,7 @@ function authorize(req, controlToken) {
 export function createControlServer({ store, vault, controlToken = process.env.CXRG_CONTROL_TOKEN, allowUnauthenticated = false, dnsLookup = dns.lookup } = {}) {
   if (!store || !vault) throw new Error('Control server requires store and vault');
   if (!controlToken && !allowUnauthenticated) throw new Error('CXRG_CONTROL_TOKEN is required for local-control');
+  const clientKeys = createClientKeyService({ store, vault });
   return http.createServer(async (req, res) => {
     try {
       const url = new URL(req.url, 'http://127.0.0.1');
@@ -146,49 +151,24 @@ export function createControlServer({ store, vault, controlToken = process.env.C
         return send(res, 201, upstream);
       }
       if (req.method === 'POST' && url.pathname === '/v1/control/routes/batch') {
-        const { inboundProtocol, outboundProtocol, targets, editId, failover } = await bodyOf(req);
+        const input = await bodyOf(req);
+        const { inboundProtocol, outboundProtocol, targets, failover } = input;
         requireProtocol(inboundProtocol);
         requireProtocol(outboundProtocol);
         if (!Array.isArray(targets) || !targets.length || targets.length > 512) return send(res, 400, { error: 'invalid_targets' });
         if (failover !== undefined && (!failover || !Number.isInteger(failover.failureThreshold) || failover.failureThreshold < 1 || failover.failureThreshold > 100 || !Array.isArray(failover.statusClasses) || !failover.statusClasses.length || failover.statusClasses.some(value => value !== 4 && value !== 5) || new Set(failover.statusClasses).size !== failover.statusClasses.length)) return send(res, 400, { error: 'invalid_failover_policy' });
         let saved;
         await store.update(config => {
-          const original = editId && config.routes.find(route => route.id === editId);
-          if (editId && !original) throw Object.assign(new Error('route_not_found'), { statusCode: 404 });
-          const groups = new Map();
-          for (const target of targets) {
-            if (!target || typeof target.modelId !== 'string' || !target.modelId.trim() || !config.upstreams.some(item => item.id === target.upstreamId)) throw Object.assign(new Error('invalid_target'), { statusCode: 400 });
-            const list = groups.get(target.modelId) ?? [];
-            if (!list.some(item => item.upstreamId === target.upstreamId && item.modelId === target.modelId)) list.push({ upstreamId: target.upstreamId, modelId: target.modelId });
-            groups.set(target.modelId, list);
-          }
-          const retained = config.routes.filter(route => route.id !== editId);
-          const originalTargets = original?.targets?.length ? original.targets : original ? [{ upstreamId: original.upstreamId, modelId: original.modelId }] : [];
-          const preserveModel = originalTargets.find(target => groups.has(target.modelId))?.modelId ?? (original ? targets[0].modelId : undefined);
-          saved = [];
-          for (const [modelId, selection] of groups) {
-            const previous = original && modelId === preserveModel ? original : undefined;
-            const alias = previous?.alias ?? modelId;
-            const existingIndex = retained.findIndex(route => route.enabled && route.inboundProtocol === inboundProtocol && route.alias === alias);
-            const existing = existingIndex >= 0 ? retained[existingIndex] : undefined;
-            if (existing && (previous || existing.outboundProtocol !== outboundProtocol || existing.modelId !== modelId)) throw Object.assign(new Error('route_conflict'), { statusCode: 409 });
-            const base = previous ?? existing;
-            const priorTargets = existing ? (existing.targets?.length ? existing.targets : [{ upstreamId: existing.upstreamId, modelId: existing.modelId }]) : [];
-            const merged = [...selection];
-            for (const item of priorTargets) if (!merged.some(target => target.upstreamId === item.upstreamId && target.modelId === item.modelId)) merged.push(item);
-            const policy = failover ? { failureThreshold: failover.failureThreshold, statusClasses: failover.statusClasses, cooldownSeconds: 60 } : base?.failover ?? { failureThreshold: 3, statusClasses: [4, 5], cooldownSeconds: 60 };
-            const route = { ...base, id: base?.id ?? `route_${crypto.randomUUID()}`, alias, enabled: base?.enabled ?? true, inboundProtocol, outboundProtocol, upstreamId: merged[0].upstreamId, modelId: merged[0].modelId, targets: merged, failover: policy, allowLossy: base?.allowLossy ?? false };
-            if (existing) retained.splice(existingIndex, 1);
-            saved.push(route);
-          }
-          return { ...config, routes: [...retained, ...saved] };
+          const result = saveRouteBatch(config, input);
+          saved = result.routes;
+          return result.config;
         });
         return send(res, 200, { routes: saved });
       }
       if (req.method === 'POST' && parts[2] === 'routes' && parts.length === 3) {
         const input = await bodyOf(req);
         requireProtocol(input.inboundProtocol); requireProtocol(input.outboundProtocol);
-        const route = { id: `route_${crypto.randomUUID()}`, alias: String(input.alias || ''), inboundProtocol: input.inboundProtocol, outboundProtocol: input.outboundProtocol, upstreamId: input.upstreamId, modelId: String(input.modelId || ''), enabled: input.enabled !== false, allowLossy: input.allowLossy === true };
+        const route = updateRouteCapabilities(updateRouteReasoning({ id: `route_${crypto.randomUUID()}`, alias: String(input.alias || ''), inboundProtocol: input.inboundProtocol, outboundProtocol: input.outboundProtocol, upstreamId: input.upstreamId, modelId: String(input.modelId || ''), enabled: input.enabled !== false, allowLossy: input.allowLossy === true }, input), input);
         if (!route.alias || !route.modelId) throw Object.assign(new Error('Route alias and model are required'), { statusCode: 400 });
         await store.update((value) => {
           if (!value.upstreams.some((item) => item.id === route.upstreamId)) throw Object.assign(new Error('Unknown upstream'), { statusCode: 400 });
@@ -270,7 +250,7 @@ export function createControlServer({ store, vault, controlToken = process.env.C
         await store.update((value) => {
           const current = value.routes.find((item) => item.id === id);
           if (!current) throw Object.assign(new Error('not_found'), { statusCode: 404 });
-          const next = { ...current, ...Object.fromEntries(['alias', 'inboundProtocol', 'outboundProtocol', 'upstreamId', 'modelId', 'enabled', 'allowLossy'].filter((key) => input[key] !== undefined).map((key) => [key, input[key]])) };
+          const next = updateRouteCapabilities(updateRouteReasoning({ ...current, ...Object.fromEntries(['alias', 'inboundProtocol', 'outboundProtocol', 'upstreamId', 'modelId', 'enabled', 'allowLossy'].filter((key) => input[key] !== undefined).map((key) => [key, input[key]])) }, input), input);
           if (!next.alias || !next.modelId) throw Object.assign(new Error('Route alias and model are required'), { statusCode: 400 });
           if (!value.upstreams.some((item) => item.id === next.upstreamId) || (next.targets !== undefined && (!Array.isArray(next.targets) || next.targets.some((target) => !target || !value.upstreams.some((item) => item.id === target.upstreamId))))) throw Object.assign(new Error('Unknown upstream'), { statusCode: 400 });
           if (next.enabled && value.routes.some((item) => item.id !== id && item.enabled && item.alias === next.alias && item.inboundProtocol === next.inboundProtocol)) throw Object.assign(new Error('route_conflict'), { statusCode: 409 });
@@ -309,38 +289,15 @@ export function createControlServer({ store, vault, controlToken = process.env.C
           return send(res, 502, { ok: false, error: error.code === 'timeout' ? 'timeout' : 'unavailable' });
         }
       }
-      if (req.method === 'POST' && parts[2] === 'client-keys' && parts.length === 3) {
-        const input = await bodyOf(req);
-        const key = `cxrg_${crypto.randomBytes(24).toString('base64url')}`;
-        const scope = Array.isArray(input.scope) ? input.scope.filter((item) => typeof item === 'string' && item.trim()).slice(0, 100) : [];
-        const keyRecord = { id: `key_${crypto.randomUUID()}`, name: String(input.name || 'Client key'), scope, keyHash: crypto.createHash('sha256').update(key).digest('hex'), createdAt: new Date().toISOString(), enabled: true };
-        await store.update((value) => ({ ...value, clientKeys: [...value.clientKeys, keyRecord] }));
-        return send(res, 201, { id: keyRecord.id, name: keyRecord.name, scope, key, createdAt: keyRecord.createdAt, enabled: true });
-      }
-      if (req.method === 'POST' && parts[2] === 'client-keys' && parts[3] && parts[4] === 'rotate') {
-        const id = parts[3];
-        const config = await store.read();
-        const current = config.clientKeys.find((item) => item.id === id);
-        if (!current) return send(res, 404, { error: 'not_found' });
-        const key = `cxrg_${crypto.randomBytes(24).toString('base64url')}`;
-        const rotatedAt = new Date().toISOString();
-        await store.update((value) => ({ ...value, clientKeys: value.clientKeys.map((item) => item.id === id ? { ...item, keyHash: crypto.createHash('sha256').update(key).digest('hex'), enabled: true, rotatedAt } : item) }));
-        return send(res, 200, { id, name: current.name, scope: current.scope || [], key, rotatedAt, enabled: true });
-      }
-      if (req.method === 'DELETE' && parts[2] === 'client-keys' && parts[3] && parts[4] === 'permanent') {
-        const id = parts[3];
-        await store.update((value) => {
-          if (!value.clientKeys.some((item) => item.id === id)) throw Object.assign(new Error('not_found'), { statusCode: 404 });
-          return { ...value, clientKeys: value.clientKeys.filter((item) => item.id !== id) };
-        });
-        return send(res, 200, { id, deleted: true });
-      }
-      if (req.method === 'DELETE' && parts[2] === 'client-keys' && parts[3]) {
-        const id = parts[3];
-        const config = await store.read();
-        if (!config.clientKeys.some((item) => item.id === id)) return send(res, 404, { error: 'not_found' });
-        await store.update((value) => ({ ...value, clientKeys: value.clientKeys.map((item) => item.id === id ? { ...item, enabled: false } : item) }));
-        return send(res, 200, { id, enabled: false });
+      if (parts[0] === 'v1' && parts[1] === 'control' && parts[2] === 'client-keys') {
+        if (parts.length === 3 && req.method === 'GET') return send(res, 200, await clientKeys.list());
+        if (parts.length === 3 && req.method === 'POST') return send(res, 201, await clientKeys.create(await bodyOf(req)));
+        if (parts.length === 4 && parts[3] === 'match' && req.method === 'POST') return send(res, 200, await clientKeys.match(await bodyOf(req)));
+        if (parts.length === 5 && parts[4] === 'secret' && req.method === 'GET') return send(res, 200, await clientKeys.secret(parts[3]));
+        if (parts.length === 5 && parts[4] === 'secret' && req.method === 'POST') return send(res, 200, await clientKeys.retain(parts[3], await bodyOf(req)));
+        if (parts.length === 5 && parts[4] === 'rotate' && req.method === 'POST') return send(res, 200, await clientKeys.rotate(parts[3]));
+        if (parts.length === 5 && parts[4] === 'permanent' && req.method === 'DELETE') return send(res, 200, await clientKeys.delete(parts[3]));
+        if (parts.length === 4 && req.method === 'DELETE') return send(res, 200, await clientKeys.revoke(parts[3]));
       }
       return send(res, 404, { error: 'not_found' });
     } catch (error) {

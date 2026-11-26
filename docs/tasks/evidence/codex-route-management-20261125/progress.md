@@ -18,8 +18,6 @@ Task 3: pending
 Task 1: complete (28f849c,2070197,6776c8f; native review and final IPC re-review clean)
 Task 2: complete (6a8b3d9,e9a639e; renderer review clean)
 Task 3: local validation complete; current-head GitHub CI and ready state verified by coordinator after delivery commit.
-Task 3: complete — PR25 head47d2df1 verified OPEN/MERGEABLE; both push and pull_request Runtime/Desktop checks PASS; package jobs skipped by branch-event policy. This documentation-only checkpoint follows the verified source; coordinator rechecks final PR state after pushing it.
-Primary checkout bootstrap task-binding edit restored byte-for-byte from its unchanged HEAD after confirming the only change was ours. Task worktree retains its own contract; primary tracked state remains unchanged, existing untracked directories preserved.
 Task 1: fix round 1/5 — native review found TOML unrelated-value loss and default-port80 rejection; source-span editor and regressions in progress.
 Task 2: fix round 1/5 — renderer review found mutation-result loss during late workspace refresh; lifecycle separation and refresh gating in progress.
 Ruling: Preserve unrelated TOML source ranges using a maintained AST parser rather than whole-file serialization — fixes verified numeric/timestamp changes — adds a focused editor and one parser dependency; no expanded product scope.

@@ -83,10 +83,10 @@ class CodexConfigStore {
     return current;
   }
 
-  async atomicWrite(filePath, bytes, beforeReplace) {
+  async atomicWrite(filePath, bytes, beforeReplace, maximumBytes) {
     await this.directory(path.dirname(filePath), true);
     // Reject links or special files at an existing destination before replacement.
-    await this.read(filePath, filePath === this.configPath ? MAX_CONFIG_BYTES : 16 * 1024);
+    await this.read(filePath, maximumBytes || (filePath === this.configPath ? MAX_CONFIG_BYTES : 16 * 1024));
     const temporary = path.join(path.dirname(filePath), "." + path.basename(filePath) + "." + crypto.randomUUID() + ".tmp");
     let handle;
     let committed = false;
@@ -165,14 +165,20 @@ class CodexConfigStore {
     return this.readBackup(id);
   }
 
-  async replace(snapshot, bytes) {
-    await this.atomicWrite(this.configPath, bytes, () => this.check(snapshot.revision));
+  async replace(snapshot, bytes, validateBeforeCommit) {
+    await this.atomicWrite(this.configPath, bytes, async () => {
+      if (validateBeforeCommit) await validateBeforeCommit();
+      // Profile decryption and login checks can yield to an external editor.
+      // Re-read the source only after those asynchronous validations finish.
+      await this.check(snapshot.revision);
+    });
   }
 
-  async restore(snapshot, backup) {
+  async restore(snapshot, backup, validateBeforeCommit) {
     if (snapshot.revision !== backup.afterRevision) throw fail("CODEX_CONFIG_CHANGED");
     await this.atomicWrite(this.statePath, Buffer.from(JSON.stringify({ version: 1, currentId: backup.id, pendingId: null, restoring: true })));
-    if (backup.originalExists) return this.replace(snapshot, backup.original);
+    if (backup.originalExists) return this.replace(snapshot, backup.original, validateBeforeCommit);
+    if (validateBeforeCommit) await validateBeforeCommit();
     await this.check(snapshot.revision);
     await this.fs.unlink(this.configPath);
   }
