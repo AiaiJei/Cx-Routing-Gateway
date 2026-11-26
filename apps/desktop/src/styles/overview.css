@@ -1,11 +1,53 @@
+.overview-status-grid { display: grid; grid-template-columns: minmax(0, 1.45fr) repeat(2, minmax(0, 1fr)); gap: 18px; align-items: start; }
+.overview-status { display: grid; align-content: start; gap: 8px; min-width: 0; padding: 14px 0; border-top: 1px solid var(--border); }
+.overview-status strong { font-size: 14px; font-weight: 500; line-height: 1.45; overflow-wrap: anywhere; }
+.overview-status__config-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; min-width: 0; }
+.overview-status__config-summary > div { display: grid; align-content: start; gap: 8px; min-width: 0; }
+.overview-status__value { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 14px; font-weight: 500; }
+.overview-state-dot { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: var(--warning); }
+.overview-state-dot--running { background: var(--positive); }
+.overview-state-dot--failed { background: var(--negative); }
+.endpoint-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 2px; }
+.endpoint-inline code { overflow-wrap: anywhere; }
+.overview-actions { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 8px; margin-top: 4px; }
+.overview-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; padding: 16px 0; border-block: 1px solid var(--border); }
+.overview-metrics > div { display: grid; gap: 5px; min-width: 0; }
+.overview-metrics strong { font-size: 24px; font-weight: 400; }
+.overview-metrics small { color: var(--muted); font-size: 13px; }
+.overview-activity-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(250px, 1fr); gap: 24px; align-items: start; }
+.attention-panel { display: grid; align-content: start; gap: 16px; min-width: 0; padding: 16px 0; border-top: 1px solid var(--border); }
+.attention-list { display: grid; gap: 8px; }
+.attention-row { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 10px; align-items: center; min-height: 42px; padding: 8px 0; border-top: 1px solid var(--border); }
+.attention-mark { display: grid; width: 20px; height: 20px; place-items: center; border-radius: 50%; background: var(--negative-soft); color: var(--negative); font-weight: 600; }
+.attention-row code { max-width: 100%; color: var(--muted); overflow-wrap: anywhere; }
 .overview-chart { display: grid; gap: 8px; min-width: 0; }
 .overview-chart__plot { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; align-items: start; min-width: 0; }
 .overview-chart__y-axis { display: flex; height: 158px; flex-direction: column; justify-content: space-between; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; line-height: 1; text-align: right; }
 .overview-chart__svg { display: block; width: 100%; height: 158px; overflow: visible; }
 .overview-chart__grid line { stroke: var(--border); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .overview-chart__series { fill: none; stroke: var(--accent); stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; vector-effect: non-scaling-stroke; }
+.overview-chart__point { fill: var(--accent); vector-effect: non-scaling-stroke; }
 .overview-chart__x-axis { position: relative; height: 18px; margin-left: 38px; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .overview-chart__time { position: absolute; transform: translateX(-50%); }
 .overview-chart__time--start { transform: none; }
 .overview-chart__time--end { transform: translateX(-100%); }
 .overview-chart__retention { margin: 0; color: var(--warning); font-size: 12px; line-height: 1.45; }
+
+@media (max-width: 1100px) {
+  .overview-status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .overview-status--configuration { grid-column: 1 / -1; }
+}
+
+@media (max-width: 760px) {
+  .overview-status-grid { grid-template-columns: minmax(0, 1fr); }
+  .overview-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 12px; }
+  .overview-metrics > div:last-child { grid-column: 1 / -1; }
+  .overview-status--configuration { grid-column: auto; }
+  .overview-activity-grid { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  .overview-actions .geist-button { flex-grow: 1; }
+}
+
+@media (max-width: 600px) {
+  .attention-row { grid-template-columns: 20px minmax(0, 1fr); }
+  .attention-row code { grid-column: 2; }
+}

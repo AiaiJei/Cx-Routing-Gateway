@@ -15,6 +15,12 @@ describe("OverviewUsageChart", () => {
     expect(screen.getByRole("img", { name: /共 2 条已记录请求/ })).toBeVisible();
   });
 
+  it("marks a single hourly observation so the trend cannot render as an invisible one-point line", () => {
+    const { container } = render(<OverviewUsageChart logs={[{ time: new Date(nowMs - 60 * 60 * 1000).toISOString() }]} nowMs={nowMs} />);
+
+    expect(container.querySelectorAll(".overview-chart__point")).toHaveLength(1);
+  });
+
   it("shows an empty state instead of a zero-data chart", () => {
     render(<OverviewUsageChart logs={[]} nowMs={nowMs} />);
 
