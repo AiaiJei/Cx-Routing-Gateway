@@ -261,6 +261,8 @@ Run `git diff --check`, inspect `git diff --stat`, and confirm only contract-sco
 
 Commit only scoped evidence and acceptance documentation, push `codex/overview-dashboard-20261126`, and create a PR targeting `master`. Do not merge or release.
 
-**Execution mode:** Implement inline in the authorized worktree. The initial implementer-agent startup failed before touching files with a local model-route 404; the worktree was checked clean afterward. Attempt an independent final review separately if the reviewer role is available.
+**Execution mode:** Implement inline in the authorized worktree. The initial implementer-agent startup failed before touching files with a local model-route 404; the worktree was checked clean afterward. Two independent reviewer-agent startup attempts also failed at that endpoint; mark independent review `NOT_RUN`, self-review the diff, and expose a Draft PR for external review.
 
 **Ruling:** Task 1 (runtime retention mapping) and Task 2 (pure time-bucket aggregation) use separate files and no shared edits, but the available implementer route failed before work began. The integrator owns both tasks sequentially; this costs parallel speed but avoids waiting on an unavailable model route. Tasks 3 and 4 still wait for their stated dependencies and remain review checkpoints.
+
+**Execution status:** Tasks 1–4 are implemented and committed; the full 333-test desktop suite, production build, focused taste lint, and 1440px/390px rendered fixture inspection are complete. Three inspector warnings (small text share, a short status row, and no colored series in the fixture's empty 24-hour window) are documented in the acceptance evidence. The branch still needs its final evidence/summary commit, push, and Draft PR; merge and release remain unauthorized.
