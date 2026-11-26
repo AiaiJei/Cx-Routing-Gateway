@@ -119,15 +119,15 @@ describe("OverviewPage", () => {
     const usage = screen.getByRole("group", { name: "已上报 Token" });
     expect(usage).toHaveTextContent("1,854");
     expect(usage).toHaveTextContent("2 / 3 条上报");
-    const models = screen.getByRole("table", { name: "模型调用分析" });
-    const reasoner = within(models).getByRole("row", { name: /gateway-reasoner/ });
+    const reasoner = screen.getByRole("region", { name: "所选模型明细" });
     expect(reasoner).toHaveTextContent("100.0%");
     expect(reasoner).toHaveTextContent("1,854");
-    const failed = within(models).getByRole("row", { name: /gateway-fast/ });
+    fireEvent.click(screen.getByRole("button", { name: "查看 gateway-fast" }));
+    const failed = screen.getByRole("region", { name: "所选模型明细" });
     expect(failed).toHaveTextContent("最近调用失败");
     expect(failed).toHaveTextContent("0.0%");
     expect(failed).toHaveTextContent("未上报");
-    expect(screen.getByRole("img", { name: /gateway-reasoner：2 次调用/ })).toBeVisible();
+    expect(screen.getByRole("img", { name: "模型调用量对比图" })).toBeVisible();
   });
 
   it("updates usage, model results and recent calls together when the range changes", () => {
@@ -142,12 +142,12 @@ describe("OverviewPage", () => {
     render(<MemoryRouter><OverviewPage /></MemoryRouter>);
     fireEvent.change(screen.getByRole("combobox", { name: "统计范围" }), { target: { value: "24h" } });
     expect(screen.getByRole("group", { name: "调用总数" }).querySelector("strong")).toHaveTextContent("1");
-    expect(within(screen.getByRole("table", { name: "模型调用分析" })).queryByText("old-model")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "查看 old-model" })).not.toBeInTheDocument();
     expect(screen.queryByText("需要关注")).not.toBeInTheDocument();
     expect(screen.getByRole("img", { name: /请求趋势图，共 1 条/ })).toBeVisible();
     fireEvent.change(screen.getByRole("combobox", { name: "统计范围" }), { target: { value: "retained" } });
     expect(screen.getByRole("group", { name: "调用总数" }).querySelector("strong")).toHaveTextContent("2");
-    expect(within(screen.getByRole("table", { name: "模型调用分析" })).getByText("old-model")).toBeVisible();
+    expect(screen.getByRole("button", { name: "查看 old-model" })).toBeVisible();
   });
 
   it("shows refresh feedback and preserves existing data on refresh failure", () => {
@@ -165,17 +165,17 @@ describe("OverviewPage", () => {
     expect(screen.getByRole("group", { name: "调用总数" })).toHaveTextContent("3");
   });
 
-  it("limits model rows initially and expands all models on demand", () => {
+  it("keeps model comparison bounded when there are more than five models", () => {
     workspaceHook.mockReturnValue({ ...defaultWorkspaceState, data: { ...workspaceFixtures,
       logs: Array.from({ length: 7 }, (_, index) => ({ ...workspaceFixtures.logs[0], id: `call-${index}`, model: `model-${index}` })),
     } });
     render(<MemoryRouter><OverviewPage /></MemoryRouter>);
-    const table = screen.getByRole("table", { name: "模型调用分析" });
-    expect(within(table).getAllByRole("row")).toHaveLength(6);
-    fireEvent.click(screen.getByRole("button", { name: "展开全部 7 个模型" }));
-    expect(within(table).getAllByRole("row")).toHaveLength(8);
-    fireEvent.click(screen.getByRole("button", { name: "收起模型列表" }));
-    expect(within(table).getAllByRole("row")).toHaveLength(6);
+    const region = screen.getByRole("region", { name: "模型数据分析" });
+    expect(within(region).queryByRole("table")).not.toBeInTheDocument();
+    expect(screen.getByText("1–5 / 7 个模型")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "下一组模型" }));
+    expect(screen.getByText("6–7 / 7 个模型")).toBeVisible();
+    expect(screen.getByRole("img", { name: "模型调用量对比图" }).querySelectorAll("rect[data-model]")).toHaveLength(2);
   });
 
   it("shows the loading state before workspace data arrives", () => {

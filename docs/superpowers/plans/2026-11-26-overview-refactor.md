@@ -279,3 +279,15 @@ Contract revision 5 continues the same worktree and PR from `2698250`. The main 
 - [x] Prepare the scoped source, screenshots, evidence and PR description for delivery through the same Draft PR; no merge or deployment. Final remote synchronization is verified separately by matching the local and PR head commits.
 
 Rollback remains a separately authorized follow-up against the pre-change baseline; do not reset master or delete the worktree. Current acceptance evidence is recorded under `visual-usage-analysis/` and in the latest section of `acceptance.md`.
+
+## Bounded Model Chart Follow-up — Contract 6
+
+Scope: replace the expanding model table with a fixed-height chart and selected-model detail, keeping the existing summaries and PR. Baseline: `c7d92a9`.
+
+- [x] Add a failing component test for chart-only rendering with at most five visible models.
+- [x] Implement metric comparison, consistent scales, grouped navigation and direct model lookup; preserve missing/zero values and reporting coverage.
+- [x] Verify 41 files / 351 tests and production build, plus 2/60/200-model browser checks at 1440/768/390px.
+- [x] Reproduce a 390px Token-axis overlap and fix it with three visible narrow-screen tick labels; rerun the complete browser matrix.
+- [x] Record the independent reviewer protocol failure separately; prepare the scoped code, evidence and updated Draft PR description. No merge, deployment or runtime acceptance is included.
+
+Use `verify-model-chart.mjs` and `visual-model-chart/` for this revision. Earlier verification scripts and screenshot folders are historical evidence of their respective revisions, not validation entry points for the current chart UI.

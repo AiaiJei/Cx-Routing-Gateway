@@ -1,36 +1,62 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import type { OverviewModelSummary } from "../domain/overview-analytics";
 import { formatOverviewRate, tokenCoverage } from "../domain/overview-analytics";
 import { formatDuration, formatMetric } from "../domain/request-log";
 import { EmptyResult } from "./PageHeader";
+import { OverviewModelChart } from "./OverviewModelChart";
+import { modelChartMaximum, modelChartMetrics, modelChartValue } from "../domain/overview-model-chart";
+import type { ModelChartMetric } from "../domain/overview-model-chart";
+
+const groupSize = 5;
 
 export function OverviewModelAnalysis({ models }: { models: OverviewModelSummary[] }) {
-  const [expanded, setExpanded] = useState(false);
-  const visibleModels = expanded ? models : models.slice(0, 5);
-  const maximum = Math.max(1, ...models.map((model) => model.calls));
+  const [metric, setMetric] = useState<ModelChartMetric>("calls");
+  const [group, setGroup] = useState(0);
+  const [chosenModel, setChosenModel] = useState<string | null>(null);
+  const ranked = useMemo(() => [...models].sort((first, second) => (modelChartValue(second, metric) ?? -Infinity) - (modelChartValue(first, metric) ?? -Infinity) || first.model.localeCompare(second.model)), [models, metric]);
+  const lastGroup = Math.max(0, Math.ceil(ranked.length / groupSize) - 1);
+  const currentGroup = Math.min(group, lastGroup);
+  const offset = currentGroup * groupSize;
+  const visibleModels = ranked.slice(offset, offset + groupSize);
+  const selected = visibleModels.find((model) => model.model === chosenModel) ?? visibleModels[0];
+  const maximum = modelChartMaximum(ranked, metric);
+  function selectModel(name: string) {
+    const index = ranked.findIndex((model) => model.model === name);
+    if (index < 0) return;
+    setGroup(Math.floor(index / groupSize));
+    setChosenModel(name);
+  }
   return <section className="overview-models" aria-labelledby="overview-models-title">
-    <div className="section-heading">
-      <div><h2 id="overview-models-title" className="section-title">模型数据分析</h2><p className="helper-text">按请求模型标识分组 · {models.length} 个模型 · 调用量从高到低</p></div>
-      <Link to="/logs" className="quiet-link">查看调用日志</Link>
-    </div>
-    {models.length ? <>
-      <p className="overview-models__scroll-hint">左右滑动查看完整统计，模型名称保持可见。</p>
-      <div className="table-scroll" role="region" aria-label="模型调用数据，可横向滚动" tabIndex={0}>
-        <table className="data-table overview-model-table" aria-label="模型调用分析">
-          <colgroup><col className="overview-model-col" /><col /><col /><col /><col /><col /></colgroup>
-          <thead><tr><th scope="col">模型 / 最近调用</th><th scope="col" className="numeric">调用量<span className="cell-subtext">同尺比较 0–{formatMetric(maximum)}</span></th><th scope="col" className="numeric">成功 / 未成功</th><th scope="col" className="numeric">成功率</th><th scope="col" className="numeric">已上报 Token</th><th scope="col" className="numeric">平均耗时</th></tr></thead>
-          <tbody>{visibleModels.map((model) => <tr key={model.model}>
-            <th scope="row"><span className="overview-model-name">{model.model}</span><span className={`overview-model-state${model.latestStatus === "失败" ? " overview-model-state--failed" : ""}`}>{model.latestStatus ? `最近调用${model.latestStatus}` : "最近状态未知"}</span></th>
-            <td className="numeric"><strong>{formatMetric(model.calls)}</strong><svg className="overview-model-bar" viewBox="0 0 100 4" preserveAspectRatio="none" role="img" aria-label={`${model.model}：${model.calls} 次调用，刻度 0 至 ${maximum}`}><title>{model.model} 调用量</title><rect className="overview-model-bar__track" width="100" height="4" /><rect width={model.calls / maximum * 100} height="4" /></svg></td>
-            <td className="numeric">{formatMetric(model.succeeded)} / {formatMetric(model.failed)}</td>
-            <td className="numeric">{formatOverviewRate(model.successRate)}</td>
-            <td className="numeric">{formatMetric(model.tokens.total.value)}<span className="cell-subtext">{tokenCoverage(model.tokens.total, model.calls)}</span></td>
-            <td className="numeric">{formatDuration(model.averageDurationMs)}<span className="cell-subtext">{model.durationReported} / {model.calls} 条有计时</span></td>
-          </tr>)}</tbody>
-        </table>
+    <div className="section-heading overview-models__heading">
+      <div><h2 id="overview-models-title" className="section-title">模型数据分析</h2><p className="helper-text">按请求模型标识比较 · 每组最多 5 个 · 当前指标从高到低</p></div>
+      <div className="overview-model-controls">
+        <label htmlFor="overview-model-metric">比较指标</label>
+        <select id="overview-model-metric" value={metric} disabled={!models.length} onChange={(event) => { const next = modelChartMetrics.find((item) => item.key === event.target.value); if (next) { setMetric(next.key); setGroup(0); setChosenModel(null); } }}>{modelChartMetrics.map((item) => <option value={item.key} key={item.key}>{item.label}</option>)}</select>
+        <Link to="/logs" className="quiet-link">查看调用日志</Link>
       </div>
-      {models.length > 5 && <button className="geist-button geist-button--secondary overview-models__expand" type="button" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? "收起模型列表" : `展开全部 ${models.length} 个模型`}</button>}
-    </> : <EmptyResult>当前范围内没有模型调用记录</EmptyResult>}
+    </div>
+    {selected ? <div className="overview-model-layout">
+      <div className="overview-model-comparison">
+        <OverviewModelChart models={visibleModels} metric={metric} maximum={maximum} selectedModel={selected.model} onSelect={selectModel} />
+        <div className="overview-model-pager">
+          <span aria-live="polite">{offset + 1}–{Math.min(offset + groupSize, ranked.length)} / {ranked.length} 个模型</span>
+          <div><button className="geist-button geist-button--secondary geist-button--small" type="button" aria-label="上一组模型" disabled={currentGroup === 0} onClick={() => { setGroup(currentGroup - 1); setChosenModel(null); }}>上一组</button><button className="geist-button geist-button--secondary geist-button--small" type="button" aria-label="下一组模型" disabled={currentGroup === lastGroup} onClick={() => { setGroup(currentGroup + 1); setChosenModel(null); }}>下一组</button></div>
+        </div>
+        <p className="overview-data-note">各组使用同一刻度；短名称可悬停查看，精确数值见所选模型明细。</p>
+      </div>
+      <section className="overview-model-details" aria-label="所选模型明细">
+        <label htmlFor="overview-model-select">查看模型</label>
+        <select id="overview-model-select" value={selected.model} title={selected.model} onChange={(event) => selectModel(event.target.value)}>{ranked.map((model) => <option key={model.model} value={model.model}>{model.model}</option>)}</select>
+        <p className={`overview-model-state${selected.latestStatus === "失败" ? " overview-model-state--failed" : ""}`}>{selected.latestStatus ? `最近调用${selected.latestStatus}` : "最近状态未知"}</p>
+        <dl>
+          <div><dt>调用量</dt><dd title={formatMetric(selected.calls)}>{formatMetric(selected.calls)}</dd></div>
+          <div><dt>成功率</dt><dd>{formatOverviewRate(selected.successRate)}</dd></div>
+          <div><dt>成功 / 未成功</dt><dd title={`${selected.succeeded} / ${selected.failed}`}>{formatMetric(selected.succeeded)} / {formatMetric(selected.failed)}</dd></div>
+          <div><dt>平均耗时</dt><dd title={formatDuration(selected.averageDurationMs)}>{formatDuration(selected.averageDurationMs)}</dd><span title={`${selected.durationReported} / ${selected.calls} 条有计时`}>{selected.durationReported} / {selected.calls} 条有计时</span></div>
+          <div className="overview-model-details__tokens"><dt>已上报 Token</dt><dd title={formatMetric(selected.tokens.total.value)}>{formatMetric(selected.tokens.total.value)}</dd><span title={tokenCoverage(selected.tokens.total, selected.calls)}>{tokenCoverage(selected.tokens.total, selected.calls)}</span></div>
+        </dl>
+      </section>
+    </div> : <EmptyResult>当前范围内没有模型调用记录</EmptyResult>}
   </section>;
 }
