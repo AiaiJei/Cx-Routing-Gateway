@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { OverviewPage } from "./OverviewPage";
 import { MemoryRouter } from "react-router";
 import { useWorkspace } from "../data/use-workspace";
@@ -20,6 +20,7 @@ const defaultWorkspaceState = {
 
 describe("OverviewPage", () => {
   beforeEach(() => workspaceHook.mockReturnValue(defaultWorkspaceState));
+  afterEach(() => vi.restoreAllMocks());
 
   it("places large purpose icons before primary numbers and quiet captions", async () => {
     render(<MemoryRouter><OverviewPage /></MemoryRouter>);
@@ -38,14 +39,14 @@ describe("OverviewPage", () => {
     expect(route.querySelector(".overview-status__count")).toHaveTextContent("2 / 2");
     expect(route.querySelector(".overview-status__caption")).toHaveTextContent("已启用");
 
-    const requestMetric = screen.getByRole("group", { name: "已保留请求" });
+    const requestMetric = screen.getByRole("group", { name: "调用总数" });
     const icon = requestMetric.querySelector(".overview-icon");
     const value = requestMetric.querySelector(".overview-metric__value");
     const caption = requestMetric.querySelector(".overview-metric__caption");
 
     expect(icon).toHaveAttribute("data-size", "40");
     expect(value).toHaveTextContent("3");
-    expect(caption).toHaveTextContent("已保留请求");
+    expect(caption).toHaveTextContent("调用总数");
     expect(icon!.compareDocumentPosition(value!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(value!.compareDocumentPosition(caption!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
@@ -60,9 +61,9 @@ describe("OverviewPage", () => {
     expect(screen.getByRole("group", { name: "模型路由" })).toHaveTextContent("已启用");
     expect(screen.getByRole("group", { name: "接入凭证" })).toHaveTextContent("2");
     expect(screen.getByRole("group", { name: "接入凭证" })).toHaveTextContent("示例凭证");
-    expect(screen.getByText("已保留请求")).toBeVisible();
-    expect(screen.getByText("3", { exact: true })).toBeVisible();
-    expect(screen.getByText("2 / 1")).toBeVisible();
+    expect(screen.getByRole("heading", { name: "用量统计" })).toBeVisible();
+    expect(screen.getByRole("group", { name: "调用总数" })).toHaveTextContent("3");
+    expect(screen.getByRole("group", { name: "调用结果" })).toHaveTextContent("2 / 1");
     expect(screen.getByText("730", { exact: true })).toBeVisible();
     expect(screen.getByText("ms", { exact: true })).toBeVisible();
     expect(screen.getByText("最近 24 小时没有可绘制的请求记录")).toBeVisible();
@@ -108,7 +109,73 @@ describe("OverviewPage", () => {
     expect(screen.getByRole("group", { name: "模型路由" })).toHaveTextContent("已启用");
     expect(screen.getByRole("group", { name: "接入凭证" })).toHaveTextContent("1");
     expect(screen.getByRole("group", { name: "接入凭证" })).toHaveTextContent("已撤销");
-    expect(screen.getByText("2 / 2")).toBeVisible();
+    expect(screen.getByRole("group", { name: "调用结果" })).toHaveTextContent("0 / 0");
+    expect(screen.getByRole("group", { name: "调用总数" }).querySelector("strong")).toHaveTextContent("0");
+    expect(screen.getByText("当前范围内没有模型调用记录")).toBeVisible();
+  });
+
+  it("shows reported token totals and model call results from the same logs", () => {
+    render(<MemoryRouter><OverviewPage /></MemoryRouter>);
+    const usage = screen.getByRole("group", { name: "已上报 Token" });
+    expect(usage).toHaveTextContent("1,854");
+    expect(usage).toHaveTextContent("2 / 3 条上报");
+    const models = screen.getByRole("table", { name: "模型调用分析" });
+    const reasoner = within(models).getByRole("row", { name: /gateway-reasoner/ });
+    expect(reasoner).toHaveTextContent("100.0%");
+    expect(reasoner).toHaveTextContent("1,854");
+    const failed = within(models).getByRole("row", { name: /gateway-fast/ });
+    expect(failed).toHaveTextContent("最近调用失败");
+    expect(failed).toHaveTextContent("0.0%");
+    expect(failed).toHaveTextContent("未上报");
+    expect(screen.getByRole("img", { name: /gateway-reasoner：2 次调用/ })).toBeVisible();
+  });
+
+  it("updates usage, model results and recent calls together when the range changes", () => {
+    vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-11-26T12:00:00Z"));
+    workspaceHook.mockReturnValue({ ...defaultWorkspaceState, data: {
+      ...workspaceFixtures,
+      logs: [
+        { ...workspaceFixtures.logs[0], time: "2026-11-26T11:00:00Z", model: "recent-model" },
+        { ...workspaceFixtures.logs[1], time: "2026-11-24T11:00:00Z", model: "old-model" },
+      ],
+    } });
+    render(<MemoryRouter><OverviewPage /></MemoryRouter>);
+    fireEvent.change(screen.getByRole("combobox", { name: "统计范围" }), { target: { value: "24h" } });
+    expect(screen.getByRole("group", { name: "调用总数" }).querySelector("strong")).toHaveTextContent("1");
+    expect(within(screen.getByRole("table", { name: "模型调用分析" })).queryByText("old-model")).not.toBeInTheDocument();
+    expect(screen.queryByText("需要关注")).not.toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /请求趋势图，共 1 条/ })).toBeVisible();
+    fireEvent.change(screen.getByRole("combobox", { name: "统计范围" }), { target: { value: "retained" } });
+    expect(screen.getByRole("group", { name: "调用总数" }).querySelector("strong")).toHaveTextContent("2");
+    expect(within(screen.getByRole("table", { name: "模型调用分析" })).getByText("old-model")).toBeVisible();
+  });
+
+  it("shows refresh feedback and preserves existing data on refresh failure", () => {
+    const refresh = vi.fn();
+    workspaceHook.mockReturnValue({ ...defaultWorkspaceState, refresh });
+    const { rerender } = render(<MemoryRouter><OverviewPage /></MemoryRouter>);
+    fireEvent.click(screen.getByRole("button", { name: "刷新数据" }));
+    expect(refresh).toHaveBeenCalledTimes(1);
+    workspaceHook.mockReturnValue({ ...defaultWorkspaceState, refresh, refreshing: true });
+    rerender(<MemoryRouter><OverviewPage /></MemoryRouter>);
+    expect(screen.getByRole("button", { name: "刷新中…" })).toBeDisabled();
+    workspaceHook.mockReturnValue({ ...defaultWorkspaceState, refreshError: "控制服务未响应" });
+    rerender(<MemoryRouter><OverviewPage /></MemoryRouter>);
+    expect(screen.getByRole("alert")).toHaveTextContent("当前仍显示上次数据");
+    expect(screen.getByRole("group", { name: "调用总数" })).toHaveTextContent("3");
+  });
+
+  it("limits model rows initially and expands all models on demand", () => {
+    workspaceHook.mockReturnValue({ ...defaultWorkspaceState, data: { ...workspaceFixtures,
+      logs: Array.from({ length: 7 }, (_, index) => ({ ...workspaceFixtures.logs[0], id: `call-${index}`, model: `model-${index}` })),
+    } });
+    render(<MemoryRouter><OverviewPage /></MemoryRouter>);
+    const table = screen.getByRole("table", { name: "模型调用分析" });
+    expect(within(table).getAllByRole("row")).toHaveLength(6);
+    fireEvent.click(screen.getByRole("button", { name: "展开全部 7 个模型" }));
+    expect(within(table).getAllByRole("row")).toHaveLength(8);
+    fireEvent.click(screen.getByRole("button", { name: "收起模型列表" }));
+    expect(within(table).getAllByRole("row")).toHaveLength(6);
   });
 
   it("shows the loading state before workspace data arrives", () => {

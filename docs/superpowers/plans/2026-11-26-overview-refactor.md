@@ -266,3 +266,16 @@ Commit only scoped evidence and acceptance documentation, push `codex/overview-d
 **Ruling:** Task 1 (runtime retention mapping) and Task 2 (pure time-bucket aggregation) use separate files and no shared edits, but the available implementer route failed before work began. The integrator owns both tasks sequentially; this costs parallel speed but avoids waiting on an unavailable model route. Tasks 3 and 4 still wait for their stated dependencies and remain review checkpoints.
 
 **Execution status:** Tasks 1–4 are implemented and committed; the full 333-test desktop suite, production build, focused taste lint, and 1440px/390px rendered fixture inspection are complete. Three inspector warnings (small text share, a short status row, and no colored series in the fixture's empty 24-hour window) are documented in the acceptance evidence. Draft PR #27 is open; independent review and Owner acceptance remain pending. Merge and release remain unauthorized.
+
+## Usage and Model Analysis Follow-up — 2026-11-26
+
+Contract revision 5 continues the same worktree and PR from `2698250`. The main agent owns the pure aggregation helper, statistics/model components and integration; a separate read-only reviewer checks the bounded source diff. No backend, provider call, dependency, merge or release is included.
+
+- [x] Inspect retained request fields and reuse token sanitization, numeric formatting and refresh behavior.
+- [x] Add tests first for shared totals, per-model results, rolling-window edges, partial/zero/missing tokens and legacy records.
+- [x] Implement usage-first layout, model call bars/results, range switching, coverage and refresh feedback.
+- [x] Verify 40 test files / 345 tests, production build and rendered 1440/768/390px fixture behavior.
+- [x] Attempt independent review and record its availability: the reviewer returned `unsupported_feature` (`Res->Chat`) without a verdict; independent review remains NOT_RUN.
+- [x] Prepare the scoped source, screenshots, evidence and PR description for delivery through the same Draft PR; no merge or deployment. Final remote synchronization is verified separately by matching the local and PR head commits.
+
+Rollback remains a separately authorized follow-up against the pre-change baseline; do not reset master or delete the worktree. Current acceptance evidence is recorded under `visual-usage-analysis/` and in the latest section of `acceptance.md`.

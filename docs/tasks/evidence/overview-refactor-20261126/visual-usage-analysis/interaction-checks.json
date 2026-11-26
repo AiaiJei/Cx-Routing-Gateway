@@ -1,0 +1,179 @@
+{
+  "source": "browser fixture only; not Desktop IPC or provider runtime",
+  "results": [
+    {
+      "width": 1440,
+      "overflow": 0,
+      "calls": "3",
+      "totalTokens": "1,854",
+      "rangeControlHeight": 36,
+      "models": [
+        {
+          "name": "gateway-reasoner最近调用成功",
+          "calls": 2,
+          "bar": 100
+        },
+        {
+          "name": "gateway-fast最近调用失败",
+          "calls": 1,
+          "bar": 50
+        }
+      ],
+      "hierarchy": [
+        {
+          "icon": 40,
+          "value": 28,
+          "status": 12
+        },
+        {
+          "icon": 40,
+          "value": 28,
+          "status": 12
+        },
+        {
+          "icon": 40,
+          "value": 28,
+          "status": 12
+        },
+        {
+          "icon": 40,
+          "value": 28,
+          "status": 12
+        }
+      ],
+      "filtered": {
+        "calls": "0",
+        "totalTokens": "—",
+        "empty": true
+      },
+      "refreshRestored": "3",
+      "layoutStress": {
+        "source": "synthetic DOM layout stress only, not usage data",
+        "overflow": 0,
+        "valueOverflow": 0
+      },
+      "consoleExceptions": [],
+      "consoleMessages": []
+    },
+    {
+      "width": 768,
+      "overflow": 0,
+      "calls": "3",
+      "totalTokens": "1,854",
+      "rangeControlHeight": 36,
+      "models": [
+        {
+          "name": "gateway-reasoner最近调用成功",
+          "calls": 2,
+          "bar": 100
+        },
+        {
+          "name": "gateway-fast最近调用失败",
+          "calls": 1,
+          "bar": 50
+        }
+      ],
+      "hierarchy": [
+        {
+          "icon": 40,
+          "value": 28,
+          "status": 12
+        },
+        {
+          "icon": 40,
+          "value": 28,
+          "status": 12
+        },
+        {
+          "icon": 40,
+          "value": 28,
+          "status": 12
+        },
+        {
+          "icon": 40,
+          "value": 28,
+          "status": 12
+        }
+      ],
+      "scroll": {
+        "offset": 136,
+        "before": 24,
+        "after": 24,
+        "focused": true
+      },
+      "filtered": {
+        "calls": "0",
+        "totalTokens": "—",
+        "empty": true
+      },
+      "refreshRestored": "3",
+      "layoutStress": {
+        "source": "synthetic DOM layout stress only, not usage data",
+        "overflow": 0,
+        "valueOverflow": 0
+      },
+      "consoleExceptions": [],
+      "consoleMessages": []
+    },
+    {
+      "width": 390,
+      "overflow": 0,
+      "calls": "3",
+      "totalTokens": "1,854",
+      "rangeControlHeight": 44,
+      "models": [
+        {
+          "name": "gateway-reasoner最近调用成功",
+          "calls": 2,
+          "bar": 100
+        },
+        {
+          "name": "gateway-fast最近调用失败",
+          "calls": 1,
+          "bar": 50
+        }
+      ],
+      "hierarchy": [
+        {
+          "icon": 40,
+          "value": 28,
+          "status": 12
+        },
+        {
+          "icon": 40,
+          "value": 28,
+          "status": 12
+        },
+        {
+          "icon": 40,
+          "value": 28,
+          "status": 12
+        },
+        {
+          "icon": 40,
+          "value": 28,
+          "status": 12
+        }
+      ],
+      "scroll": {
+        "offset": 498,
+        "before": 16,
+        "after": 16,
+        "focused": true
+      },
+      "filtered": {
+        "calls": "0",
+        "totalTokens": "—",
+        "empty": true
+      },
+      "refreshRestored": "3",
+      "layoutStress": {
+        "source": "synthetic DOM layout stress only, not usage data",
+        "overflow": 0,
+        "valueOverflow": 0
+      },
+      "consoleExceptions": [],
+      "consoleMessages": []
+    }
+  ]
+}

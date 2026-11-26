@@ -3,7 +3,7 @@
   "project_id": "cx-routing-gateway",
   "repo_id": "aiaijei-cx-routing-gateway",
   "task_id": "CXRG-OVERVIEW-REFACTOR-20261126",
-  "contract_revision": 4,
+  "contract_revision": 5,
   "contract_path": "docs/tasks/2026-11-26-overview-refactor-contract.json",
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
@@ -29,6 +29,11 @@
     "docs/superpowers/plans/2026-11-26-overview-refactor.md"
   ],
   "revision_history": [
+    {
+      "revision": 5,
+      "date": "2026-11-26",
+      "reason": "Owner requested continued overview adjustment for usage statistics, model call analysis, statuses and values. Implement retained-log and rolling-24-hour summaries, reported-token coverage and per-model call results within existing overview paths and the same PR. Existing commit/push/PR authorization remains; no backend, merge or release authorization is added."
+    },
     {
       "revision": 2,
       "date": "2026-11-26",
@@ -66,13 +71,14 @@
   "worktree": "C:/Users/20142/Desktop/Cx-Routing Gateway/.tmp/worktrees/overview-dashboard-20261126",
   "rollback": "Keep master and all pre-existing worktrees and untracked data untouched. Do not delete branches or worktrees. Revert this task only through an authorized follow-up or the dedicated PR.",
   "implementation_result": "PASS",
-  "implementation_evidence": "After Owner visual hierarchy follow-up, Desktop tests 334/334; production TypeScript/Vite build PASS; overview taste-skill lint 0 FAIL / 0 WARN; rendered inspector 0 FAIL / 3 WARN. Computed-style checks at 1440x900 and 390x844 confirm 40px icons > 24-28px values > 12px captions, plus a 48px Gateway icon and 13px Gateway state, with no horizontal main-container overflow or console exceptions. Final desktop and below-fold mobile screenshots were inspected. The browser used fixture mode; Desktop IPC/runtime acceptance remains NOT_RUN. See docs/tasks/evidence/overview-refactor-20261126/acceptance.md, visual-icon-hierarchy/report.json, and visual-icon-hierarchy/computed-hierarchy.json.",
-  "independent_review": "NOT_RUN: earlier delegation attempts returned route_not_found; the latest reviewer returned unsupported_feature for Res->Chat. No independent verdict was produced; Draft PR27 remains available for review.",
+  "implementation_evidence": "Usage/model-analysis follow-up: 40 desktop test files / 345 tests PASS; production TypeScript/Vite build PASS; five-file source lint 0 FAIL / 0 WARN; rendered inspector 0 FAIL / 4 WARN. Browser fixture checks at 1440x900, 768x1024 and 390x844 verify shared usage/model totals, zero-based call bars, 40/28/12 icon/value/caption sizes, range switching, refresh and sticky model identities during horizontal table scrolling. No main-page horizontal overflow, console errors/exceptions or unloaded fonts were found. Screenshots and raw results are in docs/tasks/evidence/overview-refactor-20261126/visual-usage-analysis/. Actual Desktop IPC/runtime acceptance remains NOT_RUN.",
+  "independent_review": "NOT_RUN: the usage/model-analysis reviewer returned unsupported_feature, field input.output, direction Res->Chat. No independent verdict was produced. Earlier overview reviews were also blocked; Draft PR27 remains available for review.",
   "pull_request": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/27",
   "owner_acceptance": "NOT_RUN: visual/runtime acceptance remains separate from code and test evidence.",
   "local_revision_policy": "May commit and push only this task's scoped changes to codex/overview-dashboard-20261126 and open its dedicated PR. Do not merge, release, or alter unrelated local data.",
   "acceptance_criteria": [
-    "Overview prioritizes truthful Gateway and configuration statuses, live usage data, and recent activity.",
+    "Overview prioritizes usage statistics and per-model call analysis while retaining truthful Gateway/configuration states and recent activity.",
+    "Summary and model totals use the same selected retained-log population; Token values disclose missing/partial reporting without double-counting cache fields.",
     "The 24-hour chart is derived from timestamped retained usage records and discloses when retention limits may make it incomplete.",
     "Live, fixture, loading, error, and empty states are distinguishable and accessible.",
     "Focused component tests, desktop production build, and rendered wide/narrow viewport review pass before PR creation.",

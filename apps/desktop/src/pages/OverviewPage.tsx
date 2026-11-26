@@ -1,25 +1,25 @@
+import { useMemo, useState } from "react";
 import { WorkspaceState } from "../components/WorkspaceState";
 import { Link } from "react-router";
 import { EmptyResult, FixtureNotice, PageHeader } from "../components/PageHeader";
 import { ProtocolFlow } from "../components/ProtocolBadge";
 import { OverviewUsageChart } from "../components/OverviewUsageChart";
 import { OverviewIcon } from "../components/OverviewIcon";
+import { OverviewUsageStats } from "../components/OverviewUsageStats";
+import { OverviewModelAnalysis } from "../components/OverviewModelAnalysis";
+import { buildOverviewAnalytics } from "../domain/overview-analytics";
+import type { OverviewRange } from "../domain/overview-analytics";
 import { useWorkspace } from "../data/use-workspace";
 import "../styles/overview.css";
 
 export function OverviewPage() {
-  const { data, error, loading } = useWorkspace();
-  const { gateway, upstreams, routes, logs, credentials } = data;
-  const succeeded = logs.filter((log) => log.status.startsWith("成功")).length;
-  const unsuccessful = logs.length - succeeded;
+  const { data, error, loading, refresh, refreshing, refreshError } = useWorkspace();
+  const [range, setRange] = useState<OverviewRange>("retained");
+  const nowMs = useMemo(() => Date.now(), [data, range]);
+  const analytics = useMemo(() => buildOverviewAnalytics(data.logs, range, nowMs, data.usageRetentionCount), [data, range, nowMs]);
+  const { logs, summary, models, retentionReached } = analytics;
+  const { gateway, upstreams, routes, credentials } = data;
   const failedLogs = logs.filter((log) => log.status.startsWith("失败"));
-  const timedLogs = logs.filter((log) => log.durationMs !== null && Number.isFinite(log.durationMs));
-  const average = timedLogs.length ? Math.round(timedLogs.reduce((total, log) => total + (log.durationMs ?? 0), 0) / timedLogs.length) : null;
-  const metrics = gateway.metrics;
-  const totalRequests = metrics?.total ?? logs.length;
-  const successfulRequests = metrics?.completed ?? succeeded;
-  const unsuccessfulRequests = metrics ? metrics.failed + metrics.rejected : unsuccessful;
-  const averageDuration = metrics?.avgDurationMs ?? average;
   const checkedUpstreams = upstreams.filter((upstream) => upstream.status === "已连接").length;
   const pendingUpstreams = upstreams.filter((upstream) => upstream.status === "待测试").length;
   const disconnectedUpstreams = upstreams.filter((upstream) => upstream.status === "未连接").length;
@@ -41,7 +41,7 @@ export function OverviewPage() {
     <div className="page-content overview-page">
       <PageHeader
         title="总览"
-        description="先确认 Gateway 状态，再处理配置和最近调用。"
+        description="查看调用用量、模型表现与本机运行状态。"
         action={(
           <div className="overview-actions" aria-label="快捷操作">
             <Link to="/upstreams" className="geist-button geist-button--secondary">查看上游</Link>
@@ -51,6 +51,10 @@ export function OverviewPage() {
         )}
       />
       <FixtureNotice live={data.meta.live}>{data.meta.live ? "本机运行时数据" : "示例数据 · 非实时"}</FixtureNotice>
+      {refreshError && <p className="overview-refresh-error" role="alert">刷新失败：{refreshError}。当前仍显示上次数据。</p>}
+
+      <OverviewUsageStats summary={summary} range={range} retentionReached={retentionReached} refreshing={refreshing} onRangeChange={setRange} onRefresh={refresh} />
+      <OverviewModelAnalysis key={range} models={models} />
 
       <section className="overview-status-grid" aria-label="Gateway 与配置状态">
         <section className="overview-status overview-status--gateway" aria-labelledby="gateway-status-title">
@@ -97,24 +101,8 @@ export function OverviewPage() {
         </section>
       </section>
 
-      <section className="overview-metrics" aria-labelledby="overview-metrics-title">
-        <h2 id="overview-metrics-title" className="sr-only">运行概况</h2>
-        <div role="group" aria-label="已保留请求">
-          <OverviewIcon name="logs" size={40} />
-          <div className="overview-metric__content"><strong className="overview-metric__value">{totalRequests}</strong><span className="overview-metric__caption">已保留请求</span></div>
-        </div>
-        <div role="group" aria-label="成功 / 未成功">
-          <OverviewIcon name="outcomes" size={40} />
-          <div className="overview-metric__content"><strong className="overview-metric__value">{`${successfulRequests} / ${unsuccessfulRequests}`}</strong><span className="overview-metric__caption">成功 / 未成功</span></div>
-        </div>
-        <div role="group" aria-label="平均耗时">
-          <OverviewIcon name="duration" size={40} />
-          <div className="overview-metric__content"><strong className="overview-metric__value">{averageDuration === null ? "—" : <>{averageDuration}<small> ms</small></>}</strong><span className="overview-metric__caption">平均耗时</span></div>
-        </div>
-      </section>
-
       <div className="overview-activity-grid">
-        <OverviewUsageChart logs={logs} nowMs={Date.now()} retentionLimit={data.usageRetentionCount} />
+        <OverviewUsageChart logs={logs} nowMs={nowMs} retentionLimit={data.usageRetentionCount} />
         {failedLogs.length > 0 && (
           <section className="attention-panel" aria-labelledby="attention-title">
             <div className="section-heading">
@@ -125,7 +113,7 @@ export function OverviewPage() {
               <Link to="/logs" className="quiet-link">查看日志</Link>
             </div>
             <div className="attention-list">
-              {failedLogs.map((log) => (
+              {failedLogs.slice(0, 3).map((log) => (
                 <div className="attention-row" key={log.id}>
                   <span className="attention-mark" aria-hidden="true">!</span>
                   <div><strong>{log.model}</strong><span className="cell-subtext">{log.error ?? log.status}</span></div>
