@@ -150,7 +150,7 @@ git commit -m "feat: aggregate retained request usage for overview"
 - Create: `apps/desktop/src/styles/overview.css`
 
 **Interfaces:**
-- Props: `{ logs: CallLog[]; nowMs: number; retentionLimit?: number }`。
+- Props: `{ logs: Pick<CallLog, "time">[]; nowMs: number; retentionLimit?: number }`，组件只依赖趋势所需的时间戳字段。
 - Consumes: `buildOverviewUsageTrend` from Task 2。
 - Produces: a labeled SVG with one request-count series, three y-axis ticks including zero, six or fewer chronological x-axis labels, an empty state when no valid in-window records exist, and a visible retention warning when the limit is reached.
 
