@@ -3,7 +3,7 @@
   "project_id": "cx-routing-gateway",
   "repo_id": "aiaijei-cx-routing-gateway",
   "task_id": "CXRG-OVERVIEW-REFACTOR-20261126",
-  "contract_revision": 3,
+  "contract_revision": 4,
   "contract_path": "docs/tasks/2026-11-26-overview-refactor-contract.json",
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
@@ -22,6 +22,7 @@
     "apps/desktop/src/domain/overview-*",
     ".superpowers/sdd/2026-11-26-overview-refactor",
     ".superpowers/sdd/2026-11-26-overview-refactor/**",
+    ".superpowers/sdd/.gitignore",
     "docs/tasks/2026-11-26-overview-refactor*",
     "docs/tasks/evidence/overview-refactor-20261126/**",
     "docs/superpowers/specs/2026-11-26-overview-refactor-design.md",
@@ -37,6 +38,11 @@
       "revision": 3,
       "date": "2026-11-26",
       "reason": "Added only the plan-specific .superpowers/sdd workspace for the execution ledger and review packages required by the task execution workflow. Source-code and runtime operation scopes are unchanged."
+    },
+    {
+      "revision": 4,
+      "date": "2026-11-26",
+      "reason": "Allowed the SDD workspace helper's plan-artifact ignore file at .superpowers/sdd/.gitignore. No source-code, build, or external operation scope changed."
     }
   ],
   "worktree_directory": ".tmp/worktrees",

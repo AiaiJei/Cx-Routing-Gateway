@@ -1,6 +1,6 @@
 # 总览重构
 
-- 任务：`CXRG-OVERVIEW-REFACTOR-20261126`，合同修订 3。
+- 任务：`CXRG-OVERVIEW-REFACTOR-20261126`，合同修订 4。
 - 工作树：`.tmp/worktrees/overview-dashboard-20261126`，分支 `codex/overview-dashboard-20261126`，基于 `606d069e7b53efa492c86e32856d334d313fbaeb`。
 - 范围：总览页面、局部组件与样式、读取现有 Gateway/usage 数据所需的数据映射，以及对应测试和证据。
 - 不做：改共享应用壳层、增加服务端时序 API、真实上游探测、引入图表依赖、合并或发布。
