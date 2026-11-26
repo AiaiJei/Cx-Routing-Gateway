@@ -1,0 +1,17 @@
+{
+  "version": "1.1.12",
+  "channel": "local-test",
+  "sourceBranch": "codex/overview-dashboard-20261126",
+  "sourceCommit": "651185fb06043c5d16c93593b145475676d40324",
+  "folder": "C:\\Users\\20142\\Desktop\\Cx-Routing Gateway 1.1.12 测试版",
+  "shortcut": "C:\\Users\\20142\\Desktop\\Cx-Routing Gateway 1.1.12 测试版.lnk",
+  "executable": "C:\\Users\\20142\\Desktop\\Cx-Routing Gateway 1.1.12 测试版\\Cx-Routing Gateway Portable 1.1.12.exe",
+  "bytes": 115092377,
+  "sha256": "4C8FB9A50A4AE78266F22FD18D35774481EDCFC68BCBBC968ADABDD7F4160189",
+  "productVersion": "1.1.12",
+  "signature": "NotSigned",
+  "gatewayPort": 18418,
+  "controlPort": 18419,
+  "profile": "C:\\Users\\20142\\Desktop\\Cx-Routing Gateway 1.1.12 测试版\\Profile",
+  "shortcutVerified": true
+}

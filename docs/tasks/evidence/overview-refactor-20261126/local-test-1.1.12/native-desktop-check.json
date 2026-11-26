@@ -1,0 +1,32 @@
+{
+  "ok": true,
+  "version": "1.1.12",
+  "executable": "C:\\Users\\20142\\Desktop\\Cx-Routing Gateway 1.1.12 测试版\\Cx-Routing Gateway Portable 1.1.12.exe",
+  "profile": "C:\\Users\\20142\\Desktop\\Cx-Routing Gateway 1.1.12 测试版\\Profile",
+  "services": {
+    "local-control": {
+      "status": "ok",
+      "service": "local-control"
+    },
+    "gateway": {
+      "status": "ok",
+      "service": "gateway"
+    }
+  },
+  "workspace": {
+    "gatewayPort": 18418,
+    "upstreams": 0,
+    "routes": 0,
+    "usage": 0,
+    "runtime": "running"
+  },
+  "overview": {
+    "range": "today",
+    "total": "0",
+    "live": true
+  },
+  "nativeSettingsVersion": true,
+  "exceptions": [],
+  "providerCalls": "NOT_RUN",
+  "source": "actual Desktop Portable via copied isolation launcher; no browser fixture bridge"
+}
