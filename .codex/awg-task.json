@@ -1,80 +1,47 @@
 {
-  "contract_version": 1,
+  "schema_version": 1,
+  "project_id": "cx-routing-gateway",
+  "repo_id": "aiaijei-cx-routing-gateway",
   "task_id": "CXRG-REQUEST-BODY-413-2026-11-21",
-  "title": "修复大请求经网关转发时被误判为 413",
+  "contract_revision": 3,
+  "contract_path": "docs/tasks/2026-11-26-request-body-413-contract.json",
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
-  "status": "pr-open",
-  "stage": "pr-open",
-  "base": "master",
-  "base_sha": "ba4ad680485fc8001169b88557a42acda3d7246a",
-  "branch": "codex/request-body-413",
-  "worktree": ".worktree/request-body-413",
+  "state": "active",
+  "worktree_directory": ".tmp/worktrees",
+  "existing_task_worktree": ".worktree/request-body-413",
   "authorization": {
-    "source": "2026-11-21 user request: 建立专属PR，修复大请求经过网关访问不同上游均返回 HTTP 413，而直连上游正常的问题；同时保留一个正在运行的独立任务。",
-    "operations": [
-      "create isolated task worktree from origin/master",
-      "implement and verify bounded large-request forwarding fix",
-      "commit and push the task branch",
-      "create the dedicated pull request"
-    ],
-    "not_authorized": [
-      "merge the pull request",
-      "publish or deploy",
-      "delete existing worktrees, branches, or untracked files",
-      "modify the separate running task"
-    ]
+    "implementation": true,
+    "verification": true,
+    "evidence_append": true,
+    "commit": true,
+    "push": true,
+    "pull_request": true,
+    "merge": true,
+    "release": true,
+    "local_build": true,
+    "sync_main_worktree": true,
+    "desktop_copy": true,
+    "delete": false,
+    "force_push": false,
+    "real_provider_calls": false,
+    "modify_other_tasks": false
   },
-  "scope": {
-    "include": [
-      "Gateway inbound request body limit and explicit oversized-request error",
-      "Regression coverage for Responses requests larger than the previous 1 MiB limit",
-      "Configurable bounded limit and operator documentation",
-      "Task design, plan, evidence, and dedicated PR"
-    ],
-    "exclude": [
-      "Provider-side request limits",
-      "CC Switch or unrelated proxy behavior",
-      "Routing, credential, storage schema, or protocol conversion redesign",
-      "Product version change, merge, release, or deployment"
-    ]
-  },
-  "authorized_paths": [
+  "scope_paths": [
     ".codex/awg-task.json",
+    "docs/tasks/2026-11-26-request-body-413-contract.json",
+    "docs/tasks/2026-11-21-request-body-413.md",
+    "docs/tasks/evidence/request-body-413-followup-20261126/**",
     "services/gateway/src/server.mjs",
     "services/gateway/README.md",
     "tests/runtime/gateway-server.test.mjs",
-    "docs/superpowers/specs/2026-11-21-request-body-413-design.md",
-    "docs/superpowers/plans/2026-11-21-request-body-413.md",
-    "docs/tasks/2026-11-21-request-body-413.md"
-  ],
-  "acceptance": [
-    "A same-protocol Responses payload larger than 1 MiB reaches the configured upstream intact",
-    "The default gateway request-body limit is 64 MiB and can be configured with CXRG_MAX_REQUEST_BODY_BYTES",
-    "Requests above the configured bound return HTTP 413 with request_body_too_large and a useful byte limit",
-    "Focused and full Runtime tests pass",
-    "The dedicated PR targets master and does not merge or release"
-  ],
-  "rollback": "Revert the task commit; no persisted data, schema, credentials, or release artifacts are changed.",
-  "owner_acceptance": "pending",
-  "verification": {
-    "focused": "PASS: Gateway 34/34",
-    "full_runtime": "PASS: 118/118",
-    "desktop": "PASS: 135/135",
-    "production_build": "PASS: TypeScript and Vite",
-    "whitespace": "PASS: git diff --check",
-    "independent_review": "PENDING: subagent reviewer unavailable in child task; author self-review not counted",
-    "real_provider": "NOT_RUN",
-    "native_desktop": "NOT_RUN",
-    "merge": "NOT_AUTHORIZED",
-    "ci": "PASS: GitHub pull_request and push Run/Desktop checks; package skipped by workflow condition"
-  },
-  "pull_request": {
-    "state": "open",
-    "number": 13,
-    "base": "master",
-    "head_sha": "de5de9d9935861f194424334399ae4d8bcf165c1",
-    "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/13",
-    "mergeable": "MERGEABLE"
-  }
+    "tests/runtime/release-manifest.test.mjs",
+    "apps/desktop/package.json",
+    "apps/desktop/package-lock.json",
+    "apps/desktop/electron-builder.yml",
+    "apps/desktop/src/pages/SettingsPage.test.tsx",
+    "scripts/verify-release.mjs",
+    "apps/desktop/release/1.1.11-413/**",
+    ".tmp/**"
+  ]
 }

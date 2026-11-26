@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "project_id": "cx-routing-gateway",
+  "repo_id": "aiaijei-cx-routing-gateway",
+  "task_id": "CXRG-REQUEST-BODY-413-2026-11-21",
+  "contract_revision": 3,
+  "state": "active",
+  "date": "2026-11-26",
+  "owner_authorization": "合并到最新版本，并更新发布的版本。同步发布到本地桌面；",
+  "supersedes_revision": 2,
+  "target": {
+    "pull_request": 13,
+    "branch": "codex/request-body-413",
+    "existing_worktree": ".worktree/request-body-413",
+    "base": "master",
+    "verified_latest_master": "606d069e7b53efa492c86e32856d334d313fbaeb",
+    "previous_release": "1.1.10",
+    "new_release": "1.1.11"
+  },
+  "scope_paths": [
+    ".codex/awg-task.json",
+    "docs/tasks/2026-11-26-request-body-413-contract.json",
+    "docs/tasks/2026-11-21-request-body-413.md",
+    "docs/tasks/evidence/request-body-413-followup-20261126/**",
+    "services/gateway/src/server.mjs",
+    "services/gateway/README.md",
+    "tests/runtime/gateway-server.test.mjs",
+    "tests/runtime/release-manifest.test.mjs",
+    "apps/desktop/package.json",
+    "apps/desktop/package-lock.json",
+    "apps/desktop/electron-builder.yml",
+    "apps/desktop/src/pages/SettingsPage.test.tsx",
+    "scripts/verify-release.mjs",
+    "apps/desktop/release/1.1.11-413/**",
+    ".tmp/**"
+  ],
+  "authorization": {
+    "implementation": true,
+    "verification": true,
+    "evidence_append": true,
+    "commit": true,
+    "push": true,
+    "pull_request": true,
+    "merge": true,
+    "release": true,
+    "local_build": true,
+    "sync_main_worktree": true,
+    "desktop_copy": true,
+    "delete": false,
+    "force_push": false,
+    "real_provider_calls": false,
+    "modify_other_tasks": false
+  },
+  "scope": {
+    "include": [
+      "Reconcile PR #13 with latest master without replacing newer protocol, failover, credential, metrics or Desktop features.",
+      "Bound inbound request bodies at default 64 MiB with validated override and explicit 413 including limitBytes/requestId; preserve upstream 413 attribution.",
+      "Run focused, Runtime, Desktop, production build, independent review and final-head CI before merge.",
+      "Merge PR #13, fast-forward primary master while preserving Overview local contract, publish v1.1.11 with hashes, copy a separately named Portable exe to Desktop and smoke the exact copy."
+    ],
+    "exclude": [
+      "Concurrency/queueing redesign",
+      "Provider/model API calls",
+      "Overwriting existing Desktop executables or live configs",
+      "Deleting branches/worktrees/untracked files or force-pushing"
+    ]
+  },
+  "roles": {
+    "integrator": "Codex in existing PR #13 worktree",
+    "independent_reviewer": "Bounded read-only reviewer before merge",
+    "owner": "Manual live acceptance after delivery"
+  },
+  "acceptance": [
+    "More than current 4 MiB and below configured limit reaches local mock upstream intact.",
+    "Boundary and oversized declared/chunked requests return readable bounded 413 without upstream calls; valid UTF-8 preserved; no indefinite drain wait.",
+    "Latest master features and product version consistency retained; tests, build, isolated packaged/Portable health and review pass.",
+    "PR merged to up-to-date master; v1.1.11 GitHub assets match local SHA-256; Desktop Portable copy matches published executable and passes isolated health."
+  ],
+  "rollback": "Preserve pre-release snapshots and original dirty patch. Revert task commits for source rollback; old 1.1.10 Desktop Portable remains available. Do not delete or overwrite user files or modify live data.",
+  "preservation": {
+    "snapshot_directory": "docs/tasks/evidence/request-body-413-followup-20261126",
+    "old_dirty_manifest_and_report": "pre-release-dirty.patch",
+    "untracked_review_patch": "pre-existing-review.patch",
+    "overview_contract": "Keep primary-root local ignored .codex/awg-task.json and untracked Overview contract unchanged during fast-forward."
+  },
+  "verification": {
+    "implementation": "NOT_RUN",
+    "independent_review": "NOT_RUN",
+    "merged": "NOT_RUN",
+    "published": "NOT_RUN",
+    "desktop_smoke": "NOT_RUN",
+    "live_provider": "NOT_RUN",
+    "owner_acceptance": "PENDING"
+  }
+}
