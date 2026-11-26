@@ -5,9 +5,25 @@ import userEvent from "@testing-library/user-event";
 import { defaultWorkspaceClient } from "../data/workspace-client";
 
 describe("SettingsPage", () => {
+  it("checks public releases without asking for a repository token", async () => {
+    const original = window.desktopControls;
+    window.desktopControls = {
+      ...original,
+      getUpdateTokenStatus: async () => ({ configured: true, secureStorageAvailable: false, publicRead: true }),
+      checkUpdate: async () => ({ configured: true, available: false, publicRead: true }),
+    } as NonNullable<typeof window.desktopControls>;
+    try {
+      render(<SettingsPage />);
+      expect(await screen.findByText(/公开仓库可直接阅读与下载 Releases/)).toBeVisible();
+      expect(screen.queryByLabelText("GitHub 更新访问令牌")).not.toBeInTheDocument();
+      await userEvent.setup().click(screen.getByRole("button", { name: "检查更新" }));
+      expect(await screen.findByText("当前已是最新版本。")).toBeVisible();
+      expect(screen.queryByRole("button", { name: "配置更新令牌" })).not.toBeInTheDocument();
+    } finally { window.desktopControls = original; }
+  });
   it("shows the current product version", async () => {
     render(<SettingsPage />);
-    expect(await screen.findByText("版本 1.1.9")).toBeVisible();
+    expect(await screen.findByText("版本 1.1.10")).toBeVisible();
   });
 
   it("shows the unconfigured GitHub token state without disabling the update control", async () => {
@@ -127,7 +143,7 @@ describe("SettingsPage", () => {
   });
   it("shows the installed product version in the desktop application section", async () => {
     render(<SettingsPage />);
-    expect(await screen.findByText("版本 1.1.9")).toBeVisible();
+    expect(await screen.findByText("版本 1.1.10")).toBeVisible();
     expect(screen.getByRole("heading", { name: "桌面应用" })).toBeVisible();
   });
   it("shows the GitHub release link when an update is available", async () => {

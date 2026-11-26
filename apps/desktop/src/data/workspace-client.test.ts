@@ -1,6 +1,34 @@
 import { describe, expect, it, vi } from "vitest";
 import { fixtureWorkspaceClient, mapRuntimeState, runtimeWorkspaceClient } from "./workspace-client";
 
+it("maps per-model capabilities without losing false, empty reasoning or unknown values", () => {
+  const capabilities = { contextWindow: 128000, maxOutputTokens: 32000, inputModalities: ["text", "image"], tools: false, reasoningEfforts: [] };
+  const workspace = mapRuntimeState({
+    settings: { gatewayHost: "127.0.0.1", gatewayPort: 4318 }, upstreams: [], usage: [], clientKeys: [],
+    routes: [
+      { id: "known", alias: "known", inboundProtocol: "Res", outboundProtocol: "Chat", enabled: true, targets: [], capabilities },
+      { id: "unknown", alias: "unknown", inboundProtocol: "Res", outboundProtocol: "Chat", enabled: true, targets: [] },
+    ],
+  });
+  expect(workspace.routes[0]).toHaveProperty("capabilities", capabilities);
+  expect(workspace.routes[1]).not.toHaveProperty("capabilities");
+  capabilities.inputModalities.pop();
+  expect(workspace.routes[0]).toHaveProperty("capabilities.inputModalities", ["text", "image"]);
+});
+
+it("explains capability and output-limit failures with their request field", () => {
+  const workspace = mapRuntimeState({
+    settings: { gatewayHost: "127.0.0.1", gatewayPort: 4318 }, upstreams: [], routes: [], clientKeys: [],
+    usage: ["model_capability_unsupported", "invalid_model_capabilities", "invalid_max_output_tokens", "model_reasoning_range_conflict"].map(errorCode => ({ errorCode, errorField: "tools", requestId: errorCode })),
+  });
+  expect(workspace.logs.map(item => item.error)).toEqual([
+    "模型配置明确不支持该请求能力（字段 tools）",
+    "模型能力配置无效，请检查模型路由（字段 tools）",
+    "最大输出参数无效，请填写正整数（字段 tools）",
+    "模型支持的推理强度与路由区间没有交集（字段 tools）",
+  ]);
+});
+
 describe("fixtureWorkspaceClient", () => {
   it("marks workspace data as fixtures and returns independent copies", async () => {
     const first = await fixtureWorkspaceClient.getWorkspace();
@@ -197,4 +225,18 @@ it.each(["unknown", "UPSTREAM_BODY", "__proto__", "private-provider-error", "", 
     usage: [{ status: "failed", streamFailurePhase: phase }],
   });
   expect(logs[0]).not.toHaveProperty("streamFailurePhase");
+});
+
+
+it("maps route ranges independently without inventing a policy for legacy routes", () => {
+  const state = { settings: { gatewayHost: "127.0.0.1", gatewayPort: 4318 }, upstreams: [], clientKeys: [], routes: [
+    { id: "limited", alias: "model", enabled: false, inboundProtocol: "Res", outboundProtocol: "Mes", reasoning: { min: "low", max: "max" }, targets: [{ upstreamId: "up", modelId: "model" }] },
+    { id: "legacy", alias: "old", inboundProtocol: "Res", outboundProtocol: "Chat", targets: [{ upstreamId: "up", modelId: "old" }] },
+  ] };
+  const [limited, legacy] = mapRuntimeState(state).routes;
+  expect(limited.reasoning).toEqual({ min: "low", max: "max" });
+  expect(limited.enabled).toBe(false);
+  expect(legacy).not.toHaveProperty("reasoning");
+  limited.reasoning!.min = "medium";
+  expect(state.routes[0].reasoning!.min).toBe("low");
 });

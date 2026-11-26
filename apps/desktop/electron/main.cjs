@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, safeStorage, shell, Tray, Menu } = require("electron");
 const path = require("node:path");
+const os = require("node:os");
 const crypto = require("node:crypto");
 const { spawn } = require("node:child_process");
 const { startRuntime } = require("./runtime-supervisor.cjs");
@@ -9,6 +10,10 @@ const { createGitHubTokenService } = require("./github-token-service.cjs");
 const { registerGitHubUpdateIpc } = require("./github-update-ipc.cjs");
 const { registerUpstreamEditIpc } = require("./upstream-edit-ipc.cjs");
 const { registerUpstreamTestIpc } = require("./upstream-test-ipc.cjs");
+const { createCodexConfigService } = require("./codex-config-service.cjs");
+const { createCodexRuntimeClient } = require("./codex-runtime-client.cjs");
+const { registerCodexIpc } = require("./codex-ipc.cjs");
+const { createCodexClientManager } = require("./codex-client-manager.cjs");
 const { loadOrCreateRuntimeMasterKey } = require("./runtime-master-key.cjs");
 const { cxrgProductVersion } = require("../package.json");
 const { installTrayLifecycle, registerActivateHandler, registerSecondInstanceHandler } = require("./tray-lifecycle.cjs");
@@ -22,6 +27,34 @@ let quitting = false;
 let githubTokenStore;
 let githubTokenService;
 let trayLifecycle;
+let codexConfigService;
+let codexClientManager;
+const codexHome = path.resolve(process.env.CODEX_HOME || path.join(os.homedir(), ".codex"));
+
+function getCodexConfigService() {
+  if (!codexConfigService) {
+    const runtimeClient = createCodexRuntimeClient({
+      getControlPort: () => controlPort,
+      getGatewayPort: () => gatewayPort,
+      getControlToken: () => runtime?.controlToken || "",
+      isRuntimeReady: () => startupState === "running" && runtime?.getStatus?.().state === "running",
+    });
+    codexConfigService = createCodexConfigService({
+      codexHome, ...runtimeClient, safeStorage,
+      profilesPath: path.join(app.getPath("userData"), "codex-direct-profiles.enc"),
+      preferencesPath: path.join(app.getPath("userData"), "codex-gateway-preferences.json"),
+      isLoginPending: () => codexClientManager?.getLoginState() === "pending",
+    });
+  }
+  return codexConfigService;
+}
+
+function getCodexClientManager() {
+  if (!codexClientManager) codexClientManager = createCodexClientManager({ codexHome, getConfigStatus: () => getCodexConfigService().getStatus() });
+  return codexClientManager;
+}
+
+app.on("before-quit", () => codexClientManager?.dispose());
 
 function updateScriptPath() {
   return process.resourcesPath && !process.defaultApp
@@ -137,6 +170,8 @@ registerUpstreamTestIpc({
   getControlToken: () => runtime?.controlToken || "",
 });
 
+registerCodexIpc({ ipcMain, isTrustedSender: trustedSender, getService: getCodexConfigService, getClientManager: getCodexClientManager });
+
 ipcMain.handle("runtime:test-route", async (event, routeId, prompt) => {
   if (!trustedSender(event) || typeof routeId !== "string" || routeId.length > 100 || typeof prompt !== "string" || prompt.trim().length < 1 || prompt.length > 2000) throw new Error("Invalid route test request");
   if (startupState !== "running" || typeof runtime?.testRoute !== "function") throw new Error("本机 Gateway 尚未就绪");
@@ -250,6 +285,7 @@ registerGitHubUpdateIpc({
   getCurrentVersion: () => cxrgProductVersion,
   getDownloadDir: () => path.join(app.getPath("temp"), "cxrg-updates"),
   installDownloaded: async (result) => {
+  codexClientManager?.dispose();
   const installer = spawn(result.path, [], { detached: true, stdio: "ignore", windowsHide: false });
   installer.unref();
   quitting = true;

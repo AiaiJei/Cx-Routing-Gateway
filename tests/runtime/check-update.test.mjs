@@ -42,17 +42,17 @@ function assertBearerOnly(request) {
   assert.equal(request.options.headers.authorization, `Bearer ${token}`);
 }
 
-test('the standalone update command clearly directs users to encrypted Desktop settings', async () => {
+test('the standalone update help describes public anonymous access', async () => {
   const result = await new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, ['scripts/check-update.mjs'], { stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(process.execPath, ['scripts/check-update.mjs', '--help'], { stdio: ['ignore', 'pipe', 'pipe'] });
     let output = '';
     child.stdout.on('data', (chunk) => { output += String(chunk); });
     child.stderr.on('data', (chunk) => { output += String(chunk); });
     child.on('error', reject);
     child.on('exit', (code) => resolve({ code, output }));
   });
-  assert.notEqual(result.code, 0);
-  assert.match(result.output, /configured in Desktop settings/i);
+  assert.equal(result.code, 0);
+  assert.match(result.output, /public GitHub Releases without a token/i);
 });
 
 test('verifyGitHubToken confirms Contents read access without returning the credential', async () => {
@@ -71,13 +71,22 @@ test('verifyGitHubToken rejects unauthorized, forbidden and inaccessible reposit
   }
 });
 
-test('update operations require a token and never make unauthenticated requests', async () => {
+test('token verification still requires a token while public release checks and downloads are anonymous', async () => {
   let called = false;
   const fetchImpl = async () => { called = true; throw new Error('unexpected request'); };
   await assert.rejects(() => verifyGitHubToken({ fetchImpl }), /token is required/i);
-  await assert.rejects(() => checkUpdate({ currentVersion: '1.0.3', fetchImpl }), /token is required/i);
-  await assert.rejects(() => installUpdate({ currentVersion: '1.0.3', fetchImpl }), /token is required/i);
   assert.equal(called, false);
+  const fixture = fetchFixture(release());
+  const result = await checkUpdate({ currentVersion: '1.0.3', fetchImpl: fixture.fetchImpl });
+  assert.equal(result.available, true);
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'cxrg-public-update-'));
+  try {
+    const installed = await installUpdate({ currentVersion: '1.0.3', fetchImpl: fixture.fetchImpl, downloadDir: directory });
+    assert.equal(installed.sha256, digest);
+    assert.deepEqual(await fs.readFile(installed.path), bytes);
+    assert.equal(fixture.calls.length, 3);
+    for (const request of fixture.calls) assert.equal(request.options.headers.authorization, undefined);
+  } finally { await fs.rm(directory, { recursive: true, force: true }); }
 });
 
 test('GitHub access cannot be redirected to an arbitrary repository', async () => {

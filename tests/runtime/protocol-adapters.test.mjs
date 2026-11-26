@@ -60,6 +60,42 @@ test('forwards Messages output_config effort to Responses reasoning', () => {
   assert.deepEqual(responsesOutput.reasoning, { effort: 'high' });
 });
 
+test('preserves bounded reasoning effort through every protocol conversion including Chat', () => {
+  for (const effort of ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'vendor-custom']) {
+    const inputs = {
+      Res: { input: 'Think carefully', reasoning: { effort: ' ' + effort + ' ' } },
+      Mes: { messages: [{ role: 'user', content: 'Think carefully' }], output_config: { effort: ' ' + effort + ' ' } },
+      Chat: { messages: [{ role: 'user', content: 'Think carefully' }], reasoning_effort: ' ' + effort + ' ' },
+    };
+    for (const [source, input] of Object.entries(inputs)) {
+      const normalized = parseRequest(source, input);
+      for (const target of ['Res', 'Mes', 'Chat']) {
+        const output = serializeRequest(target, normalized, 'target-model');
+        const actual = target === 'Res' ? output.reasoning?.effort : target === 'Mes' ? output.output_config?.effort : output.reasoning_effort;
+        assert.equal(actual, effort, source + '->' + target + ' preserves ' + effort);
+      }
+    }
+  }
+});
+
+test('conversion omits invalid or absent reasoning effort instead of inventing a default', () => {
+  for (const effort of [undefined, null, false, 7, {}, '', '   ', 'x'.repeat(33)]) {
+    for (const [source, input] of Object.entries({
+      Res: { input: 'Hello', reasoning: { effort } },
+      Mes: { messages: [{ role: 'user', content: 'Hello' }], output_config: { effort } },
+      Chat: { messages: [{ role: 'user', content: 'Hello' }], reasoning_effort: effort },
+    })) {
+      const normalized = parseRequest(source, input);
+      for (const target of ['Res', 'Mes', 'Chat']) {
+        const output = serializeRequest(target, normalized, 'target-model');
+        assert.equal('reasoning' in output, false);
+        assert.equal('output_config' in output, false);
+        assert.equal('reasoning_effort' in output, false);
+      }
+    }
+  }
+});
+
 test('round-trips a namespaced Responses function tool through Chat', () => {
   const normalized = parseRequest('Res', {
     input: 'What time is it?',
@@ -589,7 +625,7 @@ test('rejects server-executed built-ins with diagnostics that omit submitted too
     assert.equal(error.code, 'unsupported_feature');
     assert.equal(error.field, 'tools.type');
     assert.equal(error.direction, 'Res->Chat');
-    assert.equal(error.message, 'Unsupported protocol feature');
+    assert.match(error.message, /Reapply Gateway setup/);
     assert.equal(JSON.stringify({ message: error.message, field: error.field, direction: error.direction }).includes(secretToolName), false);
     assert.equal(JSON.stringify({ message: error.message, field: error.field, direction: error.direction }).includes(secretArgument), false);
     return true;
@@ -720,8 +756,6 @@ test('normalizes Anthropic tool_choice auto, any and named tool controls', () =>
   }
 });
 
-test('rejects non-text Res content with a safe field and direction instead of dropping it', () => {
-
 test('normalizes Chat tool stream deltas and serializes them to Responses events', () => {
   const state = { nextToolIndex: 0, toolIndexes: new Map() };
   const event = parseStreamEvent('Chat', '', { choices: [{ delta: { tool_calls: [{ index: 2, id: 'call-2', function: { name: 'lookup', arguments: '{"key":' } }] } }] }, state);
@@ -731,10 +765,9 @@ test('normalizes Chat tool stream deltas and serializes them to Responses events
   assert.match(wire, /response.function_call_arguments.delta/);
   assert.match(wire, /call-2/);
 });
-  assert.throws(() => parseRequest('Res', { input: [{ role: 'user', content: [{ type: 'input_image', image_url: 'https://example.invalid/image' }] }] }, { direction: 'Res->Chat' }), (error) => {
-    assert.equal(error.code, 'unsupported_feature');
-    assert.equal(error.field, 'input.content');
-    assert.equal(error.direction, 'Res->Chat');
-    return true;
-  });
+test('Responses images become real Chat image blocks', () => {
+  const request = parseRequest('Res', { input: [{ role: 'user', content: [{ type: 'input_image', image_url: 'https://example.invalid/image' }] }] }, { direction: 'Res->Chat' });
+  assert.deepEqual(serializeRequest('Chat', request, 'fixture').messages, [{
+    role: 'user', content: [{ type: 'image_url', image_url: { url: 'https://example.invalid/image' } }],
+  }]);
 });
