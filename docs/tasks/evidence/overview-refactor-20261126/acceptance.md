@@ -39,3 +39,11 @@ Task 1 mapping and Task 2 aggregation tests followed red-green cycles. The 24-ho
 - Dedicated PR: [#27](https://github.com/AiaiJei/Cx-Routing-Gateway/pull/27), draft, targets `master`; not merged.
 - Real Desktop IPC/runtime rendering and Owner acceptance: NOT_RUN. Browser screenshots are fixture-only; no provider calls or user runtime configuration were accessed.
 - Integration: task branch only. It is authorized to push and open a Draft PR, but not to merge, release, delete the worktree, or update `master`.
+
+## Owner Visual Follow-up
+
+- Owner clarified the visual priority as “图标占比 > 数值 > 状态”; it means visual prominence, not decoration count.
+- Added a 48px Gateway node symbol and 48px upstream-server symbol. The metric row uses 40px purpose icons beside 28px values and quiet 12px captions. Route/credential summaries use 40px icons, 22px counts, then smaller captions and states. Existing navigation SVGs are reused where possible; the Gateway/outcome/duration symbols use the same outline stroke. No tinted icon container or package was introduced.
+- Regression test: `npm --prefix apps/desktop test -- src/pages/OverviewPage.test.tsx -t "places large purpose icons"` first failed because the Gateway symbol was absent, then passed after implementation. It asserts icon size, icon/value/caption order, and secondary route/status hierarchy.
+- Final visual files are under `visual-icon-hierarchy/`; the report has 0 horizontal overflow and 0 console errors at 1440×900 and 390×844. It also records the same three inspector warnings: small text share, short status-row height difference, and no colored chart series because the fixture has no request in the rolling window.
+- Final post-change verification: desktop suite 39 files / 334 tests PASS; production build PASS; four-file taste lint PASS; app inspector reports 0 FAIL / 0 WARN aggregate. Real Desktop IPC/runtime rendering and Owner runtime acceptance remain NOT_RUN.

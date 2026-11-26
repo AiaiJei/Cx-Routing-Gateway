@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { EmptyResult, FixtureNotice, PageHeader } from "../components/PageHeader";
 import { ProtocolFlow } from "../components/ProtocolBadge";
 import { OverviewUsageChart } from "../components/OverviewUsageChart";
+import { OverviewIcon } from "../components/OverviewIcon";
 import { useWorkspace } from "../data/use-workspace";
 import "../styles/overview.css";
 
@@ -25,9 +26,9 @@ export function OverviewPage() {
   const enabledRoutes = routes.filter((route) => route.enabled).length;
   const activeCredentials = credentials.filter((credential) => credential.status === "运行时").length;
   const revokedCredentials = credentials.filter((credential) => credential.status === "已撤销").length;
-  const credentialSummary = data.meta.live
-    ? `${activeCredentials} 有效 · ${revokedCredentials} 已撤销`
-    : `${credentials.length} 个示例凭证`;
+  const credentialCount = data.meta.live ? activeCredentials : credentials.length;
+  const credentialCaption = data.meta.live ? "有效凭证" : "示例凭证";
+  const credentialState = data.meta.live ? `${revokedCredentials} 已撤销` : "浏览器预览";
   const gatewayStatus = data.meta.live ? gateway.state : "运行时未接入";
   const gatewayStateTone = !data.meta.live || gateway.state === "未接入" ? "warning" : gateway.state === "运行中" ? "running" : "failed";
   const gatewayDescription = data.meta.live
@@ -37,7 +38,7 @@ export function OverviewPage() {
   if (loading || error) return <WorkspaceState title="总览" loading={loading} error={error} />;
 
   return (
-    <div className="page-content">
+    <div className="page-content overview-page">
       <PageHeader
         title="总览"
         description="先确认 Gateway 状态，再处理配置和最近调用。"
@@ -53,8 +54,9 @@ export function OverviewPage() {
 
       <section className="overview-status-grid" aria-label="Gateway 与配置状态">
         <section className="overview-status overview-status--gateway" aria-labelledby="gateway-status-title">
+          <OverviewIcon name="gateway" />
           <h2 id="gateway-status-title" className="section-title">本机 Gateway</h2>
-          <p className="overview-status__value">
+          <p className="overview-status__value overview-status__state">
             <span className={`overview-state-dot overview-state-dot--${gatewayStateTone}`} aria-hidden="true" />
             {gatewayStatus}
           </p>
@@ -63,23 +65,33 @@ export function OverviewPage() {
         </section>
 
         <section className="overview-status" aria-labelledby="upstream-status-title">
+          <OverviewIcon name="upstreams" />
           <h2 id="upstream-status-title" className="section-title">上游最近检查</h2>
-          <strong>{`最近测试通过 ${checkedUpstreams} · 待测试 ${pendingUpstreams} · 未连接 ${disconnectedUpstreams}`}</strong>
+          <div className="overview-resource-count"><strong className="overview-status__count">{upstreams.length}</strong><span>个上游</span></div>
+          <p className="overview-check-summary">{`最近测试通过 ${checkedUpstreams} · 待测试 ${pendingUpstreams} · 未连接 ${disconnectedUpstreams}`}</p>
           <p className="helper-text">仅反映最近一次检查，不代表持续在线。</p>
         </section>
 
-        <section className="overview-status" aria-labelledby="configuration-status-title">
+        <section className="overview-status overview-status--configuration" aria-labelledby="configuration-status-title">
           <h2 id="configuration-status-title" className="section-title">路由与凭证</h2>
           <div className="overview-status__config-summary">
-            <div>
-              <span className="metric-label">模型路由</span>
-              <strong>{`${enabledRoutes} / ${routes.length} 已启用`}</strong>
-              <Link to="/routes" className="quiet-link">管理路由</Link>
+            <div className="overview-config-metric" role="group" aria-label="模型路由">
+              <OverviewIcon name="routes" size={40} />
+              <div className="overview-config-metric__content">
+                <strong className="overview-status__count">{`${enabledRoutes} / ${routes.length}`}</strong>
+                <span className="metric-label">模型路由</span>
+                <span className="overview-status__caption">已启用</span>
+              </div>
+              <Link to="/routes" className="quiet-link">管理</Link>
             </div>
-            <div>
-              <span className="metric-label">接入凭证</span>
-              <strong>{credentialSummary}</strong>
-              <Link to="/credentials" className="quiet-link">管理凭证</Link>
+            <div className="overview-config-metric" role="group" aria-label="接入凭证">
+              <OverviewIcon name="credentials" size={40} />
+              <div className="overview-config-metric__content">
+                <strong className="overview-status__count">{credentialCount}</strong>
+                <span className="metric-label">{credentialCaption}</span>
+                <span className="overview-status__caption">{credentialState}</span>
+              </div>
+              <Link to="/credentials" className="quiet-link">管理</Link>
             </div>
           </div>
         </section>
@@ -87,11 +99,17 @@ export function OverviewPage() {
 
       <section className="overview-metrics" aria-labelledby="overview-metrics-title">
         <h2 id="overview-metrics-title" className="sr-only">运行概况</h2>
-        <div><span className="metric-label">已保留请求</span><strong>{totalRequests}</strong></div>
-        <div><span className="metric-label">成功 / 未成功</span><strong>{`${successfulRequests} / ${unsuccessfulRequests}`}</strong></div>
-        <div>
-          <span className="metric-label">平均耗时</span>
-          <strong>{averageDuration === null ? "—" : <>{averageDuration}<small> ms</small></>}</strong>
+        <div role="group" aria-label="已保留请求">
+          <OverviewIcon name="logs" size={40} />
+          <div className="overview-metric__content"><strong className="overview-metric__value">{totalRequests}</strong><span className="overview-metric__caption">已保留请求</span></div>
+        </div>
+        <div role="group" aria-label="成功 / 未成功">
+          <OverviewIcon name="outcomes" size={40} />
+          <div className="overview-metric__content"><strong className="overview-metric__value">{`${successfulRequests} / ${unsuccessfulRequests}`}</strong><span className="overview-metric__caption">成功 / 未成功</span></div>
+        </div>
+        <div role="group" aria-label="平均耗时">
+          <OverviewIcon name="duration" size={40} />
+          <div className="overview-metric__content"><strong className="overview-metric__value">{averageDuration === null ? "—" : <>{averageDuration}<small> ms</small></>}</strong><span className="overview-metric__caption">平均耗时</span></div>
         </div>
       </section>
 

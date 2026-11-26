@@ -21,14 +21,45 @@ const defaultWorkspaceState = {
 describe("OverviewPage", () => {
   beforeEach(() => workspaceHook.mockReturnValue(defaultWorkspaceState));
 
+  it("places large purpose icons before primary numbers and quiet captions", async () => {
+    render(<MemoryRouter><OverviewPage /></MemoryRouter>);
+    expect(await screen.findByText("示例数据 · 非实时")).toBeVisible();
+
+    const gateway = screen.getByRole("region", { name: "本机 Gateway" });
+    expect(gateway.querySelector(".overview-icon")).toHaveAttribute("data-size", "48");
+    expect(gateway.querySelector(".overview-status__state")).toHaveTextContent("运行时未接入");
+
+    const upstream = screen.getByRole("region", { name: "上游最近检查" });
+    expect(upstream.querySelector(".overview-icon")).toHaveAttribute("data-size", "48");
+    expect(upstream.querySelector(".overview-status__count")).toHaveTextContent("2");
+
+    const route = screen.getByRole("group", { name: "模型路由" });
+    expect(route.querySelector(".overview-icon")).toHaveAttribute("data-size", "40");
+    expect(route.querySelector(".overview-status__count")).toHaveTextContent("2 / 2");
+    expect(route.querySelector(".overview-status__caption")).toHaveTextContent("已启用");
+
+    const requestMetric = screen.getByRole("group", { name: "已保留请求" });
+    const icon = requestMetric.querySelector(".overview-icon");
+    const value = requestMetric.querySelector(".overview-metric__value");
+    const caption = requestMetric.querySelector(".overview-metric__caption");
+
+    expect(icon).toHaveAttribute("data-size", "40");
+    expect(value).toHaveTextContent("3");
+    expect(caption).toHaveTextContent("已保留请求");
+    expect(icon!.compareDocumentPosition(value!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(value!.compareDocumentPosition(caption!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("shows truthful fixture status, retained summaries, recent failures and activity", async () => {
     render(<MemoryRouter><OverviewPage /></MemoryRouter>);
     expect(await screen.findByText("示例数据 · 非实时")).toBeVisible();
     expect(screen.getByText("运行时未接入")).toBeVisible();
     expect(screen.getByRole("heading", { name: "上游最近检查" })).toBeVisible();
     expect(screen.getByText("最近测试通过 0 · 待测试 1 · 未连接 1")).toBeVisible();
-    expect(screen.getByText("2 / 2 已启用")).toBeVisible();
-    expect(screen.getByText("2 个示例凭证")).toBeVisible();
+    expect(screen.getByRole("group", { name: "模型路由" })).toHaveTextContent("2 / 2");
+    expect(screen.getByRole("group", { name: "模型路由" })).toHaveTextContent("已启用");
+    expect(screen.getByRole("group", { name: "接入凭证" })).toHaveTextContent("2");
+    expect(screen.getByRole("group", { name: "接入凭证" })).toHaveTextContent("示例凭证");
     expect(screen.getByText("已保留请求")).toBeVisible();
     expect(screen.getByText("3", { exact: true })).toBeVisible();
     expect(screen.getByText("2 / 1")).toBeVisible();
@@ -73,8 +104,10 @@ describe("OverviewPage", () => {
     expect(screen.getByText("启动失败")).toBeVisible();
     expect(screen.queryByText("示例数据 · 非实时")).not.toBeInTheDocument();
     expect(screen.getByText("最近测试通过 1 · 待测试 1 · 未连接 0")).toBeVisible();
-    expect(screen.getByText("1 / 2 已启用")).toBeVisible();
-    expect(screen.getByText("1 有效 · 1 已撤销")).toBeVisible();
+    expect(screen.getByRole("group", { name: "模型路由" })).toHaveTextContent("1 / 2");
+    expect(screen.getByRole("group", { name: "模型路由" })).toHaveTextContent("已启用");
+    expect(screen.getByRole("group", { name: "接入凭证" })).toHaveTextContent("1");
+    expect(screen.getByRole("group", { name: "接入凭证" })).toHaveTextContent("已撤销");
     expect(screen.getByText("2 / 2")).toBeVisible();
   });
 
