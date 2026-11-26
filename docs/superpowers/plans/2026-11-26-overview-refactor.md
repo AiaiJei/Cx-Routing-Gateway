@@ -113,9 +113,11 @@ it("counts records in 24 hourly buckets and excludes records at the right edge",
 
 - [ ] **Step 2: Run the new domain test and confirm it fails**
 
+测试先写完后，添加只用于取得可执行 RED 的导出骨架：声明 `OverviewUsageTrend` 和函数签名，返回空的 `buckets` 与 `observedCount: 0`，不实现统计逻辑。
+
 Run: `npm --prefix apps/desktop test -- src/domain/overview-usage.test.ts`
 
-Expected: FAIL because `overview-usage.ts` does not exist yet.
+Expected: FAIL on `buckets` length (`Expected length: 24`, `Received length: 0`), not on module resolution.
 
 - [ ] **Step 3: Implement the pure aggregation function**
 
@@ -158,9 +160,11 @@ Add tests that render the chart with fixed `nowMs`, assert an accessible image n
 
 - [ ] **Step 2: Run the chart test and confirm it fails**
 
+测试先写完后，添加导出骨架 `OverviewUsageChart`，返回带预期无障碍名称的空 SVG，不绘制数值也不显示覆盖提示，使组件测试可执行并因缺少数据呈现而失败。
+
 Run: `npm --prefix apps/desktop test -- src/components/OverviewUsageChart.test.tsx`
 
-Expected: FAIL because the chart component does not exist yet.
+Expected: FAIL on the populated bucket count or retention-warning assertion, not on module resolution.
 
 - [ ] **Step 3: Implement the responsive SVG chart**
 
@@ -257,6 +261,6 @@ Run `git diff --check`, inspect `git diff --stat`, and confirm only contract-sco
 
 Commit only scoped evidence and acceptance documentation, push `codex/overview-dashboard-20261126`, and create a PR targeting `master`. Do not merge or release.
 
-**Execution mode:** Use the subagent-driven workflow with a fresh implementer and scoped review for each task. Keep implementation ownership disjoint; the integrator handles cross-task decisions, final visual verification, and PR creation.
+**Execution mode:** Implement inline in the authorized worktree. The initial implementer-agent startup failed before touching files with a local model-route 404; the worktree was checked clean afterward. Attempt an independent final review separately if the reviewer role is available.
 
-**Ruling:** Task 1 (runtime retention mapping) and Task 2 (pure time-bucket aggregation) use separate files and no shared edits, so they may proceed in parallel. Tasks 3 and 4 wait for their stated dependencies and remain separate review checkpoints.
+**Ruling:** Task 1 (runtime retention mapping) and Task 2 (pure time-bucket aggregation) use separate files and no shared edits, but the available implementer route failed before work began. The integrator owns both tasks sequentially; this costs parallel speed but avoids waiting on an unavailable model route. Tasks 3 and 4 still wait for their stated dependencies and remain review checkpoints.
