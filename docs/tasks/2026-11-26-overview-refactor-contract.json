@@ -3,7 +3,7 @@
   "project_id": "cx-routing-gateway",
   "repo_id": "aiaijei-cx-routing-gateway",
   "task_id": "CXRG-OVERVIEW-REFACTOR-20261126",
-  "contract_revision": 2,
+  "contract_revision": 3,
   "contract_path": "docs/tasks/2026-11-26-overview-refactor-contract.json",
   "project": "Cx-Routing Gateway",
   "repository": "AiaiJei/Cx-Routing-Gateway",
@@ -20,6 +20,8 @@
     "apps/desktop/src/data/workspace-client*",
     "apps/desktop/src/domain/types.ts",
     "apps/desktop/src/domain/overview-*",
+    ".superpowers/sdd/2026-11-26-overview-refactor",
+    ".superpowers/sdd/2026-11-26-overview-refactor/**",
     "docs/tasks/2026-11-26-overview-refactor*",
     "docs/tasks/evidence/overview-refactor-20261126/**",
     "docs/superpowers/specs/2026-11-26-overview-refactor-design.md",
@@ -30,6 +32,11 @@
       "revision": 2,
       "date": "2026-11-26",
       "reason": "Added an isolated overview usage aggregation helper and its tests. Also made create_worktree explicit on the active manifest and contract after AWG validation, and scoped the exact worktree root. No backend API or runtime-service changes are authorized by this revision."
+    },
+    {
+      "revision": 3,
+      "date": "2026-11-26",
+      "reason": "Added only the plan-specific .superpowers/sdd workspace for the execution ledger and review packages required by the task execution workflow. Source-code and runtime operation scopes are unchanged."
     }
   ],
   "worktree_directory": ".tmp/worktrees",
