@@ -2,7 +2,9 @@ import { useState } from "react";
 import { Button } from "./Button";
 import { CustomSelect } from "./CustomSelect";
 import { SearchField } from "./PageHeader";
+import { ModelFamilyFilter } from "./ModelFamilyFilter";
 import { isCodexRouteAvailable } from "../data/codex-management";
+import { getRouteModelFamily, type ModelFamilySelection } from "../domain/model-family";
 import { reasoningRangeLabel } from "../domain/route-selection";
 
 import type { ModelCapabilities, ModelRoute, Upstream } from "../domain/types";
@@ -39,6 +41,7 @@ export function CodexModelsPanel({
   loading: boolean;
 }) {
   const [search, setSearch] = useState("");
+  const [routeFamily, setRouteFamily] = useState<ModelFamilySelection>("all");
   const names = new Map(
     upstreams.map((upstream) => [upstream.id, upstream.name]),
   );
@@ -51,10 +54,16 @@ export function CodexModelsPanel({
       ),
     ].join("、");
   const eligible = routes.filter(isCodexRouteAvailable);
-  const matching = eligible.filter((route) =>
-    (route.alias + " " + label(route))
-      .toLowerCase()
-      .includes(search.trim().toLowerCase()),
+  const routeFamilies = eligible.map(getRouteModelFamily);
+  const matching = eligible.filter(
+    (route, index) =>
+      (routeFamily === "all" || routeFamilies[index] === routeFamily) &&
+      (route.alias + " " + label(route))
+        .toLowerCase()
+        .includes(search.trim().toLowerCase()),
+  );
+  const unselectedMatching = matching.filter(
+    (route) => !routeIds.includes(route.id),
   );
   const selected = routeIds.flatMap((id) => {
     const route = routes.find((item) => item.id === id);
@@ -70,7 +79,7 @@ export function CodexModelsPanel({
           <h2>可供 Codex 使用的模型</h2>
           <p className="helper-text">
             已选模型将出现在 Codex 模型选择器中，默认模型用于新会话。最多选择
-            100 个。路由区间和能力保存后由 Gateway 立即执行；修改后请重新保存并启用网关，再完整退出并重启 Codex。此处显示网关路由配置，是否已写入 Codex 请看上方模型目录状态。新目录默认文本和图片，显式仅文本会保留；工具按上游处理表示继续转发请求，不代表已确认支持。上下文与图片、推理能力写入目录；最大输出由 Gateway 限制。
+            100 个。路由区间和能力保存后由 Gateway 立即执行；修改后请切换到上方 CX-RG 网关标签并确认启用，再完整退出并重启 Codex。此处显示网关路由配置，是否已写入 Codex 请看上方模型目录状态。新目录默认文本和图片，显式仅文本会保留；工具按上游处理表示继续转发请求，不代表已确认支持。上下文与图片、推理能力写入目录；最大输出由 Gateway 限制。
           </p>
         </div>
         <span className="codex-count">已选 {routeIds.length} 个</span>
@@ -91,10 +100,18 @@ export function CodexModelsPanel({
         <div className="codex-inline-actions">
           <Button
             size="small"
-            disabled={locked || !gatewayReady || !matching.length}
+            disabled={
+              locked ||
+              !gatewayReady ||
+              routeIds.length >= 100 ||
+              !unselectedMatching.length
+            }
             onClick={() =>
               onModels([
-                ...new Set([...routeIds, ...matching.map((route) => route.id)]),
+                ...routeIds,
+                ...unselectedMatching
+                  .slice(0, Math.max(0, 100 - routeIds.length))
+                  .map((route) => route.id),
               ])
             }
           >
@@ -109,6 +126,17 @@ export function CodexModelsPanel({
           </Button>
         </div>
       </div>
+      <ModelFamilyFilter
+        ariaLabel="Codex 模型分类"
+        value={routeFamily}
+        families={routeFamilies}
+        onChange={setRouteFamily}
+      />
+      {routeFamily !== "all" && (
+        <p className="route-filter-summary" role="status">
+          当前显示 {matching.length} 个模型，共 {eligible.length} 个
+        </p>
+      )}
       <fieldset
         className="codex-model-options"
         disabled={locked || !gatewayReady}

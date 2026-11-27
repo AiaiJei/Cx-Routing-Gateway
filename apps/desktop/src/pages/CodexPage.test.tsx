@@ -203,9 +203,20 @@ async function selectCustom() {
     .click(screen.getByRole("radio", { name: /测试直连/ }));
 }
 async function viewGateway() {
-  await userEvent
-    .setup()
-    .click(await screen.findByRole("tab", { name: /CX-RG 网关/ }));
+  const user = userEvent.setup();
+  const existingDialog = screen.queryByRole("dialog");
+  if (existingDialog)
+    await user.click(within(existingDialog).getByRole("button", { name: "取消" }));
+  await user.click(await screen.findByRole("tab", { name: /CX-RG 网关/ }));
+  await waitFor(() =>
+    expect(
+      screen.queryByRole("dialog", { name: "确认保存并启用网关" }) ||
+        screen.queryByRole("alert"),
+    ).toBeTruthy(),
+  );
+  const dialog = screen.queryByRole("dialog");
+  if (dialog)
+    await user.click(within(dialog).getByRole("button", { name: "取消" }));
 }
 
 beforeEach(() => {
@@ -219,8 +230,27 @@ afterEach(() => {
 });
 
 describe("Codex direct provider management", () => {
-  it("shows top-level mode tabs and actual custom provider; viewing tabs never activates or assumes official", async () => {
-    const { native } = setup();
+  it("activates a mode from its tab only after confirmation and keeps arrow navigation non-mutating", async () => {
+    let activeStatus: typeof status | typeof gatewayStatus = status;
+    const { native } = setup({
+      getCodexStatus: vi.fn().mockImplementation(() => Promise.resolve(activeStatus)),
+      getCodexGatewayPreferences: vi.fn().mockResolvedValue({
+        revision: "gateway-draft-1",
+        exists: true,
+        routeIds: ["route-reasoner"],
+        defaultRouteId: "route-reasoner",
+        credentialSource: "current",
+      }),
+      saveCodexGatewayPreferences: vi.fn().mockImplementation(async (draft) => ({
+        ...draft,
+        revision: "gateway-draft-2",
+        exists: true,
+      })),
+      applyCodexConfig: vi.fn().mockImplementation(async () => {
+        activeStatus = { ...gatewayStatus, revision: "after" };
+        return activeStatus;
+      }),
+    });
     mount();
     await ready();
     const user = userEvent.setup();
@@ -233,19 +263,41 @@ describe("Codex direct provider management", () => {
     expect(screen.getByText("https://current.example/v1")).toBeVisible();
     direct.focus();
     await user.keyboard("{ArrowRight}");
-    expect(screen.getByRole("tab", { name: /CX-RG 网关/ })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
+    const gateway = within(tabs).getByRole("tab", { name: /CX-RG 网关/ });
+    expect(gateway).toHaveFocus();
+    expect(gateway).toHaveAttribute("aria-selected", "false");
     expect(native.applyCodexConfig).not.toHaveBeenCalled();
     expect(native.previewCodexConfig).not.toHaveBeenCalled();
-    await user.keyboard("{Home}");
-    expect(direct).toHaveFocus();
+    await user.keyboard("{Enter}");
+    const dialog = await screen.findByRole("dialog", {
+      name: "确认保存并启用网关",
+    });
+    expect(native.previewCodexConfig).toHaveBeenCalledWith({
+      mode: "gateway",
+      routeIds: ["route-reasoner"],
+      defaultRouteId: "route-reasoner",
+    });
+    expect(native.applyCodexConfig).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: "取消" }));
+    expect(native.applyCodexConfig).not.toHaveBeenCalled();
+    expect(direct).toHaveTextContent("生效中");
+    await user.click(gateway);
+    const confirmation = await screen.findByRole("dialog", {
+      name: "确认保存并启用网关",
+    });
+    await user.click(
+      within(confirmation).getByRole("button", { name: "确认启用" }),
+    );
+    expect(await screen.findByText(/网关配置已保存并启用/)).toBeVisible();
+    expect(gateway).toHaveTextContent("生效中");
+    expect(native.applyCodexConfig).toHaveBeenCalled();
     expect(screen.queryByLabelText("推理强度")).not.toBeInTheDocument();
   });
 
   it("selects the saved Gateway view after loading, with direct profile drafts preserved on view changes", async () => {
-    setup({ getCodexStatus: vi.fn().mockResolvedValue(gatewayStatus) });
+    const { native } = setup({
+      getCodexStatus: vi.fn().mockResolvedValue(gatewayStatus),
+    });
     mount();
     expect(
       await screen.findByRole("tab", { name: /CX-RG 网关/ }),
@@ -255,9 +307,18 @@ describe("Codex direct provider management", () => {
         screen.getByRole("checkbox", { name: "选择 gateway-reasoner" }),
       ).toBeChecked(),
     );
-    await userEvent
-      .setup()
-      .click(screen.getByRole("tab", { name: /Codex 直连/ }));
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("tab", { name: /Codex 直连/ }));
+    const confirmation = await screen.findByRole("dialog", {
+      name: "确认启用 Codex 直连",
+    });
+    expect(native.previewCodexConfig).toHaveBeenCalledWith({
+      mode: "direct",
+      profileId: "direct-one",
+      profilesRevision: "profiles-before",
+    });
+    expect(native.applyCodexConfig).not.toHaveBeenCalled();
+    await user.click(within(confirmation).getByRole("button", { name: "取消" }));
     expect(screen.getByRole("radio", { name: /测试直连/ })).toBeChecked();
     await viewGateway();
     expect(
@@ -450,7 +511,7 @@ describe("Codex direct provider management", () => {
     );
   });
 
-  it("saves and enables Gateway inline with all selected models and stored-Key reuse", async () => {
+  it("saves and enables Gateway from its mode tab with all selected models and stored-Key reuse", async () => {
     const { native } = setup({
       getCodexStatus: vi.fn().mockResolvedValue(gatewayStatus),
       applyCodexConfig: vi
@@ -468,7 +529,10 @@ describe("Codex direct provider management", () => {
     await user.click(
       screen.getByRole("checkbox", { name: "选择 gateway-second" }),
     );
-    await user.click(screen.getByRole("button", { name: "保存并启用网关" }));
+    expect(
+      screen.queryByRole("button", { name: "保存并启用网关" }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: /CX-RG 网关/ }));
     const dialog = await screen.findByRole("dialog", {
       name: "确认保存并启用网关",
     });
@@ -487,17 +551,115 @@ describe("Codex direct provider management", () => {
     });
   });
 
-  it("explains missing Gateway selections at the visible primary action instead of doing nothing", async () => {
+  it("explains missing Gateway selections when the Gateway mode tab is activated", async () => {
     setup({ getCodexStatus: vi.fn().mockResolvedValue(gatewayStatus) });
     mount();
     await viewGateway();
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: "清空选择" }));
-    await user.click(screen.getByRole("button", { name: "保存并启用网关" }));
+    await user.click(screen.getByRole("tab", { name: /CX-RG 网关/ }));
     expect(screen.getByRole("alert")).toHaveTextContent(/至少选择一个模型/);
   });
 
-  it("drops a late direct preview when a different profile or mode is chosen", async () => {
+  it("filters eligible Gateway models by family without dropping hidden selections", async () => {
+    const { data } = setup({
+      getCodexStatus: vi.fn().mockResolvedValue(gatewayStatus),
+    });
+    data.routes[0].alias = "gateway-gpt";
+    data.routes[0].targets[0].upstreamModel = "gpt-4.1";
+    data.routes[2].alias = "gateway-claude";
+    data.routes[2].targets = [
+      { upstreamId: "up-lantern", upstreamModel: "claude-3.7-sonnet" },
+    ];
+    mount();
+    const gpt = await screen.findByRole("checkbox", { name: "选择 gateway-gpt" });
+    const filter = screen.getByRole("group", { name: "Codex 模型分类" });
+    expect(within(filter).getByRole("button", { name: "全部 2" })).toBeVisible();
+    expect(within(filter).getByRole("button", { name: "gpt 1" })).toBeVisible();
+    expect(within(filter).getByRole("button", { name: "claude 1" })).toBeVisible();
+    expect(gpt).toBeChecked();
+    const user = userEvent.setup();
+    await user.click(within(filter).getByRole("button", { name: "claude 1" }));
+    expect(screen.queryByRole("checkbox", { name: "选择 gateway-gpt" })).not.toBeInTheDocument();
+    const claude = screen.getByRole("checkbox", { name: "选择 gateway-claude" });
+    expect(claude).not.toBeChecked();
+    await user.click(claude);
+    await user.click(within(filter).getByRole("button", { name: "gpt 1" }));
+    expect(screen.getByRole("checkbox", { name: "选择 gateway-gpt" })).toBeChecked();
+    await user.click(within(filter).getByRole("button", { name: "全部 2" }));
+    expect(screen.getByRole("checkbox", { name: "选择 gateway-claude" })).toBeChecked();
+    await user.click(within(filter).getByRole("button", { name: "gpt 1" }));
+    const search = screen.getByRole("searchbox", { name: "搜索模型或上游" });
+    await user.type(search, "no-matching-model");
+    expect(screen.getByText("没有匹配的模型。")).toBeVisible();
+    expect(within(filter).getByRole("button", { name: "gpt 1" })).toBeVisible();
+    await user.clear(search);
+    expect(screen.getByRole("checkbox", { name: "选择 gateway-gpt" })).toBeChecked();
+    await user.click(within(filter).getByRole("button", { name: "claude 1" }));
+    await user.click(screen.getByRole("checkbox", { name: "选择 gateway-claude" }));
+    await user.type(search, "gateway-claude");
+    await user.click(screen.getByRole("button", { name: "全选搜索结果" }));
+    expect(screen.getByRole("combobox", { name: "默认模型" })).toHaveTextContent("gateway-gpt");
+    await user.clear(search);
+    await user.click(within(filter).getByRole("button", { name: "kimi 0" }));
+    expect(screen.getByText("没有匹配的模型。")).toBeVisible();
+    await user.click(within(filter).getByRole("button", { name: "全部 2" }));
+    expect(screen.getByRole("checkbox", { name: "选择 gateway-gpt" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "选择 gateway-claude" })).toBeChecked();
+  });
+
+  it.each(["direct", "gateway"] as const)("blocks %s mode-tab activation while official login is pending", async (mode) => {
+    const { native } = setup({
+      getCodexStatus: vi.fn().mockResolvedValue(mode === "direct" ? gatewayStatus : status),
+      getCodexClientStatus: vi.fn().mockResolvedValue({ available: true, login: "pending", auth: "unknown" }),
+    });
+    mount();
+    await screen.findByText(/官方登录正在进行。方案仍可保存/);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("tab", { name: mode === "direct" ? /Codex 直连/ : /CX-RG 网关/ }));
+    expect(screen.getByRole("alert")).toHaveTextContent(/官方登录正在进行/);
+    expect(native.previewCodexConfig).not.toHaveBeenCalled();
+    expect(native.applyCodexConfig).not.toHaveBeenCalled();
+  });
+
+  it("does not let family bulk selection exceed Codex's 100-model limit", async () => {
+    const routes = Array.from({ length: 101 }, (_, index) => ({
+      id: `gpt-route-${index}`,
+      alias: `gpt-model-${index}`,
+      enabled: true,
+      inboundProtocol: "Res" as const,
+      outboundProtocol: "Res" as const,
+      targets: [{ upstreamId: "up-northstar", upstreamModel: `gpt-model-${index}` }],
+    }));
+    const selectedRoutes = routes.slice(0, 100);
+    const selectedIds = selectedRoutes.map((route) => route.id);
+    const { data } = setup({
+      getCodexStatus: vi.fn().mockResolvedValue({
+        ...gatewayStatus,
+        selectedRouteIds: selectedIds,
+        selectedModelAliases: selectedRoutes.map((route) => route.alias),
+        defaultRouteId: selectedIds[0],
+      }),
+    });
+    data.routes = routes;
+    mount();
+    expect(await screen.findByText("已选 100 个")).toBeVisible();
+    const filter = screen.getByRole("group", { name: "Codex 模型分类" });
+    expect(within(filter).getByRole("button", { name: "gpt 101" })).toBeVisible();
+    expect(screen.getByRole("checkbox", { name: "选择 gpt-model-100" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "全选搜索结果" })).toBeDisabled();
+    expect(screen.getByRole("combobox", { name: "默认模型" })).toHaveTextContent("gpt-model-0");
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("checkbox", { name: "选择 gpt-model-99" }));
+    expect(screen.getByRole("button", { name: "全选搜索结果" })).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: "全选搜索结果" }));
+    expect(screen.getByText("已选 100 个")).toBeVisible();
+    expect(screen.getByRole("checkbox", { name: "选择 gpt-model-99" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "选择 gpt-model-100" })).not.toBeChecked();
+    expect(screen.getByRole("combobox", { name: "默认模型" })).toHaveTextContent("gpt-model-0");
+  });
+
+  it("locks mode tabs while a direct preview is pending", async () => {
     let finish!: (value: typeof preview) => void;
     const { native } = setup({
       previewCodexConfig: vi.fn(
@@ -511,9 +673,12 @@ describe("Codex direct provider management", () => {
     await selectCustom();
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "启用所选直连方案" }));
-    await viewGateway();
+    expect(screen.getByRole("tab", { name: /CX-RG 网关/ })).toBeDisabled();
     await act(async () => finish(preview));
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    const dialog = await screen.findByRole("dialog", {
+      name: "确认启用 Codex 直连",
+    });
+    await user.click(within(dialog).getByRole("button", { name: "取消" }));
     expect(native.applyCodexConfig).not.toHaveBeenCalled();
   });
 
@@ -647,25 +812,18 @@ describe("Codex direct provider management", () => {
     ).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps the single mode activation action above long provider and model lists", async () => {
+  it("removes the Gateway activation button while keeping mode tabs above the model list", async () => {
     setup();
     mount();
     await ready();
-    const directAction = screen.getByRole("button", {
-      name: "启用所选直连方案",
-    });
-    const directList = screen.getByRole("group", { name: "直连方案列表" });
-    expect(
-      directAction.compareDocumentPosition(directList) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
     await viewGateway();
-    const gatewayAction = screen.getByRole("button", {
-      name: "保存并启用网关",
-    });
+    expect(
+      screen.queryByRole("button", { name: "保存并启用网关" }),
+    ).not.toBeInTheDocument();
+    const gatewayTab = screen.getByRole("tab", { name: /CX-RG 网关/ });
     const models = screen.getByRole("group", { name: "Gateway 模型列表" });
     expect(
-      gatewayAction.compareDocumentPosition(models) &
+      gatewayTab.compareDocumentPosition(models) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });

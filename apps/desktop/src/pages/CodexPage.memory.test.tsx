@@ -182,7 +182,7 @@ describe("Gateway remembered choices and credential selector", () => {
     expect(screen.getByText(/作用范围：当前用户/)).toBeVisible();
     expect(screen.getByText(/不是系统全局.*不是当前项目配置/)).toBeVisible();
     const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: "保存并启用网关" }));
+    await user.click(screen.getByRole("tab", { name: /CX-RG 网关/ }));
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toHaveTextContent("C:/test-user-home/config.toml");
     expect(dialog).toHaveTextContent(/当前用户/);
@@ -241,7 +241,7 @@ describe("Gateway remembered choices and credential selector", () => {
     ).toHaveTextContent("已撤销 Key");
     await userEvent
       .setup()
-      .click(screen.getByRole("button", { name: "保存并启用网关" }));
+      .click(screen.getByRole("tab", { name: /CX-RG 网关/ }));
     expect(screen.getByRole("alert")).toHaveTextContent(/凭证.*不可用|已撤销/);
     expect(native.previewCodexConfig).not.toHaveBeenCalled();
   });
@@ -298,7 +298,7 @@ describe("Gateway remembered choices and credential selector", () => {
     mount();
     await ready();
     expect(screen.getByLabelText("Gateway 客户端 Key")).toHaveValue("");
-    await user.click(screen.getByRole("button", { name: "保存并启用网关" }));
+    await user.click(screen.getByRole("tab", { name: /CX-RG 网关/ }));
     expect(screen.getByRole("alert")).toHaveTextContent(/填写.*Key/);
   });
   it("keeps invalid remembered routes visible with repair guidance and never silently selects another model", async () => {
@@ -317,7 +317,7 @@ describe("Gateway remembered choices and credential selector", () => {
     ).not.toBeChecked();
     await userEvent
       .setup()
-      .click(screen.getByRole("button", { name: "保存并启用网关" }));
+      .click(screen.getByRole("tab", { name: /CX-RG 网关/ }));
     expect(screen.getByRole("alert")).toHaveTextContent(/移除不可用/);
     expect(native.previewCodexConfig).not.toHaveBeenCalled();
   });
@@ -355,7 +355,7 @@ describe("Gateway remembered choices and credential selector", () => {
     await user.click(
       screen.getByRole("checkbox", { name: "选择 gateway-reasoner" }),
     );
-    await user.click(screen.getByRole("button", { name: "保存并启用网关" }));
+    await user.click(screen.getByRole("tab", { name: /CX-RG 网关/ }));
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
     await user.click(
       screen.getByRole("checkbox", { name: "选择 gateway-reasoner" }),
@@ -382,7 +382,7 @@ describe("Gateway remembered choices and credential selector", () => {
     mount();
     await ready();
     const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: "保存并启用网关" }));
+    await user.click(screen.getByRole("tab", { name: /CX-RG 网关/ }));
     await user.click(
       within(await screen.findByRole("dialog")).getByRole("button", {
         name: "确认启用",

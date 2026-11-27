@@ -10,7 +10,6 @@ export function CodexGatewayPanel({
   ready,
   loading,
   locked,
-  onEnable,
   canCreate,
 }: {
   management: ReturnType<typeof useCodexManagement>;
@@ -19,7 +18,6 @@ export function CodexGatewayPanel({
   ready: boolean;
   loading: boolean;
   locked: boolean;
-  onEnable: () => void;
   canCreate: boolean;
 }) {
   return (
@@ -38,18 +36,11 @@ export function CodexGatewayPanel({
       </aside>
       <div className="codex-primary-action">
         <p>
-          已选 {management.routeIds.length}{" "}
-          个模型。保存模型、默认模型和凭证并启用 Gateway；当前直连会安全保留。
+          已选 {management.routeIds.length} 个模型。切换到 CX-RG 网关标签并确认后，将保存模型、默认模型和凭证并启用 Gateway；当前直连会安全保留。
         </p>
-        <Button
-          variant="primary"
-          disabled={!management.available || locked || !!management.busy}
-          onClick={onEnable}
-        >
-          {management.busy === "preview"
-            ? "正在准备网关配置…"
-            : "保存并启用网关"}
-        </Button>
+        {management.busy === "preview" && (
+          <p role="status">正在准备网关配置…</p>
+        )}
       </div>
       {management.preferences.message && (
         <p role="status" className="codex-draft-status">

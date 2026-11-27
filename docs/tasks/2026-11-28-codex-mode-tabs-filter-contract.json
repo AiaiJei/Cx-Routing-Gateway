@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "project_id": "cx-routing-gateway",
+  "repo_id": "aiaijei-cx-routing-gateway",
+  "task_id": "CXRG-CODEX-MODE-TABS-FILTER-20261128",
+  "contract_revision": 4,
+  "contract_path": ".codex/codex-awg-task-contracts/CXRG-CODEX-MODE-TABS-FILTER-20261128.json",
+  "archive_contract_path": "docs/tasks/2026-11-28-codex-mode-tabs-filter-contract.json",
+  "project": "Cx-Routing Gateway",
+  "repository": "AiaiJei/Cx-Routing-Gateway",
+  "state": "active",
+  "branch": "codex/codex-mode-tabs-filter-20261128",
+  "worktree_directory": ".tmp/worktrees",
+  "worktree": ".tmp/worktrees/codex-mode-tabs-filter-20261128",
+  "base_commit": "ad8fd690d800c299bb145f73962b6982c36e2df1",
+  "scope_paths": [
+    ".codex/awg-task.json",
+    ".codex/codex-awg-task-contracts/CXRG-CODEX-MODE-TABS-FILTER-20261128.json",
+    ".codex/codex-awg-task-archive/CXRG-OVERVIEW-REFACTOR-20261126-manifest.json",
+    ".tmp/worktrees/codex-mode-tabs-filter-20261128",
+    ".tmp/worktrees/codex-mode-tabs-filter-20261128/**",
+    "apps/desktop/src/pages/CodexPage.tsx",
+    "apps/desktop/src/pages/CodexPage.test.tsx",
+    "apps/desktop/src/pages/CodexPage.memory.test.tsx",
+    "apps/desktop/src/components/CodexStatusPanel.tsx",
+    "apps/desktop/src/components/CodexStatusPanel.test.tsx",
+    "apps/desktop/src/components/CodexRoutingHelp.test.tsx",
+    "apps/desktop/src/components/RouteCapabilitiesFields.test.tsx",
+    "apps/desktop/src/components/CodexTabs.tsx",
+    "apps/desktop/src/components/CodexGatewayPanel.tsx",
+    "apps/desktop/src/components/CodexModelsPanel.tsx",
+    "apps/desktop/src/styles/codex.css",
+    "docs/tasks/2026-11-28-codex-mode-tabs-filter-contract.json",
+    "docs/tasks/evidence/codex-mode-tabs-filter-20261128/**"
+  ],
+  "authorization": {
+    "implementation": true,
+    "evidence_append": true,
+    "create_worktree": true,
+    "local_tests": true,
+    "local_build": true,
+    "commit": true,
+    "push": true,
+    "pull_request": true,
+    "merge": false,
+    "release": false,
+    "github_release": false,
+    "version_bump": false,
+    "local_desktop_test_release": false,
+    "local_desktop_official_release": false,
+    "isolated_local_smoke": false,
+    "sync_main_worktree": false,
+    "delete": false
+  },
+  "authorization_source": "Owner authorized a dedicated task contract and active task binding on 2026-11-28. The original request authorizes a dedicated PR. No merge, release, version change, or deletion is authorized.",
+  "design_gate": {
+    "status": "APPROVED_BY_EXPLICIT_TASK_DIRECTIVE",
+    "basis": "The Owner explicitly requested that switching mode tabs choose the running/enabled mode. Reuse the current confirmation flow so configuration changes still require confirmation."
+  },
+  "revision_history": [
+    {
+      "revision": 4,
+      "reason": "Include the two dependent UI guidance tests and verify filtered bulk selection preserves Codex's existing 100-model limit. No merge/release scope change."
+    },
+    {
+      "revision": 3,
+      "reason": "Include dependent remembered-credential regressions and status-panel guidance tests so no UI points at the removed button. Same requested behavior and operations only."
+    },
+    {
+      "revision": 2,
+      "reason": "Apply the Owner's explicit tab-based mode requirement using the existing confirmation flow; no additional mode or release scope added."
+    }
+  ],
+  "acceptance_criteria": [
+    "Remove the Codex Gateway 保存并启用网关 button; use mode tabs to select the running/enabled mode.",
+    "Add model-family filtering to the Codex Gateway list with the same behavior as the Model Routing page.",
+    "Preserve confirmation, active-mode feedback, search, and selected-model behavior.",
+    "Keep filtered bulk selection within Codex's 100-model limit and preserve the existing default model.",
+    "Test mode selection, confirmation/cancellation, filter counts, category changes, and selection preservation.",
+    "Create a dedicated PR against master; do not merge or publish."
+  ],
+  "verification_plan": [
+    "Run focused Codex page tests, then the relevant Desktop tests and production build.",
+    "Run scoped diff checks and obtain independent review before commit and PR creation.",
+    "Live Codex configuration, provider calls, deployment, and Owner runtime acceptance remain NOT_RUN unless separately verified."
+  ],
+  "implementation_result": "PASS: removed Gateway activation button, mode tabs use the existing confirmation flow, and shared family filtering is reused.",
+  "verification_result": "PASS: Desktop 358/358, focused page/status 50/50, isolated configuration/IPC/memory 34/34, production build, diff check, browser behavior and 1530/1024/390 visual checks.",
+  "independent_review": "PASS: read-only reviewer found no actionable defects; browser keyboard and pending-login coverage added after review.",
+  "owner_acceptance": "NOT_RUN",
+  "pull_request": null,
+  "rollback": "Keep implementation isolated in the task worktree. Preserve the prior overview contract and binding snapshot. Do not merge, release, delete branches, or delete worktrees."
+}

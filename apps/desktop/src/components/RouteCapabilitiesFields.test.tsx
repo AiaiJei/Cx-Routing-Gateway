@@ -187,7 +187,7 @@ describe("route model capabilities", () => {
     ]} upstreams={upstreams} routeIds={[]} defaultRouteId="" onModels={() => {}} onDefault={() => {}} locked={false} gatewayReady loading={false} />);
     expect(screen.getByText(/上下文 128000 · 最大输出 32000 · 文本和图片 · 工具支持 · 支持强度 low、high/)).toBeVisible();
     expect(screen.getByText(/上下文未知 · 最大输出未知 · 默认（文本和图片） · 工具按上游处理 · 支持强度未知/)).toBeVisible();
-    expect(screen.getByText(/重新保存并启用网关/)).toHaveTextContent("完整退出并重启 Codex");
+    expect(screen.getByText(/切换到上方 CX-RG 网关标签并确认启用/)).toHaveTextContent("完整退出并重启 Codex");
   });
 
   it("excludes models explicitly lacking tools while retaining unknown support and marks prior selections unavailable", () => {

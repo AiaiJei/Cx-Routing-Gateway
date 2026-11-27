@@ -75,6 +75,15 @@ export function CodexPage() {
     management.invalidate();
     setView(mode);
   }
+  function enableGateway() {
+    if (activationBlocked) {
+      management.reportError(
+        "官方登录正在进行，请先完成或取消登录，再启用接入配置。",
+      );
+      return;
+    }
+    void management.beginEnable(management.gatewaySelection());
+  }
   function enableDirect() {
     if (activationBlocked) {
       management.reportError(
@@ -97,6 +106,15 @@ export function CodexPage() {
       profileId: profiles.selectedId,
       profilesRevision: profiles.library.revision,
     });
+  }
+  function selectMode(mode: CodexMode) {
+    changeView(mode);
+    if (!management.available) return;
+    if (mode === "gateway") {
+      enableGateway();
+      return;
+    }
+    if (management.status?.mode !== "direct") enableDirect();
   }
   return (
     <div className="page-content codex-page">
@@ -125,14 +143,22 @@ export function CodexPage() {
       />
       <FixtureNotice live={management.available}>
         {management.available
-          ? "本机配置 · 浏览不切换，启用前确认"
+          ? "本机配置 · 标签切换选择接入模式，启用前确认"
           : "浏览器预览 · 不读取本机配置或账户，不能保存或启用。"}
       </FixtureNotice>
       <CodexTabs
         value={view}
         activeMode={management.status?.mode}
-        onChange={changeView}
+        onChange={selectMode}
+        disabled={locked || !!management.busy || refreshing}
       />
+      {(management.busy === "preview" || mutationBusy) && (
+        <p role="status" className="codex-feedback">
+          {management.busy === "preview"
+            ? "正在准备接入配置，请稍候…"
+            : "正在更新接入配置，请稍候…"}
+        </p>
+      )}
       <CodexStatusPanel
         status={management.status}
         available={management.available}
@@ -158,7 +184,7 @@ export function CodexPage() {
           {management.busy === "status"
             ? "正在识别当前接入…"
             : "当前接入无法识别，请选择直连或网关并检查设置。"}
-          浏览页签不会修改配置。
+          切换到目标模式后可确认启用。
         </p>
       )}
       <div
@@ -205,15 +231,6 @@ export function CodexPage() {
           ready={gatewayReady}
           loading={loading}
           locked={locked}
-          onEnable={() => {
-            if (activationBlocked) {
-              management.reportError(
-                "官方登录正在进行，请先完成或取消登录，再启用接入配置。",
-              );
-              return;
-            }
-            void management.beginEnable(management.gatewaySelection());
-          }}
           canCreate={
             management.available &&
             !!management.status &&

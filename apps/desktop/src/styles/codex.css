@@ -226,6 +226,8 @@
 }
 .codex-model-options {
   display: grid;
+  grid-auto-rows: max-content;
+  align-content: start;
   max-height: 440px;
   overflow-y: auto;
 }
