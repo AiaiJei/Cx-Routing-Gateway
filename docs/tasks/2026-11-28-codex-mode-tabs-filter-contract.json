@@ -94,6 +94,6 @@
   "owner_acceptance": "NOT_RUN",
   "pull_request": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/28",
   "pull_request_state": "OPEN",
-  "head_commit": "86ae94917d4a68861ccae19e86f37fbb584d5add",
+  "pull_request_initial_head_commit": "86ae94917d4a68861ccae19e86f37fbb584d5add",
   "rollback": "Keep implementation isolated in the task worktree. Preserve the prior overview contract and binding snapshot. Do not merge, release, delete branches, or delete worktrees."
 }
