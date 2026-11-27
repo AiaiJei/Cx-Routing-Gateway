@@ -3,12 +3,13 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 
 const releaseDir = path.resolve(process.argv[2] || 'apps/desktop/release');
+const localTest = process.argv.includes('--local-test');
 const { version, cxrgProductVersion } = JSON.parse(await fs.readFile(new URL('../apps/desktop/package.json', import.meta.url), 'utf8'));
 const builderConfig = await fs.readFile(new URL('../apps/desktop/electron-builder.yml', import.meta.url), 'utf8');
 if (!builderConfig.split(/\r?\n/).some((line) => line.trim() === `buildVersion: ${cxrgProductVersion}`)) throw new Error('electron-builder buildVersion does not match cxrgProductVersion');
-if (version !== '1.1.11' || cxrgProductVersion !== '1.1.11') throw new Error('Invalid Cx-Routing Gateway package/product version metadata');
+if (version !== '1.1.14' || cxrgProductVersion !== '1.1.14') throw new Error('Invalid Cx-Routing Gateway package/product version metadata');
 const productVersion = cxrgProductVersion;
-const required = [
+const packagedRuntime = [
   'win-unpacked/Cx-Routing Gateway.exe',
   'win-unpacked/resources/app.asar',
   'win-unpacked/resources/runtime/services/local-control/src/server.mjs',
@@ -17,8 +18,13 @@ const required = [
   'win-unpacked/resources/runtime/packages/shared/src/config-store.mjs', 'win-unpacked/resources/runtime/packages/shared/src/config-lock.mjs', 'win-unpacked/resources/runtime/packages/shared/src/destination-policy.mjs',
   'win-unpacked/resources/runtime/packages/shared/src/secret-vault.mjs',
   'win-unpacked/resources/runtime/scripts/check-update.mjs',
+];
+const required = [
+  ...packagedRuntime,
+  ...(localTest ? [] : [
   `Cx-Routing Gateway Setup ${productVersion}.exe`,
   `Cx-Routing Gateway Setup ${productVersion}.exe.blockmap`,
+  ]),
   `Cx-Routing Gateway Portable ${productVersion}.exe`,
 ];
 

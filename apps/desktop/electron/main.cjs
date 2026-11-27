@@ -17,6 +17,9 @@ const { createCodexClientManager } = require("./codex-client-manager.cjs");
 const { loadOrCreateRuntimeMasterKey } = require("./runtime-master-key.cjs");
 const { cxrgProductVersion } = require("../package.json");
 const { installTrayLifecycle, registerActivateHandler, registerSecondInstanceHandler } = require("./tray-lifecycle.cjs");
+const { configureDesktopProfile } = require("./desktop-profile.cjs");
+
+configureDesktopProfile({ app, directory: process.env.CXRG_USER_DATA_DIR });
 
 const devServerUrl = process.env.CXRG_DEV_SERVER_URL;
 const controlPort = Number(process.env.CXRG_CONTROL_PORT || 4319);

@@ -79,8 +79,11 @@ export const fixtureWorkspaceClient: WorkspaceClient = {
 export function mapRuntimeState(state: any): WorkspaceFixtures {
   const protocol = (value: string) => value as WorkspaceFixtures["routes"][number]["inboundProtocol"];
   const upstreamNames = new Map((Array.isArray(state.upstreams) ? state.upstreams : []).map((item: any) => [item.id, item.name]));
+  const retentionCount = state.settings?.usageRetentionCount;
+  const usageRetentionCount = typeof retentionCount === "number" && Number.isSafeInteger(retentionCount) && retentionCount > 0 ? retentionCount : undefined;
   return {
     meta: { source: "runtime", live: true },
+    ...(usageRetentionCount === undefined ? {} : { usageRetentionCount }),
     gateway: { state: state.runtimeStatus?.state === "failed" ? "启动失败" : "运行中", url: `http://${state.settings.gatewayHost}:${state.settings.gatewayPort}`, metrics: state.metrics },
     upstreams: state.upstreams.map((item: any) => ({ id: item.id, name: item.name, baseUrl: item.baseUrl, credentialLabel: item.credentialRef ? "已配置（已脱敏）" : "未配置", status: (item.lastCheckedAt ? "已连接" : item.enabled ? "待测试" : "未连接") as WorkspaceFixtures["upstreams"][number]["status"], models: item.models || [] })),
     routes: state.routes.map((item: any) => ({ id: item.id, alias: item.alias, inboundProtocol: protocol(item.inboundProtocol), outboundProtocol: protocol(item.outboundProtocol), enabled: item.enabled, failover: item.failover, ...(item.reasoning ? { reasoning: { min: item.reasoning.min, max: item.reasoning.max } } : {}), ...(item.capabilities ? { capabilities: structuredClone(item.capabilities) } : {}), targets: (item.targets?.length ? item.targets : [{ upstreamId: item.upstreamId, modelId: item.modelId }]).map((target: any) => ({ upstreamId: target.upstreamId, upstreamModel: target.modelId })) })),

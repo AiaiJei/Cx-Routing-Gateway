@@ -95,6 +95,7 @@ export type AccessCredential = {
 
 export type WorkspaceFixtures = {
   meta: FixtureMeta;
+  usageRetentionCount?: number;
   gateway: { state: "未接入" | "运行中" | "启动失败"; url: string; metrics?: { total: number; completed: number; rejected: number; failed: number; avgDurationMs: number | null } };
   upstreams: Upstream[];
   routes: ModelRoute[];
