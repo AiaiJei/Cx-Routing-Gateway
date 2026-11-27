@@ -116,8 +116,8 @@ export function OverviewPage() {
               {failedLogs.slice(0, 3).map((log) => (
                 <div className="attention-row" key={log.id}>
                   <span className="attention-mark" aria-hidden="true">!</span>
-                  <div><strong>{log.model}</strong><span className="cell-subtext">{log.error ?? log.status}</span></div>
-                  <code>{log.id}</code>
+                  <div className="attention-copy"><strong>{log.model}</strong><span className="cell-subtext">{log.error ?? log.status}</span></div>
+                  <code title={log.id}>{log.id}</code>
                 </div>
               ))}
             </div>

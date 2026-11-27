@@ -1,6 +1,7 @@
 import type { OverviewRange, OverviewSummary } from "../domain/overview-analytics";
 import { formatOverviewRate, tokenCoverage } from "../domain/overview-analytics";
 import { formatMetric } from "../domain/request-log";
+import { CustomSelect } from "./CustomSelect";
 import { OverviewIcon } from "./OverviewIcon";
 
 type Props = {
@@ -22,10 +23,12 @@ export function OverviewUsageStats({ summary, range, retentionReached, refreshin
         <p className="helper-text">{range === "today" ? "本地今天 0:00 至本次读取的已保留调用" : range === "24h" ? "最近 24 小时内的已保留调用" : "当前已保留的调用记录"} · 非历史全量</p>
       </div>
       <div className="overview-filters">
-        <label htmlFor="overview-range">统计范围</label>
-        <select id="overview-range" value={range} onChange={(event) => onRangeChange(event.target.value === "today" ? "today" : event.target.value === "24h" ? "24h" : "retained")}>
-          <option value="today">今天（本地时间）</option><option value="24h">最近 24 小时</option><option value="retained">已保留记录</option>
-        </select>
+        <span className="overview-filters__label">统计范围</span>
+        <CustomSelect ariaLabel="统计范围" value={range} options={[
+          { value: "today", label: "今天（本地时间）" },
+          { value: "24h", label: "最近 24 小时" },
+          { value: "retained", label: "已保留记录" },
+        ]} onChange={(value) => onRangeChange(value as OverviewRange)} />
         <button className="geist-button geist-button--secondary" type="button" disabled={refreshing} onClick={onRefresh}>{refreshing ? "刷新中…" : "刷新数据"}</button>
       </div>
     </div>

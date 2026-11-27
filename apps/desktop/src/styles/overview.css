@@ -35,9 +35,8 @@
 .overview-metric__value { overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .overview-usage, .overview-models { display: grid; gap: 16px; min-width: 0; }
 .overview-filters { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-.overview-filters label { font-size: 12px; color: var(--muted); }
-.overview-filters select { min-height: 36px; padding: 0 10px; border: 1px solid var(--control); border-radius: var(--radius-control); background: var(--surface); color: var(--text); font: inherit; font-size: 13px; }
-.overview-filters select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.overview-filters__label, .overview-model-details > span { font-size: 12px; color: var(--muted); }
+.overview-filters .custom-select { width: 168px; flex: 0 0 168px; }
 .overview-token-details { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin: 0; }
 .overview-token-details > div { min-width: 0; }
 .overview-token-details dt { color: var(--muted); font-size: 12px; }
@@ -45,9 +44,7 @@
 .overview-token-details dd span { display: block; margin-top: 6px; color: var(--muted); font-size: 12px; }
 .overview-data-note { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .overview-refresh-error { margin: 0; color: var(--negative); font-size: 13px; }
-.overview-model-details > label { font-size: 12px; color: var(--muted); }
-.overview-model-details select { min-width: 0; max-width: 100%; min-height: 36px; padding: 0 10px; border: 1px solid var(--control); border-radius: var(--radius-control); background: var(--surface); color: var(--text); font: inherit; font-size: 13px; }
-.overview-model-details select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.overview-model-details .custom-select { min-width: 0; max-width: 100%; }
 .overview-model-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr); gap: 24px; }
 .overview-model-aggregate { display: grid; gap: 12px; min-width: 0; align-content: start; }
 .overview-model-composition { display: grid; grid-template-columns: 240px minmax(0, 1fr); align-items: center; gap: 20px; min-width: 0; }
@@ -83,9 +80,11 @@
 .overview-activity-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(250px, 1fr); gap: 24px; align-items: start; }
 .attention-panel { display: grid; align-content: start; gap: 16px; min-width: 0; padding: 16px 0; border-top: 1px solid var(--border); }
 .attention-list { display: grid; gap: 8px; }
-.attention-row { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 10px; align-items: center; min-height: 42px; padding: 8px 0; border-top: 1px solid var(--border); }
+.attention-row { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 8px 10px; align-items: center; min-height: 42px; padding: 8px 0; border-top: 1px solid var(--border); }
 .attention-mark { display: grid; width: 20px; height: 20px; place-items: center; border-radius: 50%; background: var(--negative-soft); color: var(--negative); font-weight: 600; }
-.attention-row code { max-width: 100%; color: var(--muted); overflow-wrap: anywhere; }
+.attention-copy { display: grid; gap: 3px; min-width: 0; }
+.attention-copy strong, .attention-copy .cell-subtext { min-width: 0; overflow-wrap: anywhere; }
+.attention-row code { grid-column: 2; max-width: 100%; overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
 .overview-chart { display: grid; gap: 8px; min-width: 0; }
 .overview-chart__plot { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; align-items: start; min-width: 0; }
 .overview-chart__y-axis { display: flex; height: 158px; flex-direction: column; justify-content: space-between; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; line-height: 1; text-align: right; }
@@ -127,7 +126,6 @@
 }
 
 @media (max-width: 600px) {
-  .overview-filters select, .overview-model-details select { min-height: 44px; }
+  .overview-filters .custom-select { flex-basis: 168px; }
   .attention-row { grid-template-columns: 20px minmax(0, 1fr); }
-  .attention-row code { grid-column: 2; }
 }

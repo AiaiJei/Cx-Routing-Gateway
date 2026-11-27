@@ -11,6 +11,11 @@ function modelSummary(model: string, calls = 1, total: number | null = 10): Over
 }
 const manyModels = Array.from({ length: 60 }, (_, index) => modelSummary(`model-${String(index).padStart(3, "0")}`, 60 - index));
 
+function chooseModel(model: string) {
+  fireEvent.click(screen.getByRole("combobox", { name: "查看模型" }));
+  fireEvent.click(screen.getByRole("option", { name: model }));
+}
+
 describe("OverviewModelAnalysis", () => {
   it("aggregates every model into one colored chart without groups or an expandable table", () => {
     render(<MemoryRouter><OverviewModelAnalysis models={manyModels} /></MemoryRouter>);
@@ -27,7 +32,7 @@ describe("OverviewModelAnalysis", () => {
 
   it("selects any model from the common legend and keeps exact details", () => {
     render(<MemoryRouter><OverviewModelAnalysis models={manyModels} /></MemoryRouter>);
-    fireEvent.change(screen.getByRole("combobox", { name: "查看模型" }), { target: { value: "model-059" } });
+    chooseModel("model-059");
     expect(screen.getByRole("button", { name: "查看 model-059" })).toHaveAttribute("aria-pressed", "true");
     const detail = screen.getByRole("region", { name: "所选模型明细" });
     expect(detail).toHaveTextContent("最近调用成功");
@@ -57,9 +62,9 @@ describe("OverviewModelAnalysis", () => {
 
   it("keeps selection valid when a refresh reduces the model population", () => {
     const { rerender } = render(<MemoryRouter><OverviewModelAnalysis models={manyModels} /></MemoryRouter>);
-    fireEvent.change(screen.getByRole("combobox", { name: "查看模型" }), { target: { value: "model-059" } });
+    chooseModel("model-059");
     rerender(<MemoryRouter><OverviewModelAnalysis models={[modelSummary("remaining")]} /></MemoryRouter>);
-    expect(screen.getByRole("combobox", { name: "查看模型" })).toHaveValue("remaining");
+    expect(screen.getByRole("combobox", { name: "查看模型" })).toHaveTextContent("remaining");
     expect(screen.getByRole("img", { name: "模型调用分布图" }).querySelectorAll("circle[data-model]")).toHaveLength(1);
   });
 

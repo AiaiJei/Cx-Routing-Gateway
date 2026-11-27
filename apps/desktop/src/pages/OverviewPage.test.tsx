@@ -18,6 +18,11 @@ const defaultWorkspaceState = {
   refresh: vi.fn(),
 };
 
+function chooseDropdownOption(label: string, option: string) {
+  fireEvent.click(screen.getByRole("combobox", { name: label }));
+  fireEvent.click(screen.getByRole("option", { name: option }));
+}
+
 describe("OverviewPage", () => {
   beforeEach(() => { vi.spyOn(Date, "now").mockReturnValue(new Date(2026, 10, 18, 12).getTime()); workspaceHook.mockReturnValue(defaultWorkspaceState); });
   afterEach(() => vi.restoreAllMocks());
@@ -66,13 +71,29 @@ describe("OverviewPage", () => {
     expect(screen.getByRole("group", { name: "调用结果" })).toHaveTextContent("2 / 1");
     expect(screen.getByText("730", { exact: true })).toBeVisible();
     expect(screen.getByText("ms", { exact: true })).toBeVisible();
-    expect(screen.getByRole("combobox", { name: "统计范围" })).toHaveValue("today");
+    expect(screen.getByRole("combobox", { name: "统计范围" })).toHaveTextContent("今天（本地时间）");
+    expect(screen.getByRole("combobox", { name: "统计范围" })).toHaveClass("custom-select-trigger");
+    expect(screen.getByRole("combobox", { name: "查看模型" })).toHaveClass("custom-select-trigger");
+    expect(document.querySelectorAll("select")).toHaveLength(0);
     expect(screen.getByRole("img", { name: /请求趋势图，共 3 条/ })).toBeVisible();
     expect(screen.getByRole("heading", { name: "需要关注" })).toBeVisible();
     expect(screen.getByRole("heading", { name: "最近调用" })).toBeVisible();
     expect(screen.queryByRole("link", { name: "配置上游" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "查看上游" })).toBeVisible();
     expect(screen.getByRole("link", { name: "查看路由" })).toBeVisible();
+  });
+
+  it("keeps failure details readable and request IDs secondary", () => {
+    render(<MemoryRouter><OverviewPage /></MemoryRouter>);
+    const failedLog = workspaceFixtures.logs.find(log => log.status.startsWith("失败"))!;
+    const attention = screen.getByRole("heading", { name: "需要关注" }).closest(".attention-panel")!;
+    const failureRow = [...attention.querySelectorAll(".attention-row")].find(row => row.querySelector(".attention-copy strong")?.textContent === failedLog.model);
+    const requestId = failureRow?.querySelector("code");
+    expect(failureRow?.querySelector(".attention-copy")).toHaveTextContent(failedLog.model);
+    expect(failureRow?.querySelector(".attention-copy")).toHaveTextContent(failedLog.error ?? failedLog.status);
+    expect(requestId).toHaveTextContent(failedLog.id);
+    expect(requestId).toHaveAttribute("title", failedLog.id);
+    expect(requestId?.parentElement).toBe(failureRow);
   });
 
   it("shows runtime statuses without a fixture label", () => {
@@ -141,12 +162,12 @@ describe("OverviewPage", () => {
       ],
     } });
     render(<MemoryRouter><OverviewPage /></MemoryRouter>);
-    fireEvent.change(screen.getByRole("combobox", { name: "统计范围" }), { target: { value: "24h" } });
+    chooseDropdownOption("统计范围", "最近 24 小时");
     expect(screen.getByRole("group", { name: "调用总数" }).querySelector("strong")).toHaveTextContent("1");
     expect(screen.queryByRole("button", { name: "查看 old-model" })).not.toBeInTheDocument();
     expect(screen.queryByText("需要关注")).not.toBeInTheDocument();
     expect(screen.getByRole("img", { name: /请求趋势图，共 1 条/ })).toBeVisible();
-    fireEvent.change(screen.getByRole("combobox", { name: "统计范围" }), { target: { value: "retained" } });
+    chooseDropdownOption("统计范围", "已保留记录");
     expect(screen.getByRole("group", { name: "调用总数" }).querySelector("strong")).toHaveTextContent("2");
     expect(screen.getByRole("button", { name: "查看 old-model" })).toBeVisible();
   });
@@ -158,12 +179,12 @@ describe("OverviewPage", () => {
       { ...workspaceFixtures.logs[1], model: "yesterday-model", time: new Date(2026, 10, 25, 23, 59).toISOString() },
     ] } });
     render(<MemoryRouter><OverviewPage /></MemoryRouter>);
-    expect(screen.getByRole("combobox", { name: "统计范围" })).toHaveValue("today");
+    expect(screen.getByRole("combobox", { name: "统计范围" })).toHaveTextContent("今天（本地时间）");
     expect(screen.getByRole("group", { name: "调用总数" }).querySelector("strong")).toHaveTextContent("1");
     expect(screen.getByRole("img", { name: "模型调用分布图" })).toHaveAttribute("data-total", "1");
     expect(screen.queryByRole("button", { name: "查看 yesterday-model" })).not.toBeInTheDocument();
     expect(screen.getByRole("img", { name: /请求趋势图，共 2 条/ })).toBeVisible();
-    fireEvent.change(screen.getByRole("combobox", { name: "统计范围" }), { target: { value: "24h" } });
+    chooseDropdownOption("统计范围", "最近 24 小时");
     expect(screen.getByRole("img", { name: "模型调用分布图" })).toHaveAttribute("data-total", "2");
     expect(screen.getByRole("button", { name: "查看 yesterday-model" })).toBeVisible();
   });

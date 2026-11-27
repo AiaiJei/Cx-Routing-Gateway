@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import type { OverviewModelSummary } from "../domain/overview-analytics";
 import { formatOverviewRate, tokenCoverage } from "../domain/overview-analytics";
 import { formatDuration, formatMetric } from "../domain/request-log";
+import { CustomSelect } from "./CustomSelect";
 import { OverviewModelChart } from "./OverviewModelChart";
 import { buildModelDistribution, formatModelShare } from "../domain/overview-model-chart";
 
@@ -25,8 +26,8 @@ export function OverviewModelAnalysis({ models, periodLabel = "今天（本地�
         <p className="overview-data-note">每个色块代表一个模型；占比按调用次数计算，全部模型均在图中。图例可滚动查看。</p>
       </div>
       {selected ? <section className="overview-model-details" aria-label="所选模型明细">
-        <label htmlFor="overview-model-select">查看模型</label>
-        <select id="overview-model-select" value={selected.model} title={selected.model} onChange={(event) => selectModel(event.target.value)}>{distribution.segments.map((model) => <option key={model.model} value={model.model}>{model.model}</option>)}</select>
+        <span>查看模型</span>
+        <CustomSelect ariaLabel="查看模型" value={selected.model} options={distribution.segments.map((model) => ({ value: model.model, label: model.model }))} onChange={selectModel} />
         <p className={`overview-model-state${selected.latestStatus === "失败" ? " overview-model-state--failed" : ""}`}>{selected.latestStatus ? `最近调用${selected.latestStatus}` : "最近状态未知"}</p>
         <dl>
           <div><dt>调用量 / 占比</dt><dd title={formatMetric(selected.calls)}>{formatMetric(selected.calls)}</dd><span>{formatModelShare(selected.share)}</span></div>
