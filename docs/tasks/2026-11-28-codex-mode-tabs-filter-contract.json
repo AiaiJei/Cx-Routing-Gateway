@@ -3,7 +3,7 @@
   "project_id": "cx-routing-gateway",
   "repo_id": "aiaijei-cx-routing-gateway",
   "task_id": "CXRG-CODEX-MODE-TABS-FILTER-20261128",
-  "contract_revision": 4,
+  "contract_revision": 5,
   "contract_path": ".codex/codex-awg-task-contracts/CXRG-CODEX-MODE-TABS-FILTER-20261128.json",
   "archive_contract_path": "docs/tasks/2026-11-28-codex-mode-tabs-filter-contract.json",
   "project": "Cx-Routing Gateway",
@@ -59,6 +59,10 @@
   },
   "revision_history": [
     {
+      "revision": 5,
+      "reason": "Dedicated PR #28 opened from the authorized task branch; merge and release remain unauthorized."
+    },
+    {
       "revision": 4,
       "reason": "Include the two dependent UI guidance tests and verify filtered bulk selection preserves Codex's existing 100-model limit. No merge/release scope change."
     },
@@ -88,6 +92,8 @@
   "verification_result": "PASS: Desktop 358/358, focused page/status 50/50, isolated configuration/IPC/memory 34/34, production build, diff check, browser behavior and 1530/1024/390 visual checks.",
   "independent_review": "PASS: read-only reviewer found no actionable defects; browser keyboard and pending-login coverage added after review.",
   "owner_acceptance": "NOT_RUN",
-  "pull_request": null,
+  "pull_request": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/28",
+  "pull_request_state": "OPEN",
+  "head_commit": "86ae94917d4a68861ccae19e86f37fbb584d5add",
   "rollback": "Keep implementation isolated in the task worktree. Preserve the prior overview contract and binding snapshot. Do not merge, release, delete branches, or delete worktrees."
 }

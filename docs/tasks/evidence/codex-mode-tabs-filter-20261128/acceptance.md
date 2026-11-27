@@ -3,9 +3,10 @@
 ## 范围与位置
 
 - 项目 `cx-routing-gateway`；仓库 `aiaijei-cx-routing-gateway`。
-- 任务 `CXRG-CODEX-MODE-TABS-FILTER-20261128`；合同 revision 4。
+- 任务 `CXRG-CODEX-MODE-TABS-FILTER-20261128`；合同 revision 5。
 - 分支 `codex/codex-mode-tabs-filter-20261128`；工作树 `.tmp/worktrees/codex-mode-tabs-filter-20261128`。
 - 基线 `master@ad8fd690d800c299bb145f73962b6982c36e2df1`。不合并、不发布、不递增版本、不删除工作树，不修改真实 Codex 配置或密钥。
+- 专属 PR #28：`https://github.com/AiaiJei/Cx-Routing-Gateway/pull/28`，当前 OPEN，初次 PR head `86ae94917d4a68861ccae19e86f37fbb584d5add`。GitHub 当前没有报告 CI 检查项；未合并。
 - Owner 已授权独立合同、活动绑定与专属 PR。原总览任务绑定在主工作树本地档案保留，SHA-256 `6465F499A368EFC5574B01ED57E798E7ABA3859199516A424A7FCB09DD92C838`；总览合同、历史证据和 PR #27 未改。
 
 ## 需求与证据
@@ -44,4 +45,4 @@
 
 ## 交付状态
 
-实现与本地验证 `PASS`，准备提交/推送专属 PR。主分支未更新；不合并、不发布。后续由 Owner 审查 PR 并决定是否另行授权合并或测试版发布。
+实现与本地验证 `PASS`，专属 PR #28 已创建并推送。主分支未更新；PR 保持 OPEN，未合并、未发布。下一步由 Owner 审查 PR；如需合并或测试版发布，另行授权。
