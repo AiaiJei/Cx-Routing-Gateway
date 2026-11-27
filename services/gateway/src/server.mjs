@@ -14,7 +14,7 @@ import { Readable } from 'node:stream';
 import { performance } from 'node:perf_hooks';
 import { parseRequest as parseAdapterRequest, serializeRequest as serializeAdapterRequest, parseResponse as parseAdapterResponse, serializeResponse as serializeAdapterResponse, parseStreamEvent as parseAdapterStreamEvent, serializeStreamEvent as serializeAdapterStreamEvent } from './protocol-adapters.mjs';
 
-const MAX_BODY = 4 * 1024 * 1024;
+const DEFAULT_MAX_REQUEST_BODY_BYTES = 64 * 1024 * 1024;
 const pathProtocols = { '/v1/responses': 'Res', '/v1/messages': 'Mes', '/v1/chat/completions': 'Chat' };
 const upstreamStatusMap = new Map([
   [400, { clientStatus: 400, errorCode: 'upstream_http_400' }],
@@ -46,6 +46,13 @@ function normalizeUpstreamError(error) {
   if (error?.statusCode) return error;
   return Object.assign(new Error('Upstream unavailable'), { code: 'upstream_error', statusCode: 502, cause: error });
 }
+function requestBodyLimit(value) {
+  if (value === undefined) return DEFAULT_MAX_REQUEST_BODY_BYTES;
+  if (!['number', 'string'].includes(typeof value) || (typeof value === 'string' && !value.trim())) throw new Error('maxRequestBodyBytes must be a positive safe integer');
+  const parsed = typeof value === 'number' ? value : Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) throw new Error('maxRequestBodyBytes must be a positive safe integer');
+  return parsed;
+}
 function upstreamUrl(baseUrl, endpoint) {
   const base = baseUrl.replace(/\/$/, '');
   return base.endsWith('/v1') && endpoint.startsWith('/v1/') ? `${base}${endpoint.slice(3)}` : `${base}${endpoint}`;
@@ -60,11 +67,36 @@ function send(res, status, body, requestId) {
   res.end(JSON.stringify(body));
 }
 
-async function bodyOf(req, timeoutMs = 30_000) {
-  let size = 0; const chunks = [];
-  let timer;
+async function bodyOf(req, maxBytes, timeoutMs = 30_000) {
+  const tooLarge = () => {
+    if (!req.complete && !req.readableEnded) {
+      const drainTimer = setTimeout(() => req.destroy(), timeoutMs);
+      drainTimer.unref();
+      const finishDrain = () => {
+        clearTimeout(drainTimer);
+        req.off('end', finishDrain);
+        req.off('close', finishDrain);
+        req.off('error', finishDrain);
+      };
+      req.once('end', finishDrain);
+      req.once('close', finishDrain);
+      req.once('error', finishDrain);
+    }
+    req.resume();
+    return Object.assign(new Error(`Request body exceeds ${maxBytes} byte limit`), { code: 'request_body_too_large', statusCode: 413, limitBytes: maxBytes });
+  };
+  const declaredLength = req.headers['content-length'];
+  if (declaredLength !== undefined && /^\d+$/.test(declaredLength) && Number(declaredLength) > maxBytes) throw tooLarge();
+  let size = 0; let timer;
+  const chunks = [];
   try {
-    const stream = (async () => { for await (const chunk of req) { size += chunk.length; if (size > MAX_BODY) throw Object.assign(new Error('Request body too large'), { code: 'request_body_too_large', statusCode: 413 }); chunks.push(chunk); } })();
+    const stream = (async () => {
+      for await (const chunk of req.iterator({ destroyOnReturn: false })) {
+        size += chunk.length;
+        if (size > maxBytes) throw tooLarge();
+        chunks.push(chunk);
+      }
+    })();
     await Promise.race([stream, new Promise((_, reject) => { timer = setTimeout(() => reject(Object.assign(new Error('Request body timeout'), { code: 'request_timeout', statusCode: 408 })), timeoutMs); })]);
   } finally { clearTimeout(timer); }
   try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw Object.assign(new Error('Invalid JSON'), { statusCode: 400 }); }
@@ -477,8 +509,9 @@ async function markCredentialUsed(store, credential) {
   }
 }
 
-export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, maxConcurrentRequests = 32, upstreamHeaderTimeoutMs = 300_000, upstreamHealthProbeTimeoutMs = 5000, maxRequestDurationMs = 600_000, routeTestTimeoutMs = 610_000, dnsLookup = dns.lookup, connectivityCheck = checkTransportConnectivity, now = Date.now, monotonicNow = () => performance.now() } = {}) {
+export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, maxConcurrentRequests = 32, upstreamHeaderTimeoutMs = 300_000, upstreamHealthProbeTimeoutMs = 5000, maxRequestDurationMs = 600_000, routeTestTimeoutMs = 610_000, maxRequestBodyBytes = process.env.CXRG_MAX_REQUEST_BODY_BYTES, dnsLookup = dns.lookup, connectivityCheck = checkTransportConnectivity, now = Date.now, monotonicNow = () => performance.now() } = {}) {
   if (!store || !vault) throw new Error('Gateway server requires store and vault');
+  const requestBodyLimitBytes = requestBodyLimit(maxRequestBodyBytes);
   const rateBuckets = new Map();
   const healthByRoute = new Map();
   const routeTestCredentials = new Map();
@@ -587,7 +620,7 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
       const recent = (rateBuckets.get(keyHash) || []).filter((entry) => timestamp - entry < 60_000);
       if (recent.length >= rateLimitPerMinute) return send(res, 429, { error: 'rate_limited', requestId }, requestId);
       recent.push(timestamp); rateBuckets.set(keyHash, recent);
-      let input = await bodyOf(req);
+      let input = await bodyOf(req, requestBodyLimitBytes);
       streamRequested = input.stream === true;
       reasoningEffort = reasoningEffortOf(input);
       route = config.routes.find((item) => item.enabled && item.alias === input.model && item.inboundProtocol === inbound);
@@ -716,7 +749,8 @@ export function createGatewayServer({ store, vault, rateLimitPerMinute = 60, max
         }
         return res.destroy();
       }
-      return send(res, error.statusCode || 500, { error: error.code || 'internal_error', message: error.statusCode ? error.message : undefined, ...(error.field ? { field: error.field } : {}), ...(error.direction ? { direction: error.direction } : {}), ...(error.toolType ? { toolType: error.toolType } : {}), requestId }, requestId);
+
+      return send(res, error.statusCode || 500, { ...(error.limitBytes ? { limitBytes: error.limitBytes } : {}), error: error.code || 'internal_error', message: error.statusCode ? error.message : undefined, ...(error.field ? { field: error.field } : {}), ...(error.direction ? { direction: error.direction } : {}), ...(error.toolType ? { toolType: error.toolType } : {}), requestId }, requestId);
     } finally {
       if (acquiredSlot) inFlight -= 1;
     }
