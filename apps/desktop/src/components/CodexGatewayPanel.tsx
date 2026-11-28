@@ -36,7 +36,7 @@ export function CodexGatewayPanel({
       </aside>
       <div className="codex-primary-action">
         <p>
-          已选 {management.routeIds.length} 个模型。切换到 CX-RG 网关标签并确认后，将保存模型、默认模型和凭证并启用 Gateway；当前直连会安全保留。
+          已选 {management.routeIds.length} 个模型。使用页面右上角按钮保存并启用 Gateway；已启用时，模型或凭证改动需要重新应用。当前模式会保持生效，直到应用成功。
         </p>
         {management.busy === "preview" && (
           <p role="status">正在准备网关配置…</p>

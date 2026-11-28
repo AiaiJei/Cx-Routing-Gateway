@@ -288,6 +288,8 @@ export function useCodexManagement(
         if (mounted.current && id === mutationSequence.current) {
           if (action === "restore" && !preferences.available)
             touched.current = false;
+          if (action === "apply" && selected?.mode === "gateway")
+            preferences.markApplied();
           setStatus(next);
           setPreview(null);
           pendingSelection.current = null;
@@ -337,6 +339,7 @@ export function useCodexManagement(
     keyScope,
     selectedAliases,
     validModels,
+    gatewayValidationError: validation("gateway"),
     keyMatchesSelection,
     preferences,
     credentials,

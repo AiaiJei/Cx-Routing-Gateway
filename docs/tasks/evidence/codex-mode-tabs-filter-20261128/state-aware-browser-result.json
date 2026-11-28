@@ -1,0 +1,35 @@
+{
+  "status": "PASS",
+  "environment": "Isolated browser; in-memory Desktop bridge fixture; not a native/provider check",
+  "checks": [
+    "tabs select target mode only",
+    "explicit header action previews modes",
+    "incomplete Gateway guides to routing without preview",
+    "unchanged active mode action disabled",
+    "changed active Gateway requires re-apply",
+    "cancel preserves draft",
+    "confirm applies once",
+    "truthful active badge",
+    "family filter",
+    "hidden selections preserved",
+    "no horizontal overflow",
+    "no page errors"
+  ],
+  "layouts": [
+    {
+      "viewport": 1530,
+      "documentWidth": 1530,
+      "modelRowsFit": true
+    },
+    {
+      "viewport": 1024,
+      "documentWidth": 1024,
+      "modelRowsFit": true
+    },
+    {
+      "viewport": 390,
+      "documentWidth": 390,
+      "modelRowsFit": true
+    }
+  ]
+}

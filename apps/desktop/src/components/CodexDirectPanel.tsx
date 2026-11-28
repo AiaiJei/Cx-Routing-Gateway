@@ -16,7 +16,6 @@ export function CodexDirectPanel({
   login,
   locked,
   nativeAvailable,
-  onEnable,
   progress,
   onLibraryChanged,
 }: {
@@ -25,7 +24,6 @@ export function CodexDirectPanel({
   login: ReturnType<typeof useCodexLogin>;
   locked: boolean;
   nativeAvailable: boolean;
-  onEnable: () => void;
   progress: boolean;
   onLibraryChanged: () => Promise<void>;
 }) {
@@ -76,25 +74,16 @@ export function CodexDirectPanel({
           </Button>
         </div>
       </div>
-      <div className="codex-primary-action">
-        <p>
-          {selected ? (
-            <>
-              所选方案：<strong>{selected.name}</strong>
-              。启用前会展示变更并确认。
-            </>
-          ) : (
-            "选择直连方案后启用；保存方案本身不会启用。"
-          )}
-        </p>
-        <Button
-          variant="primary"
-          disabled={!nativeAvailable || locked || profiles.busy || progress}
-          onClick={onEnable}
-        >
-          {progress ? "正在准备直连配置…" : "启用所选直连方案"}
-        </Button>
-      </div>
+      <p className="helper-text">
+        {selected ? (
+          <>
+            所选方案：<strong>{selected.name}</strong>
+            。使用页面右上角按钮应用；启用前会展示变更并确认。
+          </>
+        ) : (
+          "选择直连方案后，使用页面右上角按钮应用；保存方案本身不会启用。"
+        )}
+      </p>
       {!profiles.available ? (
         <p className="codex-model-notice">
           当前环境不支持本机直连方案库；请使用新版 Desktop。

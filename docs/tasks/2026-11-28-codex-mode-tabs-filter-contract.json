@@ -3,7 +3,7 @@
   "project_id": "cx-routing-gateway",
   "repo_id": "aiaijei-cx-routing-gateway",
   "task_id": "CXRG-CODEX-MODE-TABS-FILTER-20261128",
-  "contract_revision": 8,
+  "contract_revision": 9,
   "contract_path": ".codex/codex-awg-task-contracts/CXRG-CODEX-MODE-TABS-FILTER-20261128.json",
   "archive_contract_path": "docs/tasks/2026-11-28-codex-mode-tabs-filter-contract.json",
   "project": "Cx-Routing Gateway",
@@ -28,6 +28,9 @@
     "apps/desktop/src/components/RouteCapabilitiesFields.test.tsx",
     "apps/desktop/src/components/CodexTabs.tsx",
     "apps/desktop/src/components/CodexGatewayPanel.tsx",
+    "apps/desktop/src/components/CodexDirectPanel.tsx",
+    "apps/desktop/src/data/codex-management.ts",
+    "apps/desktop/src/data/codex-gateway-preferences.ts",
     "apps/desktop/src/components/CodexModelsPanel.tsx",
     "apps/desktop/src/styles/codex.css",
     "apps/desktop/package.json",
@@ -67,9 +70,13 @@
   "authorization_source": "Owner authorized a dedicated task contract and active task binding on 2026-11-28, plus a 2026-11-28 follow-up to preserve existing data and publish a local Desktop test build. This follow-up authorizes only product version 1.1.15, one x64 Portable test copy in the unique allowed Desktop directory, a unique task output directory, and smoke testing with temporary userData/CODEX_HOME/ports. Do not stop the existing 1.1.14 process, copy or migrate user data, call providers, merge, publish GitHub, or delete existing files.",
   "design_gate": {
     "status": "APPROVED_BY_EXPLICIT_TASK_DIRECTIVE",
-    "basis": "The Owner explicitly requested that switching mode tabs choose the running/enabled mode. Reuse the current confirmation flow so configuration changes still require confirmation."
+    "basis": "The Owner approved tabs as target-mode selection only and a state-aware header action that guides incomplete setup, applies explicit mode changes, and re-applies changed Gateway drafts. The active-mode indicator reflects only successful application."
   },
   "revision_history": [
+    {
+      "revision": 9,
+      "reason": "Owner approved a state-aware header action: tabs only select the target mode; incomplete Gateway setup is guided without activation; active unchanged state is shown; changed drafts require explicit re-application; busy and applied states are distinct. Scope expanded to the Codex mode panels and preference/management hooks."
+    },
     {
       "revision": 8,
       "reason": "Record verified local 1.1.15 x64 Portable build, isolated Desktop smoke, artifact hash, and unchanged 1.1.14 executable/processes."
@@ -100,11 +107,11 @@
     }
   ],
   "acceptance_criteria": [
-    "Remove the Codex Gateway 保存并启用网关 button; use mode tabs to select the running/enabled mode.",
+    "Mode tabs select the desired mode only; they do not preview, confirm, or change the applied configuration.",
     "Add model-family filtering to the Codex Gateway list with the same behavior as the Model Routing page.",
-    "Preserve confirmation, active-mode feedback, search, and selected-model behavior.",
+    "Show a state-aware header action: guide incomplete Gateway configuration, activate an explicitly selected mode, and re-apply changed Gateway drafts. The active-mode indicator reflects only successfully applied runtime state.",
     "Keep filtered bulk selection within Codex's 100-model limit and preserve the existing default model.",
-    "Test mode selection, confirmation/cancellation, filter counts, category changes, and selection preservation.",
+    "Test tab-only selection, setup guidance, action states for active/changed/busy/unavailable modes, explicit preview/confirmation/cancel/apply, filter counts, category changes, and selection preservation.",
     "Create a dedicated PR against master; do not merge or publish."
   ],
   "verification_plan": [

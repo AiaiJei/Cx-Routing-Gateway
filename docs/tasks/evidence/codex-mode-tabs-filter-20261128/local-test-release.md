@@ -31,3 +31,9 @@
 - 用户目录：`C:\Users\20142\Desktop\Cx-Routing Gateway Codex Mode Test 1.1.15\`。
 - 用户手动双击 `Launch Codex Mode Test.cmd` 后才会创建 `isolated-user-data/` 和 `isolated-codex-home/`。
 - PR #28 当前保持 OPEN；1.1.15 版本与本地测试交付改动已提交至 `829d9be` 并推送。主分支未更新，未合并或发布 GitHub Release。
+
+## 状态按钮修正后续
+
+- 本次 PR 工作树已加入右上角状态按钮和“标签仅选择模式”的修正，源码测试与隔离浏览器验证通过。
+- 桌面目录中的同名 Portable 仍是此前 SHA-256 `3082D5AB7E21DCBE900BAD6A90E5F975BBDF3E6747BCF52A1861EDA612CE0904` 版本，不包含本次修正。
+- 复核时该旧测试程序仍在运行（PID `24156`）；为保留运行中的测试与隔离数据，本次没有停止或覆盖它。PR 更新也不会自动更新桌面二进制。

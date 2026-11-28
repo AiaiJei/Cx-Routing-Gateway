@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import { StrictMode } from "react";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import { defaultWorkspaceClient } from "../data/workspace-client";
@@ -140,18 +140,24 @@ function setup(overrides = {}) {
       .mockImplementation((input: { mode: string }) =>
         Promise.resolve(input.mode === "gateway" ? gatewayPreview : preview),
       ),
-    applyCodexConfig: vi.fn().mockResolvedValue({
-      ...status,
-      revision: "after",
-      direct: {
-        ...status.direct,
-        profileId: "direct-one",
-        name: custom.name,
-        baseUrl: custom.baseUrl,
-        model: "beta",
-      },
-      model: "beta",
-    }),
+    applyCodexConfig: vi.fn().mockImplementation((input: { mode: string }) =>
+      Promise.resolve(
+        input.mode === "gateway"
+          ? { ...gatewayStatus, revision: "after" }
+          : {
+              ...status,
+              revision: "after",
+              direct: {
+                ...status.direct,
+                profileId: "direct-one",
+                name: custom.name,
+                baseUrl: custom.baseUrl,
+                model: "beta",
+              },
+              model: "beta",
+            },
+      ),
+    ),
     restoreCodexConfig: vi.fn().mockResolvedValue(status),
     getCodexClientStatus: vi.fn().mockResolvedValue({
       available: true,
@@ -177,6 +183,7 @@ function setup(overrides = {}) {
 function mount(strict = false) {
   return render(
     <MemoryRouter>
+      <CurrentPath />
       {strict ? (
         <StrictMode>
           <CodexPage />
@@ -186,6 +193,10 @@ function mount(strict = false) {
       )}
     </MemoryRouter>,
   );
+}
+function CurrentPath() {
+  const location = useLocation();
+  return <output data-testid="current-path">{location.pathname}</output>;
 }
 async function ready() {
   await screen.findByText("当前自定义提供商", { selector: "dd" });
@@ -207,16 +218,10 @@ async function viewGateway() {
   const existingDialog = screen.queryByRole("dialog");
   if (existingDialog)
     await user.click(within(existingDialog).getByRole("button", { name: "取消" }));
-  await user.click(await screen.findByRole("tab", { name: /CX-RG 网关/ }));
-  await waitFor(() =>
-    expect(
-      screen.queryByRole("dialog", { name: "确认保存并启用网关" }) ||
-        screen.queryByRole("alert"),
-    ).toBeTruthy(),
-  );
-  const dialog = screen.queryByRole("dialog");
-  if (dialog)
-    await user.click(within(dialog).getByRole("button", { name: "取消" }));
+  const tab = await screen.findByRole("tab", { name: /CX-RG 网关/ });
+  await user.click(tab);
+  expect(tab).toHaveAttribute("aria-selected", "true");
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 }
 
 beforeEach(() => {
@@ -230,7 +235,7 @@ afterEach(() => {
 });
 
 describe("Codex direct provider management", () => {
-  it("activates a mode from its tab only after confirmation and keeps arrow navigation non-mutating", async () => {
+  it("uses tabs to select a mode and waits for the header action before preview or activation", async () => {
     let activeStatus: typeof status | typeof gatewayStatus = status;
     const { native } = setup({
       getCodexStatus: vi.fn().mockImplementation(() => Promise.resolve(activeStatus)),
@@ -269,6 +274,12 @@ describe("Codex direct provider management", () => {
     expect(native.applyCodexConfig).not.toHaveBeenCalled();
     expect(native.previewCodexConfig).not.toHaveBeenCalled();
     await user.keyboard("{Enter}");
+    expect(gateway).toHaveAttribute("aria-selected", "true");
+    expect(direct).toHaveTextContent("生效中");
+    expect(native.previewCodexConfig).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    const action = screen.getByRole("button", { name: "保存并启用网关" });
+    await user.click(action);
     const dialog = await screen.findByRole("dialog", {
       name: "确认保存并启用网关",
     });
@@ -281,7 +292,8 @@ describe("Codex direct provider management", () => {
     await user.click(within(dialog).getByRole("button", { name: "取消" }));
     expect(native.applyCodexConfig).not.toHaveBeenCalled();
     expect(direct).toHaveTextContent("生效中");
-    await user.click(gateway);
+    expect(action).toBeEnabled();
+    await user.click(action);
     const confirmation = await screen.findByRole("dialog", {
       name: "确认保存并启用网关",
     });
@@ -309,16 +321,24 @@ describe("Codex direct provider management", () => {
     );
     const user = userEvent.setup();
     await user.click(screen.getByRole("tab", { name: /Codex 直连/ }));
-    const confirmation = await screen.findByRole("dialog", {
-      name: "确认启用 Codex 直连",
-    });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(native.previewCodexConfig).not.toHaveBeenCalled();
+    expect(native.applyCodexConfig).not.toHaveBeenCalled();
+    expect(screen.getByRole("tab", { name: /Codex 直连/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByRole("tab", { name: /CX-RG 网关/ })).toHaveTextContent(
+      "生效中",
+    );
+    await user.click(screen.getByRole("button", { name: "切换到 Codex 直连" }));
+    expect(await screen.findByRole("dialog", { name: "确认启用 Codex 直连" })).toBeVisible();
     expect(native.previewCodexConfig).toHaveBeenCalledWith({
       mode: "direct",
       profileId: "direct-one",
       profilesRevision: "profiles-before",
     });
-    expect(native.applyCodexConfig).not.toHaveBeenCalled();
-    await user.click(within(confirmation).getByRole("button", { name: "取消" }));
+    await user.click(screen.getByRole("button", { name: "取消" }));
     expect(screen.getByRole("radio", { name: /测试直连/ })).toBeChecked();
     await viewGateway();
     expect(
@@ -511,12 +531,17 @@ describe("Codex direct provider management", () => {
     );
   });
 
-  it("saves and enables Gateway from its mode tab with all selected models and stored-Key reuse", async () => {
+  it("re-applies an active Gateway draft only from its state-aware header action", async () => {
     const { native } = setup({
       getCodexStatus: vi.fn().mockResolvedValue(gatewayStatus),
       applyCodexConfig: vi
         .fn()
-        .mockResolvedValue({ ...gatewayStatus, revision: "after" }),
+        .mockImplementation(async (input: { routeIds: string[] }) => ({
+        ...gatewayStatus,
+        revision: "after",
+        selectedRouteIds: input.routeIds,
+        selectedModelAliases: ["gateway-reasoner", "gateway-second"],
+        })),
     });
     mount();
     await waitFor(() =>
@@ -526,13 +551,13 @@ describe("Codex direct provider management", () => {
       ),
     );
     const user = userEvent.setup();
+    expect(screen.getByRole("button", { name: "Gateway 已启用" })).toBeDisabled();
     await user.click(
       screen.getByRole("checkbox", { name: "选择 gateway-second" }),
     );
-    expect(
-      screen.queryByRole("button", { name: "保存并启用网关" }),
-    ).not.toBeInTheDocument();
-    await user.click(screen.getByRole("tab", { name: /CX-RG 网关/ }));
+    const action = screen.getByRole("button", { name: "保存并重新应用" });
+    expect(action).toBeEnabled();
+    await user.click(action);
     const dialog = await screen.findByRole("dialog", {
       name: "确认保存并启用网关",
     });
@@ -541,24 +566,54 @@ describe("Codex direct provider management", () => {
       routeIds: ["route-reasoner", "route-second"],
       defaultRouteId: "route-reasoner",
     });
-    await user.click(within(dialog).getByRole("button", { name: "确认启用" }));
+    await user.click(within(dialog).getByRole("button", { name: "取消" }));
+    expect(screen.getByRole("button", { name: "保存并重新应用" })).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: "保存并重新应用" }));
+    const confirmation = await screen.findByRole("dialog", {
+      name: "确认保存并启用网关",
+    });
+    await user.click(
+      within(confirmation).getByRole("button", { name: "确认启用" }),
+    );
     expect(await screen.findByText(/网关配置已保存并启用/)).toBeVisible();
+    expect(screen.getByRole("button", { name: "Gateway 已启用" })).toBeDisabled();
     expect(native.applyCodexConfig).toHaveBeenCalledWith({
       mode: "gateway",
       routeIds: ["route-reasoner", "route-second"],
       defaultRouteId: "route-reasoner",
       expectedRevision: "before",
     });
+    expect(screen.getByRole("tab", { name: /CX-RG 网关/ })).toHaveTextContent(
+      "生效中",
+    );
+    expect(native.applyCodexConfig).toHaveBeenCalledTimes(1);
   });
 
-  it("explains missing Gateway selections when the Gateway mode tab is activated", async () => {
-    setup({ getCodexStatus: vi.fn().mockResolvedValue(gatewayStatus) });
+  it("guides an unconfigured Gateway to model routing without opening an activation dialog", async () => {
+    const { native, data } = setup();
+    data.routes = [];
     mount();
-    await viewGateway();
+    await ready();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("tab", { name: /CX-RG 网关/ }));
+    await screen.findByRole("button", { name: "去配置模型路由" });
+    expect(native.previewCodexConfig).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "去配置模型路由" }));
+    expect(screen.getByTestId("current-path")).toHaveTextContent("/routes");
+    expect(native.previewCodexConfig).not.toHaveBeenCalled();
+  });
+
+  it("guides an active Gateway with no selected models without attempting activation", async () => {
+    const { native } = setup({
+      getCodexStatus: vi.fn().mockResolvedValue(gatewayStatus),
+    });
+    mount();
+    await screen.findByRole("button", { name: "Gateway 已启用" });
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: "清空选择" }));
-    await user.click(screen.getByRole("tab", { name: /CX-RG 网关/ }));
-    expect(screen.getByRole("alert")).toHaveTextContent(/至少选择一个模型/);
+    expect(screen.getByRole("button", { name: "去配置模型路由" })).toBeEnabled();
+    expect(native.previewCodexConfig).not.toHaveBeenCalled();
   });
 
   it("filters eligible Gateway models by family without dropping hidden selections", async () => {
@@ -608,7 +663,7 @@ describe("Codex direct provider management", () => {
     expect(screen.getByRole("checkbox", { name: "选择 gateway-claude" })).toBeChecked();
   });
 
-  it.each(["direct", "gateway"] as const)("blocks %s mode-tab activation while official login is pending", async (mode) => {
+  it.each(["direct", "gateway"] as const)("keeps %s mode selectable but blocks its action while official login is pending", async (mode) => {
     const { native } = setup({
       getCodexStatus: vi.fn().mockResolvedValue(mode === "direct" ? gatewayStatus : status),
       getCodexClientStatus: vi.fn().mockResolvedValue({ available: true, login: "pending", auth: "unknown" }),
@@ -617,7 +672,8 @@ describe("Codex direct provider management", () => {
     await screen.findByText(/官方登录正在进行。方案仍可保存/);
     const user = userEvent.setup();
     await user.click(screen.getByRole("tab", { name: mode === "direct" ? /Codex 直连/ : /CX-RG 网关/ }));
-    expect(screen.getByRole("alert")).toHaveTextContent(/官方登录正在进行/);
+    expect(screen.getByRole("tab", { name: mode === "direct" ? /Codex 直连/ : /CX-RG 网关/ })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("button", { name: "请先完成官方登录" })).toBeDisabled();
     expect(native.previewCodexConfig).not.toHaveBeenCalled();
     expect(native.applyCodexConfig).not.toHaveBeenCalled();
   });
@@ -722,10 +778,8 @@ describe("Codex direct provider management", () => {
     });
     mount();
     await selectCustom();
-    const user = userEvent.setup();
     expect(screen.getByRole("button", { name: "新增供应商" })).toBeEnabled();
-    await user.click(screen.getByRole("button", { name: "启用所选直连方案" }));
-    expect(screen.getByRole("alert")).toHaveTextContent(/官方登录正在进行/);
+    expect(screen.getByRole("button", { name: "请先完成官方登录" })).toBeDisabled();
     expect(native.previewCodexConfig).not.toHaveBeenCalled();
   });
 
@@ -812,16 +866,20 @@ describe("Codex direct provider management", () => {
     ).toHaveBeenCalledTimes(1);
   });
 
-  it("removes the Gateway activation button while keeping mode tabs above the model list", async () => {
+  it("places the state-aware mode action above the tabs and Gateway model list", async () => {
     setup();
     mount();
     await ready();
     await viewGateway();
-    expect(
-      screen.queryByRole("button", { name: "保存并启用网关" }),
-    ).not.toBeInTheDocument();
+    const action = await screen.findByRole("button", {
+      name: /保存并启用网关|去配置模型路由/,
+    });
     const gatewayTab = screen.getByRole("tab", { name: /CX-RG 网关/ });
     const models = screen.getByRole("group", { name: "Gateway 模型列表" });
+    expect(
+      action.compareDocumentPosition(gatewayTab) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(
       gatewayTab.compareDocumentPosition(models) &
         Node.DOCUMENT_POSITION_FOLLOWING,

@@ -3,7 +3,7 @@
 ## 范围与位置
 
 - 项目 `cx-routing-gateway`；仓库 `aiaijei-cx-routing-gateway`。
-- 任务 `CXRG-CODEX-MODE-TABS-FILTER-20261128`；合同 revision 8。
+- 任务 `CXRG-CODEX-MODE-TABS-FILTER-20261128`；合同 revision 9。
 - 分支 `codex/codex-mode-tabs-filter-20261128`；工作树 `.tmp/worktrees/codex-mode-tabs-filter-20261128`。
 - 基线 `master@ad8fd690d800c299bb145f73962b6982c36e2df1`。不合并、不发布、不递增版本、不删除工作树，不修改真实 Codex 配置或密钥。
 - 专属 PR #28：`https://github.com/AiaiJei/Cx-Routing-Gateway/pull/28`，当前 OPEN，初次 PR head `86ae94917d4a68861ccae19e86f37fbb584d5add`。GitHub 当前没有报告 CI 检查项；未合并。
@@ -13,22 +13,24 @@
 
 | Owner 要求 | 实现 | 核验 |
 | --- | --- | --- |
-| 移除“保存并启用网关”按钮 | `CodexGatewayPanel` 移除入口，改为标签操作指引；模型目录提示同步指向上方标签 | 单元测试断言按钮不存在；浏览器检查及截图 |
-| 标签选择运行/启用模式 | 点击 CX-RG 网关标签预览当前模型与凭证草稿，点击直连标签可预览所选直连方案；沿用原确认流程，确认后才提交 | 两种模式预览、确认/取消、异步锁定、登录阻断测试；隔离浏览器验证一次确认只写入一次假配置 |
+| 标签只选择目标模式 | 点击标签仅切换查看内容，不会自动预览、确认或修改当前配置；“生效中”仍取自已应用状态 | 定向页面与记忆测试覆盖标签选择、已生效标记保持；隔离浏览器验证切换标签不创建弹窗或写入 |
+| 页面右上角状态按钮负责执行 | 未配置 Gateway 时引导去模型路由/接入凭证；未启用时显示“保存并启用网关”；已启用且无变化时显示禁用的“Gateway 已启用”；草稿变更时显示“保存并重新应用”；处理中和官方登录分别显示等待/阻断状态 | 30 项页面测试和 12 项凭证记忆测试；隔离浏览器覆盖未配置引导、启用、无变化、草稿变更、取消与再次应用 |
 | 分类与“模型路由”一致 | 复用 `ModelFamilyFilter` 和 `getRouteModelFamily`；分类基于上游模型，计数仅包括可供 Codex 使用的路由；筛选式批量选择遵守最多 100 个限制 | 分类计数、隐藏选择保留、搜索交集、空分类、全选可见结果、默认模型保持和 100 上限测试 |
 
-“生效中”仍以读取到的配置状态为准，不把浏览中的标签冒充已启用。方向键、Home/End 只移动焦点；Enter/Space 才进入启用流程。取消或 Escape 不提交配置。当前已生效的网关标签可再次点击以应用模型/凭证草稿。已有直连方案的保存/启用操作保留。
+“生效中”只在配置应用成功后变化。标签只选目标模式；用户需明确点击右上角按钮才会预览并确认切换。取消不写入，已启用 Gateway 的草稿变化需显式重新应用；新环境缺项时通过按钮引导补齐，不自动启用。
 
 ## 实际执行
 
 - 红测：实现前 `npm --prefix apps/desktop test -- src/pages/CodexPage.test.tsx` 7 失败、19 通过；失败对应标签仍仅浏览、旧按钮仍存在、分类未实现。
 - 后续提示红测：状态组件新指引 4 失败，随后同步生产提示并通过。
 - 聚焦：`npm --prefix apps/desktop test -- src/pages/CodexPage.test.tsx src/pages/CodexPage.memory.test.tsx src/components/CodexStatusPanel.test.tsx`，50/50 PASS。
-- 完整 Desktop：`npm --prefix apps/desktop test -- --no-cache`，358/358，41 文件 PASS。
+- 本次改动定向：Codex 页面与凭证记忆测试 42/42 PASS。
+- 完整 Desktop：`npm --prefix apps/desktop test -- --no-cache`，359/359，41 文件 PASS。
 - 构建：`npm --prefix apps/desktop run build`，TypeScript 与 Vite PASS。
 - 既有本机服务隔离回归：`node --test tests/runtime/codex-ipc.test.mjs tests/runtime/codex-config-modes.test.mjs tests/runtime/codex-gateway-memory.test.mjs`，34/34 PASS。使用仓内临时假配置、本地 Gateway/Control，不调用真实提供商。
 - `git diff --check` PASS。
-- `browser-smoke.cjs` 在已安装 Edge 上运行：标签、取消/确认、Home/End/Space/Escape、分类选择保留和无浏览器异常 PASS；1530、1024、390 像素均无横向溢出。结果见 `browser-result.json`。
+- `browser-smoke.cjs` 在已安装 Edge 上运行：标签只切换视图、空配置导航、启用/重新应用按钮状态、取消保留草稿、成功后标记和分类选择保留均 PASS；1530、1024、390 像素均无横向溢出。结果见 `state-aware-browser-result.json`。
+- 已实际查看本次新截图 `state-aware-mode-1530.png` 与 `state-aware-mode-390.png`；状态按钮在宽屏位于刷新按钮左侧、窄屏能换行，不遮挡标题、标签或配置内容。
 - 已实际查看 `mode-tabs-*.png` 和 `viewport-*.png` 的宽窄截图；曾发现 390px 滚动网格压缩模型行，已先用内容边界断言复现失败，再设内容行高并重跑通过。最终分类条正常换行，入口与文本未重叠。图片内是明确隔离的假数据，不是用户的账户/模型运行证据。
 
 浏览器复现：启动 Desktop Vite 开发服务到 18541；让 `NODE_PATH` 指向可用的 Playwright 包目录，`CXRG_BROWSER_EXECUTABLE` 指向本机浏览器；执行 `node docs/tasks/evidence/codex-mode-tabs-filter-20261128/browser-smoke.cjs`。仅创建内存 Desktop bridge 假对象，不读取本机账户和密钥。
@@ -43,8 +45,14 @@
 - AWG 校验：项目身份、路径范围、创建仓内工作树、`events.jsonl` 留痕。终端源码/合同写入、测试、浏览器与 Git 操作不受 AWG MCP 强制控制。
 - 真实 Codex 配置启用、真实模型请求、原生打包应用验收、部署/发布、Owner 验收：全部 `NOT_RUN`。测试和假桥接浏览器通过不代表已部署。
 
+## Owner 后续交互修正
+
+- Owner 采纳方案：标签仅作目标模式选择；动作按钮置于标题右侧并随目标模式、生效状态、配置差异、配置缺项和处理状态变化。
+- 交互修正通过定向与全量桌面回归；浏览器验证使用内存假数据，不连接真实配置或提供商。
+- 旧版 1.1.14 文件、进程和 Gateway 用户数据不变；该交互修正版需要重新构建 1.1.15 测试 Portable 后再验证桌面副本，不能把此前那份二进制当成本次修正版。
+
 ## 交付状态
 
 实现与本地验证 `PASS`；1.1.15 x64 Portable 测试版已交付桌面隔离目录，启动时使用新建的 `isolated-user-data/` 与 `isolated-codex-home/`，不预载入原始上游/路由。旧 1.1.14 文件 SHA-256 与五个现存进程均保持不变。
 
-专属 PR #28 已创建并更新；1.1.15 版本与本地测试交付改动已提交至 `829d9be` 并推送。主分支未更新；PR 当前保持 OPEN，未合并、未发布。真实 Codex 配置切换和 Owner 交互验收仍 `NOT_RUN`。
+专属 PR #28 仍 OPEN；本次状态按钮修正尚未提交或推送。主分支未更新、PR 未合并。此前桌面上的 1.1.15 测试版尚不含本次状态按钮修正；更新后的本地测试版需重新构建与校验。真实 Codex 配置切换和 Owner 交互验收仍 `NOT_RUN`。
