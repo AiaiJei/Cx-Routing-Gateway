@@ -3,7 +3,7 @@
 ## 范围与位置
 
 - 项目 `cx-routing-gateway`；仓库 `aiaijei-cx-routing-gateway`。
-- 任务 `CXRG-CODEX-MODE-TABS-FILTER-20261128`；合同 revision 5。
+- 任务 `CXRG-CODEX-MODE-TABS-FILTER-20261128`；合同 revision 8。
 - 分支 `codex/codex-mode-tabs-filter-20261128`；工作树 `.tmp/worktrees/codex-mode-tabs-filter-20261128`。
 - 基线 `master@ad8fd690d800c299bb145f73962b6982c36e2df1`。不合并、不发布、不递增版本、不删除工作树，不修改真实 Codex 配置或密钥。
 - 专属 PR #28：`https://github.com/AiaiJei/Cx-Routing-Gateway/pull/28`，当前 OPEN，初次 PR head `86ae94917d4a68861ccae19e86f37fbb584d5add`。GitHub 当前没有报告 CI 检查项；未合并。
@@ -45,4 +45,6 @@
 
 ## 交付状态
 
-实现与本地验证 `PASS`，专属 PR #28 已创建并推送。主分支未更新；PR 保持 OPEN，未合并、未发布。下一步由 Owner 审查 PR；如需合并或测试版发布，另行授权。
+实现与本地验证 `PASS`；1.1.15 x64 Portable 测试版已交付桌面隔离目录，启动时使用新建的 `isolated-user-data/` 与 `isolated-codex-home/`，不预载入原始上游/路由。旧 1.1.14 文件 SHA-256 与五个现存进程均保持不变。
+
+专属 PR #28 已创建并推送；产品版本和本地测试交付改动已在当前 PR 工作树，尚待提交/推送。主分支未更新；PR 保持 OPEN，未合并、未发布。真实 Codex 配置切换和 Owner 交互验收仍 `NOT_RUN`。

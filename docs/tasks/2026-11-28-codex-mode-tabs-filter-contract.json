@@ -3,7 +3,7 @@
   "project_id": "cx-routing-gateway",
   "repo_id": "aiaijei-cx-routing-gateway",
   "task_id": "CXRG-CODEX-MODE-TABS-FILTER-20261128",
-  "contract_revision": 5,
+  "contract_revision": 8,
   "contract_path": ".codex/codex-awg-task-contracts/CXRG-CODEX-MODE-TABS-FILTER-20261128.json",
   "archive_contract_path": "docs/tasks/2026-11-28-codex-mode-tabs-filter-contract.json",
   "project": "Cx-Routing Gateway",
@@ -30,8 +30,20 @@
     "apps/desktop/src/components/CodexGatewayPanel.tsx",
     "apps/desktop/src/components/CodexModelsPanel.tsx",
     "apps/desktop/src/styles/codex.css",
+    "apps/desktop/package.json",
+    "apps/desktop/package-lock.json",
+    "apps/desktop/electron-builder.yml",
+    "apps/desktop/src/pages/SettingsPage.test.tsx",
+    "scripts/verify-release.mjs",
+    "tests/runtime/release-manifest.test.mjs",
+    "apps/desktop/release/codex-mode-tabs-test-1.1.15",
+    "apps/desktop/release/codex-mode-tabs-test-1.1.15/**",
     "docs/tasks/2026-11-28-codex-mode-tabs-filter-contract.json",
     "docs/tasks/evidence/codex-mode-tabs-filter-20261128/**"
+  ],
+  "allowed_external_paths": [
+    "C:/Users/20142/Desktop/Cx-Routing Gateway Codex Mode Test 1.1.15",
+    "C:/Users/20142/Desktop/Cx-Routing Gateway Codex Mode Test 1.1.15/**"
   ],
   "authorization": {
     "implementation": true,
@@ -45,19 +57,31 @@
     "merge": false,
     "release": false,
     "github_release": false,
-    "version_bump": false,
-    "local_desktop_test_release": false,
+    "version_bump": true,
+    "local_desktop_test_release": true,
     "local_desktop_official_release": false,
-    "isolated_local_smoke": false,
+    "isolated_local_smoke": true,
     "sync_main_worktree": false,
     "delete": false
   },
-  "authorization_source": "Owner authorized a dedicated task contract and active task binding on 2026-11-28. The original request authorizes a dedicated PR. No merge, release, version change, or deletion is authorized.",
+  "authorization_source": "Owner authorized a dedicated task contract and active task binding on 2026-11-28, plus a 2026-11-28 follow-up to preserve existing data and publish a local Desktop test build. This follow-up authorizes only product version 1.1.15, one x64 Portable test copy in the unique allowed Desktop directory, a unique task output directory, and smoke testing with temporary userData/CODEX_HOME/ports. Do not stop the existing 1.1.14 process, copy or migrate user data, call providers, merge, publish GitHub, or delete existing files.",
   "design_gate": {
     "status": "APPROVED_BY_EXPLICIT_TASK_DIRECTIVE",
     "basis": "The Owner explicitly requested that switching mode tabs choose the running/enabled mode. Reuse the current confirmation flow so configuration changes still require confirmation."
   },
   "revision_history": [
+    {
+      "revision": 8,
+      "reason": "Record verified local 1.1.15 x64 Portable build, isolated Desktop smoke, artifact hash, and unchanged 1.1.14 executable/processes."
+    },
+    {
+      "revision": 7,
+      "reason": "Synchronize the authorized local-only x64 Portable delivery to PR/worktree contract copies, include the unique release directory itself in scope and verify data isolation."
+    },
+    {
+      "revision": 6,
+      "reason": "Owner authorized only an isolated x64 Portable test copy at 1.1.15 with separate new userData/CODEX_HOME and no data migration, provider call, merge, public release or cleanup."
+    },
     {
       "revision": 5,
       "reason": "Dedicated PR #28 opened from the authorized task branch; merge and release remain unauthorized."
@@ -89,11 +113,35 @@
     "Live Codex configuration, provider calls, deployment, and Owner runtime acceptance remain NOT_RUN unless separately verified."
   ],
   "implementation_result": "PASS: removed Gateway activation button, mode tabs use the existing confirmation flow, and shared family filtering is reused.",
-  "verification_result": "PASS: Desktop 358/358, focused page/status 50/50, isolated configuration/IPC/memory 34/34, production build, diff check, browser behavior and 1530/1024/390 visual checks.",
+  "verification_result": "PASS: Runtime 521/521; Desktop 358/358; SettingsPage 14/14; release manifest 3/3; production build; x64 Portable packaging; unpacked version smoke; isolated smoke of the Desktop copy; unsigned hash-verified 1.1.15 Desktop test delivery. Original 1.1.14 Portable hash and 5 running processes remained unchanged.",
   "independent_review": "PASS: read-only reviewer found no actionable defects; browser keyboard and pending-login coverage added after review.",
   "owner_acceptance": "NOT_RUN",
   "pull_request": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/28",
   "pull_request_state": "OPEN",
   "pull_request_initial_head_commit": "86ae94917d4a68861ccae19e86f37fbb584d5add",
+  "local_test_release": {
+    "version": "1.1.15",
+    "artifact": "Cx-Routing Gateway Portable 1.1.15.exe",
+    "desktop_directory": "C:/Users/20142/Desktop/Cx-Routing Gateway Codex Mode Test 1.1.15",
+    "isolation": "A launch wrapper sets CXRG_USER_DATA_DIR and CODEX_HOME to new subdirectories inside this test folder. Existing 1.1.14 files, processes and user data are not read, copied, changed, or removed.",
+    "status": "PASS",
+    "build_output": "apps/desktop/release/codex-mode-tabs-test-1.1.15",
+    "bytes": 115092322,
+    "sha256": "3082D5AB7E21DCBE900BAD6A90E5F975BBDF3E6747BCF52A1861EDA612CE0904",
+    "signature": "UNSIGNED: no signing certificate configured",
+    "manifest": "PASS: 11 unpacked/runtime/Portable artifacts",
+    "packaged_version_smoke": "PASS: 1.1.15",
+    "desktop_copy_smoke": "PASS: Local Control and Gateway health with temporary profile",
+    "desktop_copy_matches_build": true,
+    "launcher": "Launch Codex Mode Test.cmd",
+    "fresh_profile": "No original data is copied; on first user launch the wrapper creates isolated-user-data and isolated-codex-home with dynamic loopback ports.",
+    "original_1_1_14_portable_sha256_before_after": "D0C3B29920E38FF0866A0FB8FD873EF8926118D0D9A482F4CE74844C171A188D",
+    "original_1_1_14_portable_bytes": 115098062,
+    "original_1_1_14_running_processes_preserved": 5,
+    "provider_calls": "NOT_RUN",
+    "owner_interactive_acceptance": "NOT_RUN",
+    "github_release": false,
+    "merge": false
+  },
   "rollback": "Keep implementation isolated in the task worktree. Preserve the prior overview contract and binding snapshot. Do not merge, release, delete branches, or delete worktrees."
 }
