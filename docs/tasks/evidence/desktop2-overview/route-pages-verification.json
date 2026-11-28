@@ -195,7 +195,7 @@
     "awg_mcp_scope_check": "NOT_RUN (AWG tools unavailable in this turn)",
     "provider_calls": "NOT_RUN",
     "master_worktree_changed": false,
-    "commit_push_pr": "PENDING"
+    "commit_push_pr": "PASS_DRAFT_PR_OPEN"
   },
   "commit": "0d42e8a9a8204a0d49843ccc7f4f6a1319c66b95",
   "pull_request": {
@@ -214,5 +214,6 @@
     "interpretation": "Skipped review; not a pass",
     "submittedReviews": 0,
     "comments": 0
-  }
+  },
+  "latestCommit": "3ca28d5d600986d3cc9f0b7e7fb3aadf215bf6f6"
 }
