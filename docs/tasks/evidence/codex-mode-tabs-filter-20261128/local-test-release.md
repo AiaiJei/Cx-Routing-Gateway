@@ -30,4 +30,4 @@
 
 - 用户目录：`C:\Users\20142\Desktop\Cx-Routing Gateway Codex Mode Test 1.1.15\`。
 - 用户手动双击 `Launch Codex Mode Test.cmd` 后才会创建 `isolated-user-data/` 和 `isolated-codex-home/`。
-- PR #28 保持 OPEN；版本与验收更新位于专属 PR 分支，尚未推送该轮版本提交。
+- PR #28 当前保持 OPEN；1.1.15 版本与本地测试交付改动已提交至 `829d9be` 并推送。主分支未更新，未合并或发布 GitHub Release。
