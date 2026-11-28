@@ -141,8 +141,9 @@
   "independent_review_followup": "NOT_RUN: no GitHub review submitted; Devin Review check explicitly states full review skipped due expired trial and no credits. Its green status is not an independent review.",
   "owner_acceptance": "NOT_RUN",
   "pull_request": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/28",
-  "pull_request_state": "OPEN",
+  "pull_request_state": "MERGED",
   "pull_request_initial_head_commit": "86ae94917d4a68861ccae19e86f37fbb584d5add",
+  "pull_request_merge_commit": "5d5940f208be71d93444a9c498a112ea554733f4",
   "local_test_release": {
     "version": "1.1.15",
     "artifact": "Cx-Routing Gateway Portable 1.1.15.exe",
@@ -192,7 +193,11 @@
   },
   "official_release_candidate": {
     "version": "1.1.15",
-    "status": "BUILD_AND_SMOKE_PASS_NOT_YET_PUBLISHED",
+    "status": "PUBLISHED",
+    "tag": "v1.1.15",
+    "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/releases/tag/v1.1.15",
+    "published_at": "2026-11-28T10:03:25Z",
+    "target_commit": "5d5940f208be71d93444a9c498a112ea554733f4",
     "build_output": "apps/desktop/release/github-v1.1.15",
     "manifest_sha256": "5f1586177d2d47bb5b470ccca42760ba7abd1546d880ca1d407d095f9232c92e",
     "signed": false,
@@ -217,7 +222,7 @@
     "isolated_portable_health_smoke": "PASS",
     "provider_calls": "NOT_RUN",
     "owner_acceptance": "NOT_RUN",
-    "published": false
+    "published": true
   },
   "rollback": "If tests or required checks fail, stop before merge or release and retain the task worktree. Preserve user data, existing untracked files, both local Desktop test copies/processes, and all release output; do not force-push, overwrite, or delete anything."
 }
