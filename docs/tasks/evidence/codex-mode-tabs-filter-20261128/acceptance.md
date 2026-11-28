@@ -6,7 +6,7 @@
 - 任务 `CXRG-CODEX-MODE-TABS-FILTER-20261128`；合同 revision 10。
 - 分支 `codex/codex-mode-tabs-filter-20261128`；工作树 `.tmp/worktrees/codex-mode-tabs-filter-20261128`。
 - 基线 `master@ad8fd690d800c299bb145f73962b6982c36e2df1`。不合并、不发布 GitHub Release、不删除工作树，不修改真实 Codex 配置或密钥。
-- 专属 PR #28：`https://github.com/AiaiJei/Cx-Routing-Gateway/pull/28`，当前 OPEN，初次 PR head `86ae94917d4a68861ccae19e86f37fbb584d5add`。最新源码提交未合并。
+- 专属 PR #28：`https://github.com/AiaiJei/Cx-Routing-Gateway/pull/28`，当前 OPEN，最新 head `342e227fee8286e25def5e4ec02a60dad0557cf8`。未合并；GitHub 当前未报告检查项。
 - Owner 已授权独立合同、活动绑定与专属 PR。原总览任务绑定在主工作树本地档案保留，SHA-256 `6465F499A368EFC5574B01ED57E798E7ABA3859199516A424A7FCB09DD92C838`；总览合同、历史证据和 PR #27 未改。
 
 ## 需求与证据
@@ -58,4 +58,4 @@
 
 源码实现、本地测试、隔离浏览器验证与 1.1.15.1 x64 Portable 桌面烟测 `PASS`。新版位于 `C:\Users\20142\Desktop\Cx-Routing Gateway Codex Mode Test 1.1.15.1\`，SHA-256 `08A88C632B5A7C9EC54FE9F6DDC1C8028D3D7539ABCB3657C488F2C383FD6332`；详见 `local-test-release-1.1.15.1.md`。原 1.1.15 目录、文件与运行进程均未替换或停止。官方 1.1.14 文件 SHA-256 与基线一致；五个基线进程最终复核时均已不运行，且不是由本任务停止。
 
-专属 PR #28 的状态按钮修正和版本更新已提交并推送；PR 仍 OPEN。GitHub 的 Devin Review 实际说明为额度耗尽、完整审查跳过；没有有效独立审查，状态为 `NOT_RUN`。主分支未更新、PR 未合并、GitHub Release 未发布。真实 Codex 配置切换、提供商请求和 Owner 交互验收仍 `NOT_RUN`。
+专属 PR #28 的状态按钮修正和 1.1.15.1 版本更新已提交至 `342e227` 并推送；PR 仍 OPEN。有效独立审查、真实 Codex 配置切换、提供商请求和 Owner 交互验收均为 `NOT_RUN`。主分支未更新、PR 未合并、GitHub Release 未发布。
