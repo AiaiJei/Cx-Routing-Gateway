@@ -1,0 +1,12 @@
+
+> @cx-routing-gateway/desktop-ui@1.1.15 test
+> vitest run
+
+
+ RUN  v4.1.12 C:/Users/20142/Desktop/Cx-Routing Gateway/.tmp/worktrees/desktop2-overview/apps/desktop
+
+
+ Test Files  43 passed (43)
+      Tests  374 passed (374)
+   Start at  01:02:22
+   Duration  17.70s (transform 10.73s, setup 15.06s, import 17.07s, tests 79.05s, environment 39.63s)

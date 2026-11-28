@@ -1,0 +1,7 @@
+Desktop command: npm test
+Result: Test Files 43 passed (43); Tests 374 passed (374).
+Focused routes: 6 files; 106 tests passed.
+Runtime command: repository-root npm test
+Result: 531 passed; 0 failed.
+Build command: apps/desktop npm run build
+Result: TypeScript and Vite production build passed.

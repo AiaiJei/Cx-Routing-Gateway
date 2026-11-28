@@ -48,13 +48,13 @@ export function LogsPage() {
     }
   }
   if (loading) return <WorkspaceState title="请求日志" loading={loading} error={error} />;
-  if (error) return <div className="page-content">
+  if (error) return <div className="page-content desktop2-page desktop2-logs">
     <PageHeader title="请求日志" description="查看请求摘要、Token 用量与响应耗时。" action={headerActions} />
     <div className="workspace-error" role="alert"><p>请求日志读取失败：{error}</p><p className="helper-text">将自动重试，也可点击刷新。</p></div>
   </div>;
 
   return (
-    <div className="page-content">
+    <div className="page-content desktop2-page desktop2-logs">
       <PageHeader title="请求日志" description="查看请求摘要、Token 用量与响应耗时。" action={headerActions} />
       {refreshError && <p className="action-feedback" role="alert">刷新失败：{refreshError}。当前保留上次读取的日志，将自动重试。</p>}
       {clearFeedback && <p className="action-feedback" role="status">{clearFeedback}</p>}

@@ -27,33 +27,50 @@ describe("OverviewPage", () => {
   beforeEach(() => { vi.spyOn(Date, "now").mockReturnValue(new Date(2026, 10, 18, 12).getTime()); workspaceHook.mockReturnValue(defaultWorkspaceState); });
   afterEach(() => vi.restoreAllMocks());
 
-  it("places large purpose icons before primary numbers and quiet captions", async () => {
+  it("keeps both charts and provides shared overview controls above the analysis", async () => {
     render(<MemoryRouter><OverviewPage /></MemoryRouter>);
     expect(await screen.findByText("示例数据 · 非实时")).toBeVisible();
+    const controls = screen.getByRole("group", { name: "总览操作" });
+    expect(within(controls).getByRole("combobox", { name: "统计范围" })).toBeVisible();
+    expect(within(controls).getByRole("button", { name: "刷新数据" })).toBeEnabled();
+    expect(screen.getByRole("img", { name: /请求趋势图，共 3 条/ })).toBeVisible();
+    expect(screen.getByRole("img", { name: "模型调用分布图" })).toHaveAttribute("data-total", "3");
+    const side = screen.getByRole("complementary", { name: "Gateway 状态与异常" });
+    expect(within(side).getByRole("region", { name: "本机 Gateway" })).toHaveTextContent("运行时未接入");
+    expect(within(side).getByRole("region", { name: "Token 构成" })).toBeVisible();
+  });
 
-    const gateway = screen.getByRole("region", { name: "本机 Gateway" });
-    expect(gateway.querySelector(".overview-icon")).toHaveAttribute("data-size", "48");
-    expect(gateway.querySelector(".overview-status__state")).toHaveTextContent("运行时未接入");
+  it("builds token composition only from requests with both input and output reported", () => {
+    workspaceHook.mockReturnValue({ ...defaultWorkspaceState, data: { ...workspaceFixtures, logs: [
+      { ...workspaceFixtures.logs[0], id: "paired", tokens: { input: 100, output: 20 } },
+      { ...workspaceFixtures.logs[0], id: "input-only", tokens: { input: 50 } },
+      { ...workspaceFixtures.logs[0], id: "output-only", tokens: { output: 40 } },
+    ] } });
+    render(<MemoryRouter><OverviewPage /></MemoryRouter>);
+    const tokens = screen.getByRole("region", { name: "Token 构成" });
+    expect(within(tokens).getByRole("img", { name: /1 \/ 3 条请求.*输入 100.*输出 20/ })).toBeVisible();
+    expect(tokens).toHaveTextContent("150");
+    expect(tokens).toHaveTextContent("60");
+    expect(tokens).toHaveTextContent("输入和输出均已上报");
+  });
 
-    const upstream = screen.getByRole("region", { name: "上游最近检查" });
-    expect(upstream.querySelector(".overview-icon")).toHaveAttribute("data-size", "48");
-    expect(upstream.querySelector(".overview-status__count")).toHaveTextContent("2");
-
-    const route = screen.getByRole("group", { name: "模型路由" });
-    expect(route.querySelector(".overview-icon")).toHaveAttribute("data-size", "40");
-    expect(route.querySelector(".overview-status__count")).toHaveTextContent("2 / 2");
-    expect(route.querySelector(".overview-status__caption")).toHaveTextContent("已启用");
-
-    const requestMetric = screen.getByRole("group", { name: "调用总数" });
-    const icon = requestMetric.querySelector(".overview-icon");
-    const value = requestMetric.querySelector(".overview-metric__value");
-    const caption = requestMetric.querySelector(".overview-metric__caption");
-
-    expect(icon).toHaveAttribute("data-size", "40");
-    expect(value).toHaveTextContent("3");
-    expect(caption).toHaveTextContent("调用总数");
-    expect(icon!.compareDocumentPosition(value!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(value!.compareDocumentPosition(caption!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  it("distinguishes missing token composition from explicitly reported zero values", () => {
+    const { rerender } = render(<MemoryRouter><OverviewPage /></MemoryRouter>);
+    workspaceHook.mockReturnValue({ ...defaultWorkspaceState, data: { ...workspaceFixtures, logs: [
+      { ...workspaceFixtures.logs[0], tokens: undefined },
+    ] } });
+    rerender(<MemoryRouter><OverviewPage /></MemoryRouter>);
+    let tokens = screen.getByRole("region", { name: "Token 构成" });
+    expect(within(tokens).queryByRole("img")).not.toBeInTheDocument();
+    expect(tokens).toHaveTextContent("未上报完整输入和输出");
+    workspaceHook.mockReturnValue({ ...defaultWorkspaceState, data: { ...workspaceFixtures, logs: [
+      { ...workspaceFixtures.logs[0], tokens: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+    ] } });
+    rerender(<MemoryRouter><OverviewPage /></MemoryRouter>);
+    tokens = screen.getByRole("region", { name: "Token 构成" });
+    expect(within(tokens).queryByRole("img")).not.toBeInTheDocument();
+    expect(tokens).toHaveTextContent("已上报用量为 0");
+    expect(tokens).not.toHaveTextContent("未上报完整输入和输出");
   });
 
   it("shows truthful fixture status, retained summaries, recent failures and activity", async () => {

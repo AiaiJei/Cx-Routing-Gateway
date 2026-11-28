@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "project_id": "cx-routing-gateway",
+  "repo_id": "aiaijei-cx-routing-gateway",
+  "task_id": "CXRG-DESKTOP2-OVERVIEW",
+  "contract_revision": 2,
+  "contract_path": ".codex/codex-awg-task-contracts/CXRG-DESKTOP2-OVERVIEW.json",
+  "archive_contract_path": "docs/tasks/desktop2-overview-contract.json",
+  "project": "Cx-Routing Gateway",
+  "repository": "AiaiJei/Cx-Routing-Gateway",
+  "state": "active",
+  "branch": "codex/desktop2-overview",
+  "worktree_directory": ".tmp/worktrees",
+  "worktree": ".tmp/worktrees/desktop2-overview",
+  "base_commit": "c7d1e73933891b1cc84af2cd9af25e74a394524d",
+  "base_branch": "master",
+  "pull_request_base_branch": "master",
+  "previous_completed_task": {
+    "task_id": "CXRG-UPSTREAM-USAGE-DIAGNOSTICS-20261128",
+    "contract_path": ".codex/codex-awg-task-contracts/CXRG-UPSTREAM-USAGE-DIAGNOSTICS-20261128.json",
+    "contract_revision": 4,
+    "state": "completed"
+  },
+  "scope_paths": [
+    ".codex/awg-task.json",
+    ".codex/codex-awg-task-contracts/CXRG-DESKTOP2-OVERVIEW.json",
+    ".codex/codex-awg-task-contracts/CXRG-DESKTOP2-OVERVIEW-owner-authorization.jsonl",
+    ".tmp/worktrees/desktop2-overview",
+    ".tmp/worktrees/desktop2-overview/**",
+    "apps/desktop/src/pages/OverviewPage.tsx",
+    "apps/desktop/src/pages/OverviewPage.test.tsx",
+    "apps/desktop/src/components/Overview*.tsx",
+    "apps/desktop/src/domain/overview-token-composition.ts",
+    "apps/desktop/src/domain/overview-token-composition.test.ts",
+    "apps/desktop/src/styles/overview.css",
+    "apps/desktop/src/styles/overview-desktop2.css",
+    "docs/tasks/desktop2-overview-contract.json",
+    "docs/tasks/desktop2-overview-plan.md",
+    "docs/tasks/evidence/desktop2-overview/**",
+    "apps/desktop/src/main.tsx",
+    "apps/desktop/src/pages/UpstreamsPage.tsx",
+    "apps/desktop/src/pages/UpstreamsPage.test.tsx",
+    "apps/desktop/src/pages/RoutesPage.tsx",
+    "apps/desktop/src/pages/RoutesPage.test.tsx",
+    "apps/desktop/src/pages/CredentialsPage.tsx",
+    "apps/desktop/src/pages/CredentialsPage.test.tsx",
+    "apps/desktop/src/pages/LogsPage.tsx",
+    "apps/desktop/src/pages/LogsPage.test.tsx",
+    "apps/desktop/src/pages/CodexPage.tsx",
+    "apps/desktop/src/pages/CodexPage.test.tsx",
+    "apps/desktop/src/pages/SettingsPage.tsx",
+    "apps/desktop/src/pages/SettingsPage.test.tsx",
+    "apps/desktop/src/styles/desktop2-routes.css"
+  ],
+  "allowed_external_paths": [],
+  "authorization": {
+    "implementation": true,
+    "evidence_append": true,
+    "create_worktree": true,
+    "local_tests": true,
+    "local_build": true,
+    "isolated_local_smoke": true,
+    "commit": true,
+    "push": true,
+    "pull_request": true,
+    "merge": false,
+    "release": false,
+    "github_release": false,
+    "version_bump": false,
+    "local_desktop_test_release": false,
+    "local_desktop_official_release": false,
+    "sync_main_worktree": false,
+    "delete": false
+  },
+  "authorization_source": "Owner requested a dedicated PR, required visual approval before creating the implementation contract and PR, confirmed the polished overview direction, and explicitly instructed: 确认，执行。 This authorizes the approved overview implementation, isolated repository-local worktree, scoped tests/build/browser validation, independent review, commit/push and a dedicated PR. It does not authorize merging, publishing, version bumps, portable packaging, replacing running Desktop processes or modifying user data. Owner later approved extending the same Desktop 2.0 work to the remaining six routes in the current chat (2026-11-29: 同意；), with the visual direction and constraints shown in this revision.",
+  "design_gate": {
+    "status": "APPROVED_BY_OWNER",
+    "artifact": "desktop-2.0-polished.jpg",
+    "artifact_source": "C:/Users/20142/.codex/visualizations/2026/11/28/01a221f1-cebc-7ed1-9edc-3129d6256853/charts-redesign/desktop-2.0-polished.jpg",
+    "sha256": "8b1e3ff76b5b2cbac2b03cbfdb7f18dfee8c7ce3825e788654894ddf690cff8b",
+    "constraints": [
+      "Keep original left navigation component, geometry, groups and icons unchanged.",
+      "Use real 24h trend and model ring components, retain model selection and unknown/zero distinctions.",
+      "Use live workspace data, existing local-day/24h/retained range semantics and refresh/error handling. Do not carry fixed prototype values or a fixture replay clock into production.",
+      "Owner approved the remaining six route pages on 2026-11-29; preserve the original left navigation and breadcrumb shell, apply the approved Desktop 2.0 visual direction per route, and keep existing behavior and data semantics."
+    ]
+  },
+  "acceptance_criteria": [
+    "Approved main analysis/right status column composition implemented with scoped styling.",
+    "Both charts and model selection remain accessible and functional; original navigation and unrelated screens are unchanged.",
+    "Live state, freshness/errors and credentials remain truthful; missing usage is never fabricated as zero.",
+    "Token composition has explicit same-record input/output coverage, handles zero, missing, partial and overflow safely, and does not double count cache.",
+    "Focused regressions, full Desktop tests and production build pass; browser comparisons cover wide/narrow layouts and runtime/fixture differences are recorded.",
+    "Dedicated PR contains only this batch and its contract/plan/evidence; no merge or release.",
+    "All six remaining routes (Upstreams, Routes, Credentials, Logs, Codex, Settings) receive route-specific Desktop 2.0 layout and typography while preserving existing actions, validation, states and data semantics.",
+    "The original sidebar, navigation groups/icons/order, breadcrumb shell, live/fixture labeling, credential masking and protocol meanings remain unchanged.",
+    "All six routes render without horizontal overflow or clipped controls at 1600, 1440, 1024 and 390px; loading, empty, success and failure states remain legible."
+  ],
+  "verification_plan": [
+    "Run baseline focused Overview tests before product changes.",
+    "Write focused failing tests for new Token composition and sidebar copy/failure behavior, then implement.",
+    "Run scoped Overview/domain tests, full Desktop tests, production build and runtime regression suite.",
+    "Inspect actual built frontend at 1600/1440/1024 widths plus a narrow view, compare the unchanged sidebar with source baseline and the approved reference.",
+    "Obtain an independent read-only review, address findings, inspect diff/whitespace, commit/push and open a dedicated PR.",
+    "Run existing focused tests for UpstreamsPage, RoutesPage, CredentialsPage, LogsPage, CodexPage and SettingsPage; then full Desktop tests and production build.",
+    "Inspect real browser renders for all six routes at 1600, 1440, 1024 and 390px, exercise representative existing controls, and record screenshots plus console/overflow results."
+  ],
+  "roles": {
+    "implementation": "Current agent integrates the approved overview and verifies evidence.",
+    "review": "Independent reviewer subagent performs read-only diff/data-safety/regression review.",
+    "owner": "Approves final product acceptance and any later merge/release."
+  },
+  "rollback": "Revert only task commits or close this PR. Preserve master, all other worktrees/PRs, pre-existing untracked files, running applications and user data.",
+  "status": {
+    "implementation": "PASS",
+    "verification": "PASS",
+    "independent_review": "NOT_RUN",
+    "owner_acceptance": "PENDING_OWNER_ACCEPTANCE",
+    "runtime_tests": "PASS",
+    "browser_layout": "PASS",
+    "awg_scope_check": "NOT_RUN",
+    "live_runtime": "NOT_RUN"
+  },
+  "revision_history": [
+    {
+      "revision": 2,
+      "date": "2026-11-29",
+      "reason": "Owner approved extending the approved Desktop 2.0 overview batch to the remaining six routes (Upstreams, Routes, Credentials, Logs, Codex, Settings) in the current chat on 2026-11-29. Preserve the approved sidebar, breadcrumb and visual direction; change presentation only, keep existing actions, data/API semantics and honest fixture/live states. Verify each route at 1600/1440/1024/390 widths, run Desktop tests/build and browser checks. Existing commit/push/dedicated-PR authorization continues; merge, release, version changes, packaging, deletion and Desktop data/process changes remain unauthorized."
+    }
+  ],
+  "acceptance_result": "PARTIAL",
+  "verification_evidence": "docs/tasks/evidence/desktop2-overview/route-pages-verification.json"
+}

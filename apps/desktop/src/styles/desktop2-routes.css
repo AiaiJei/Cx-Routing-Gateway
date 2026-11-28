@@ -1,0 +1,187 @@
+/* Desktop 2.0 route refinements. Every rule is scoped to one route; the shared shell stays unchanged. */
+.desktop2-page { gap: 24px; }
+.desktop2-page > .fixture-notice { padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.desktop2-page .page-header { align-items: center; }
+.desktop2-page .page-header .page-description { max-width: 62ch; }
+
+/* Upstreams: give connection and credential state a clear scan line. */
+.desktop2-upstreams .toolbar {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  border-block: 1px solid var(--border);
+  background: var(--raised);
+}
+.desktop2-upstreams .toolbar .search-field { width: min(100%, 460px); background: var(--surface); }
+.desktop2-upstreams .result-count { color: var(--text); font-size: 13px; }
+.desktop2-upstreams .upstreams-table { min-width: 840px; }
+.desktop2-upstreams .upstreams-table th { height: 40px; }
+.desktop2-upstreams .upstreams-table td { height: 78px; }
+.desktop2-upstreams .upstreams-table td:first-child strong { font-size: 14px; }
+.desktop2-upstreams .upstreams-table .url-cell { overflow-wrap: anywhere; }
+.desktop2-upstreams .status-badge { min-height: 24px; padding-inline: 9px; }
+.desktop2-upstreams .table-actions { min-width: 176px; gap: 6px; }
+.desktop2-upstreams .page-footnote { max-width: 78ch; }
+
+/* Routes: the protocol columns read left-to-right as one mapping. */
+.desktop2-routes { gap: 24px; }
+.desktop2-routes .route-list-section { gap: 14px; }
+.desktop2-routes .route-list-section > .section-heading {
+  align-items: baseline;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.desktop2-routes .route-list-section .section-title { font-size: 16px; }
+.desktop2-routes .route-list-section .result-count { margin-left: 12px; }
+.desktop2-routes .model-family-filter { gap: 6px; }
+.desktop2-routes .model-family-button { min-height: 34px; padding-inline: 12px; }
+.desktop2-routes .routes-table { min-width: 1020px; }
+.desktop2-routes .routes-table.has-actions { min-width: 1120px; }
+.desktop2-routes .routes-table th { height: 42px; text-align: center; }
+.desktop2-routes .routes-table th:first-child,
+.desktop2-routes .routes-table td:first-child,
+.desktop2-routes .routes-table th:nth-child(3),
+.desktop2-routes .routes-table td:nth-child(3) { text-align: left; }
+.desktop2-routes .routes-table td:nth-child(2),
+.desktop2-routes .routes-table td:nth-child(4),
+.desktop2-routes .routes-table td:nth-child(5) { vertical-align: middle; text-align: center; }
+.desktop2-routes .routes-table td:nth-child(3) { border-inline: 1px solid var(--border); }
+.desktop2-routes .route-model-name { overflow-wrap: anywhere; }
+.desktop2-routes .route-state-cell { vertical-align: middle !important; }
+.desktop2-routes .route-list-section .table-scroll { border-top: 0; }
+.desktop2-routes .protocol-explanation { padding-top: 8px; }
+.desktop2-routes .protocol-path { border: 1px solid var(--border); background: var(--raised); }
+
+/* Credentials: keep the masked value and its lifecycle status easy to find. */
+.desktop2-credentials > [role="note"] { margin-top: -8px; }
+.desktop2-credentials .credential-scope { width: min(560px, 100%); padding-block: 4px 12px; }
+.desktop2-credentials .credentials-table { min-width: 1060px; }
+.desktop2-credentials .credentials-table th { height: 42px; }
+.desktop2-credentials .credentials-table td { height: 72px; }
+.desktop2-credentials .credentials-table td:nth-child(2) code { font-size: 12px; letter-spacing: .01em; }
+.desktop2-credentials .credentials-table td:first-child strong { font-size: 14px; }
+.desktop2-credentials .credentials-table td:nth-child(3) { color: var(--muted); }
+.desktop2-credentials .credential-endpoint {
+  grid-template-columns: minmax(130px, 190px) minmax(0, 1fr);
+  align-items: center;
+  gap: 6px 20px;
+  margin-top: 0;
+  padding: 18px 0;
+  border-top: 1px solid var(--border);
+}
+.desktop2-credentials .credential-endpoint .field-label { grid-row: span 2; color: var(--text); font-size: 13px; font-weight: 500; }
+.desktop2-credentials .credential-endpoint code { max-width: 100%; overflow-wrap: anywhere; }
+.desktop2-credentials .credential-endpoint .helper-text { grid-column: 2; margin: 0; }
+
+/* Logs: align search and filters, keep the table readable at its natural density. */
+.desktop2-logs .request-logs-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-block: 1px solid var(--border);
+  background: var(--raised);
+}
+.desktop2-logs .request-logs-toolbar .search-field { width: 100%; background: var(--surface); }
+.desktop2-logs .request-logs-toolbar .result-count { grid-column: 1 / -1; grid-row: 2; justify-self: end; }
+.desktop2-logs .logs-table { min-width: 1120px; }
+.desktop2-logs .logs-table .log-col-time { width: 12.5%; }
+.desktop2-logs .logs-table .log-col-model { width: 13.5%; }
+.desktop2-logs .logs-table .log-col-source { width: 10.5%; }
+.desktop2-logs .logs-table .log-col-reasoning { width: 7.5%; }
+.desktop2-logs .logs-table .log-col-tokens { width: 15%; }
+.desktop2-logs .logs-table .log-col-duration { width: 9.5%; }
+.desktop2-logs .logs-table .log-col-actions { width: 6%; }
+.desktop2-logs .token-facts { min-width: 0; }
+.desktop2-logs .token-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 6px; font-size: 12px; }
+.desktop2-logs .token-value { gap: 3px; }
+.desktop2-logs .logs-table thead { background: var(--ground); }
+.desktop2-logs .logs-table th,
+.desktop2-logs .logs-table td { padding-inline: 8px; }
+.desktop2-logs .logs-table th { height: 42px; position: sticky; top: 0; z-index: 1; background: var(--ground); }
+.desktop2-logs .logs-table td { height: 76px; }
+.desktop2-logs .logs-table th:last-child,
+.desktop2-logs .logs-table td:last-child { position: sticky; right: 0; z-index: 2; background: var(--surface); box-shadow: -1px 0 var(--border); }
+.desktop2-logs .logs-table .log-model { max-width: 200px; overflow-wrap: anywhere; font-weight: 500; }
+.desktop2-logs .logs-table .log-status { font-weight: 500; }
+.desktop2-logs .page-footnote { max-width: 100ch; }
+
+/* Codex: strengthen the configuration workspace without changing mode controls. */
+.desktop2-codex .codex-tabs { margin-top: 2px; }
+.desktop2-codex [role="tabpanel"] { padding-top: 20px; }
+.desktop2-codex .codex-section { padding-block: 18px; border-bottom: 1px solid var(--border); }
+.desktop2-codex .codex-section h2 { margin-bottom: 6px; }
+.desktop2-codex .codex-section-heading { align-items: flex-start; }
+.desktop2-codex .codex-page pre { max-width: 100%; overflow-x: auto; }
+.desktop2-codex .codex-footer { padding-top: 10px; }
+
+/* Settings: separate groups by heading and rule, keeping editable rows together. */
+.desktop2-settings .settings-section { gap: 12px; }
+.desktop2-settings .settings-section + .settings-section { margin-top: 18px; }
+.desktop2-settings .settings-section > .section-title,
+.desktop2-settings > .page-section > .section-title {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 16px;
+}
+.desktop2-settings .settings-list { border-top: 0; }
+.desktop2-settings .setting-row { min-height: 76px; padding-block: 16px; }
+.desktop2-settings .settings-update { padding-block: 16px; }
+.desktop2-settings > .page-section { margin-top: 12px; }
+
+@media (max-width: 1100px) {
+  .desktop2-page .page-header { align-items: flex-start; }
+  .desktop2-logs .request-logs-toolbar { grid-template-columns: minmax(200px, 1fr) auto auto; }
+  .desktop2-logs .request-logs-toolbar .result-count { grid-column: 1 / -1; }
+  .desktop2-credentials .credential-endpoint { grid-template-columns: 150px minmax(0, 1fr); }
+}
+
+@media (max-width: 760px) {
+  .desktop2-page { gap: 20px; }
+  .desktop2-page .page-header { flex-wrap: wrap; gap: 14px; }
+  .desktop2-page .page-header > .geist-button,
+  .desktop2-page .page-header-actions { margin-left: auto; }
+  .desktop2-upstreams .toolbar { grid-template-columns: minmax(0, 1fr) auto; padding-inline: 10px; }
+  .desktop2-logs .request-logs-toolbar { grid-template-columns: minmax(0, 1fr); }
+  .desktop2-logs .request-logs-toolbar .search-field,
+  .desktop2-logs .request-logs-toolbar .segmented-control { width: 100%; }
+  .desktop2-logs .request-logs-toolbar .segmented-control { justify-content: space-between; }
+  .desktop2-logs .request-logs-toolbar .segment-button { flex: 1; min-width: 0; padding-inline: 8px; }
+  .desktop2-logs .request-logs-toolbar .result-count { grid-column: 1; grid-row: auto; justify-self: end; }
+  .desktop2-credentials .credential-endpoint { grid-template-columns: minmax(0, 1fr); gap: 7px; }
+  .desktop2-credentials .credential-endpoint .field-label { grid-row: auto; }
+  .desktop2-credentials .credential-endpoint .helper-text { grid-column: 1; }
+  .desktop2-settings .setting-row,
+  .desktop2-settings .setting-row-editable { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+}
+
+@media (max-width: 600px) {
+  .desktop2-page { gap: 18px; }
+  .desktop2-page .page-header { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .desktop2-page .page-header > .geist-button,
+  .desktop2-page .page-header-actions { margin-left: 0; justify-self: start; }
+  .desktop2-upstreams .toolbar { grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 10px 0; }
+  .desktop2-upstreams .toolbar .search-field { min-width: 0; }
+  .desktop2-upstreams .upstreams-table .table-actions { justify-content: flex-start; min-width: 156px; }
+  .desktop2-upstreams .upstreams-table th:last-child,
+  .desktop2-upstreams .upstreams-table td:last-child,
+  .desktop2-credentials .credentials-table th:last-child,
+  .desktop2-credentials .credentials-table td:last-child,
+  .desktop2-logs .logs-table th:last-child,
+  .desktop2-logs .logs-table td:last-child { position: sticky; right: 0; z-index: 2; background: var(--surface); box-shadow: -1px 0 var(--border); }
+  .desktop2-logs .logs-table th:last-child { z-index: 4; }
+  .desktop2-logs .logs-table th:first-child,
+  .desktop2-logs .logs-table td:first-child { z-index: 3; }
+  .desktop2-routes .route-list-section > .section-heading { align-items: flex-start; flex-direction: column; }
+  .desktop2-routes .route-list-section .result-count { margin-left: 8px; }
+  .desktop2-routes .model-family-filter { overflow-x: auto; flex-wrap: nowrap; padding-block: 3px 8px; }
+  .desktop2-routes .model-family-button { flex: 0 0 auto; }
+  .desktop2-routes .protocol-path { padding: 16px; }
+  .desktop2-credentials .credentials-table { min-width: 940px; }
+  .desktop2-logs .logs-table { min-width: 1180px; }
+  .desktop2-codex .codex-section { padding-block: 14px; }
+  .desktop2-settings .setting-row { padding-block: 14px; }
+}

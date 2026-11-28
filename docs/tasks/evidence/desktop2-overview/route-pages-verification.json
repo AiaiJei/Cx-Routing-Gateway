@@ -1,0 +1,200 @@
+{
+  "schema_version": 1,
+  "task_id": "CXRG-DESKTOP2-OVERVIEW",
+  "contract_revision": 2,
+  "recorded_at": "2026-11-28T19:47:08.767Z",
+  "implementation": {
+    "status": "PASS",
+    "routes": [
+      "Upstreams",
+      "Routes",
+      "Credentials",
+      "Logs",
+      "Codex",
+      "Settings"
+    ],
+    "presentationOnly": true,
+    "apiOrPersistenceChanges": false
+  },
+  "tests": {
+    "focused": "PASS",
+    "focused_command": "npm test -- src/pages/UpstreamsPage.test.tsx src/pages/RoutesPage.test.tsx src/pages/CredentialsPage.test.tsx src/pages/LogsPage.test.tsx src/pages/CodexPage.test.tsx src/pages/SettingsPage.test.tsx",
+    "focused_files": 6,
+    "focused_tests_passed": 106,
+    "desktop": "PASS",
+    "desktop_command": "npm test (apps/desktop)",
+    "desktop_files": 43,
+    "desktop_tests_passed": 374,
+    "runtime": "PASS",
+    "runtime_command": "npm test (repository root)",
+    "runtime_tests_passed": 531,
+    "build": "PASS",
+    "build_command": "npm run build (apps/desktop)"
+  },
+  "browser": {
+    "status": "PASS",
+    "server": "Vite local preview at http://127.0.0.1:48623",
+    "runtime_mode": "fixture preview; live Desktop/Gateway runtime NOT_RUN",
+    "routes": [
+      "upstreams",
+      "routes",
+      "credentials",
+      "logs",
+      "codex",
+      "settings"
+    ],
+    "viewports": [
+      1600,
+      1440,
+      1024,
+      390
+    ],
+    "route_viewport_pairs": 24,
+    "page_level_horizontal_overflow_pairs": 0,
+    "console_errors": 0,
+    "actions": {
+      "upstreams": "add preview dialog opened and closed",
+      "routes": "model-family filter exercised; fixture displayed 2 rows",
+      "credentials": "demo action returned no-secret feedback; all displayed credentials remained masked",
+      "logs": "request-detail dialog opened; action remained visible at 1440px and 390px",
+      "codex": "both mode tabs present",
+      "settings": "rendered and inspected; update network action not invoked"
+    },
+    "screenshots": {
+      "captured_in_browser_tool_output": true,
+      "saved_to_repository": false,
+      "reason": "The available browser-control API displayed screenshots but did not expose a local file-write operation."
+    },
+    "route_viewport_matrix": [
+      {
+        "route": "upstreams",
+        "width": 1600,
+        "page_level_overflow": "PASS"
+      },
+      {
+        "route": "routes",
+        "width": 1600,
+        "page_level_overflow": "PASS"
+      },
+      {
+        "route": "credentials",
+        "width": 1600,
+        "page_level_overflow": "PASS"
+      },
+      {
+        "route": "logs",
+        "width": 1600,
+        "page_level_overflow": "PASS"
+      },
+      {
+        "route": "codex",
+        "width": 1600,
+        "page_level_overflow": "PASS"
+      },
+      {
+        "route": "settings",
+        "width": 1600,
+        "page_level_overflow": "PASS"
+      },
+      {
+        "route": "upstreams",
+        "width": 1440,
+        "page_level_overflow": "PASS"
+      },
+      {
+        "route": "routes",
+        "width": 1440,
+        "page_level_overflow": "PASS"
+      },
+      {
+        "route": "credentials",
+        "width": 1440,
+        "page_level_overflow": "PASS"
+      },
+      {
+        "route": "logs",
+        "width": 1440,
+        "page_level_overflow": "PASS"
+      },
+      {
+        "route": "codex",
+        "width": 1440,
+        "page_level_overflow": "PASS"
+      },
+      {
+        "route": "settings",
+        "width": 1440,
+        "page_level_overflow": "PASS"
+      },
+      {
+        "route": "upstreams",
+        "width": 1024,
+        "page_level_overflow": "PASS"
+      },
+      {
+        "route": "routes",
+        "width": 1024,
+        "page_level_overflow": "PASS"
+      },
+      {
+        "route": "credentials",
+        "width": 1024,
+        "page_level_overflow": "PASS"
+      },
+      {
+        "route": "logs",
+        "width": 1024,
+        "page_level_overflow": "PASS"
+      },
+      {
+        "route": "codex",
+        "width": 1024,
+        "page_level_overflow": "PASS"
+      },
+      {
+        "route": "settings",
+        "width": 1024,
+        "page_level_overflow": "PASS"
+      },
+      {
+        "route": "upstreams",
+        "width": 390,
+        "page_level_overflow": "PASS"
+      },
+      {
+        "route": "routes",
+        "width": 390,
+        "page_level_overflow": "PASS"
+      },
+      {
+        "route": "credentials",
+        "width": 390,
+        "page_level_overflow": "PASS"
+      },
+      {
+        "route": "logs",
+        "width": 390,
+        "page_level_overflow": "PASS"
+      },
+      {
+        "route": "codex",
+        "width": 390,
+        "page_level_overflow": "PASS"
+      },
+      {
+        "route": "settings",
+        "width": 390,
+        "page_level_overflow": "PASS"
+      }
+    ],
+    "desktop_detail_button_at_1440": "PASS: visible without table scroll",
+    "mobile_detail_button_at_390": "PASS: sticky action visible and dialog opens"
+  },
+  "governance": {
+    "local_manifest_path_match": "PASS (14/14 scoped source paths)",
+    "awg_mcp_scope_check": "NOT_RUN (AWG tools unavailable in this turn)",
+    "provider_calls": "NOT_RUN",
+    "master_worktree_changed": false,
+    "commit_push_pr": "PENDING"
+  }
+}
