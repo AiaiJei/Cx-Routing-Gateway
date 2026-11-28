@@ -3,7 +3,7 @@
   "project_id": "cx-routing-gateway",
   "repo_id": "aiaijei-cx-routing-gateway",
   "task_id": "CXRG-CODEX-MODE-TABS-FILTER-20261128",
-  "contract_revision": 9,
+  "contract_revision": 10,
   "contract_path": ".codex/codex-awg-task-contracts/CXRG-CODEX-MODE-TABS-FILTER-20261128.json",
   "archive_contract_path": "docs/tasks/2026-11-28-codex-mode-tabs-filter-contract.json",
   "project": "Cx-Routing Gateway",
@@ -41,12 +41,16 @@
     "tests/runtime/release-manifest.test.mjs",
     "apps/desktop/release/codex-mode-tabs-test-1.1.15",
     "apps/desktop/release/codex-mode-tabs-test-1.1.15/**",
+    "apps/desktop/release/codex-mode-tabs-test-1.1.15.1",
+    "apps/desktop/release/codex-mode-tabs-test-1.1.15.1/**",
     "docs/tasks/2026-11-28-codex-mode-tabs-filter-contract.json",
     "docs/tasks/evidence/codex-mode-tabs-filter-20261128/**"
   ],
   "allowed_external_paths": [
     "C:/Users/20142/Desktop/Cx-Routing Gateway Codex Mode Test 1.1.15",
-    "C:/Users/20142/Desktop/Cx-Routing Gateway Codex Mode Test 1.1.15/**"
+    "C:/Users/20142/Desktop/Cx-Routing Gateway Codex Mode Test 1.1.15/**",
+    "C:/Users/20142/Desktop/Cx-Routing Gateway Codex Mode Test 1.1.15.1",
+    "C:/Users/20142/Desktop/Cx-Routing Gateway Codex Mode Test 1.1.15.1/**"
   ],
   "authorization": {
     "implementation": true,
@@ -67,12 +71,16 @@
     "sync_main_worktree": false,
     "delete": false
   },
-  "authorization_source": "Owner authorized a dedicated task contract and active task binding on 2026-11-28, plus a 2026-11-28 follow-up to preserve existing data and publish a local Desktop test build. This follow-up authorizes only product version 1.1.15, one x64 Portable test copy in the unique allowed Desktop directory, a unique task output directory, and smoke testing with temporary userData/CODEX_HOME/ports. Do not stop the existing 1.1.14 process, copy or migrate user data, call providers, merge, publish GitHub, or delete existing files.",
+  "authorization_source": "Owner authorized a dedicated task contract and active task binding on 2026-11-28, plus follow-ups to preserve existing data and publish local Desktop test builds. The first follow-up authorized only product version 1.1.15 in its own directory. The Owner then explicitly authorized version 1.1.15.1 in a new Desktop directory without overwriting or stopping the running 1.1.15 test app. Build and smoke-test the new x64 Portable with temporary userData/CODEX_HOME/ports; never copy or migrate source Gateway data, call providers, merge, publish GitHub, or delete existing files.",
   "design_gate": {
     "status": "APPROVED_BY_EXPLICIT_TASK_DIRECTIVE",
     "basis": "The Owner approved tabs as target-mode selection only and a state-aware header action that guides incomplete setup, applies explicit mode changes, and re-applies changed Gateway drafts. The active-mode indicator reflects only successful application."
   },
   "revision_history": [
+    {
+      "revision": 10,
+      "reason": "Owner explicitly requested a 1.1.15.1 local test build in a new Desktop directory without overwriting the previous 1.1.15 copy. Add the new isolated build/output path and preserve the running prior test process and its data."
+    },
     {
       "revision": 9,
       "reason": "Owner approved a state-aware header action: tabs only select the target mode; incomplete Gateway setup is guided without activation; active unchanged state is shown; changed drafts require explicit re-application; busy and applied states are distinct. Scope expanded to the Codex mode panels and preference/management hooks."
@@ -112,6 +120,7 @@
     "Show a state-aware header action: guide incomplete Gateway configuration, activate an explicitly selected mode, and re-apply changed Gateway drafts. The active-mode indicator reflects only successfully applied runtime state.",
     "Keep filtered bulk selection within Codex's 100-model limit and preserve the existing default model.",
     "Test tab-only selection, setup guidance, action states for active/changed/busy/unavailable modes, explicit preview/confirmation/cancel/apply, filter counts, category changes, and selection preservation.",
+    "Build and validate x64 Portable 1.1.15.1 into a new worktree output and a separate Desktop folder; do not overwrite the existing 1.1.15 folder or stop its process.",
     "Create a dedicated PR against master; do not merge or publish."
   ],
   "verification_plan": [
@@ -121,7 +130,9 @@
   ],
   "implementation_result": "PASS: removed Gateway activation button, mode tabs use the existing confirmation flow, and shared family filtering is reused.",
   "verification_result": "PASS: Runtime 521/521; Desktop 358/358; SettingsPage 14/14; release manifest 3/3; production build; x64 Portable packaging; unpacked version smoke; isolated smoke of the Desktop copy; unsigned hash-verified 1.1.15 Desktop test delivery. Original 1.1.14 Portable hash and 5 running processes remained unchanged.",
+  "verification_followup_result": "PASS: Desktop 359/359; Runtime 521/521; SettingsPage 14/14; release manifest 3/3; TypeScript/Vite build; 1.1.15.1 x64 Portable packaging; manifest verification (11 artifacts); packaged version smoke; isolated smoke of the new separate Desktop copy; launch-script syntax. Existing 1.1.15 Desktop folder/process was not replaced or stopped; 1.1.14 Portable hash remains unchanged.",
   "independent_review": "PASS: read-only reviewer found no actionable defects; browser keyboard and pending-login coverage added after review.",
+  "independent_review_followup": "NOT_RUN: review dispatch returned route_not_found; Devin Review check indicated full review skipped due expired trial.",
   "owner_acceptance": "NOT_RUN",
   "pull_request": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/28",
   "pull_request_state": "OPEN",
@@ -149,6 +160,29 @@
     "owner_interactive_acceptance": "NOT_RUN",
     "github_release": false,
     "merge": false
+  },
+  "local_test_release_followup": {
+    "version": "1.1.15.1",
+    "artifact": "Cx-Routing Gateway Portable 1.1.15.1.exe",
+    "desktop_directory": "C:/Users/20142/Desktop/Cx-Routing Gateway Codex Mode Test 1.1.15.1",
+    "build_output": "apps/desktop/release/codex-mode-tabs-test-1.1.15.1",
+    "status": "PASS",
+    "bytes": 115095229,
+    "sha256": "08A88C632B5A7C9EC54FE9F6DDC1C8028D3D7539ABCB3657C488F2C383FD6332",
+    "signature": "UNSIGNED: no signing certificate configured",
+    "manifest": "PASS: 11 unpacked/runtime/Portable artifacts",
+    "packaged_version_smoke": "PASS: 1.1.15.1",
+    "desktop_copy_smoke": "PASS: Local Control and Gateway health using temporary profile",
+    "desktop_copy_matches_build": true,
+    "launcher": "Launch Codex Mode Test 1.1.15.1.cmd",
+    "previous_1_1_15_sha256_unchanged": "3082D5AB7E21DCBE900BAD6A90E5F975BBDF3E6747BCF52A1861EDA612CE0904",
+    "previous_1_1_15_active_process_preserved": 24156,
+    "official_1_1_14_sha256_unchanged": "D0C3B29920E38FF0866A0FB8FD873EF8926118D0D9A482F4CE74844C171A188D",
+    "provider_calls": "NOT_RUN",
+    "owner_interactive_acceptance": "NOT_RUN",
+    "replaces_previous_copy": false,
+    "reuses_source_user_data": false,
+    "smoke_test": "isolated temporary profile only"
   },
   "rollback": "Keep implementation isolated in the task worktree. Preserve the prior overview contract and binding snapshot. Do not merge, release, delete branches, or delete worktrees."
 }

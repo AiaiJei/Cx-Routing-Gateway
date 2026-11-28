@@ -1,6 +1,6 @@
 appId: com.cxrouting.gateway
 productName: Cx-Routing Gateway
-buildVersion: 1.1.15
+buildVersion: 1.1.15.1
 directories:
   output: release
   buildResources: build

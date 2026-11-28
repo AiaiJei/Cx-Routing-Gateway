@@ -7,7 +7,7 @@ const localTest = process.argv.includes('--local-test');
 const { version, cxrgProductVersion } = JSON.parse(await fs.readFile(new URL('../apps/desktop/package.json', import.meta.url), 'utf8'));
 const builderConfig = await fs.readFile(new URL('../apps/desktop/electron-builder.yml', import.meta.url), 'utf8');
 if (!builderConfig.split(/\r?\n/).some((line) => line.trim() === `buildVersion: ${cxrgProductVersion}`)) throw new Error('electron-builder buildVersion does not match cxrgProductVersion');
-if (version !== '1.1.15' || cxrgProductVersion !== '1.1.15') throw new Error('Invalid Cx-Routing Gateway package/product version metadata');
+if (version !== '1.1.15.1' || cxrgProductVersion !== '1.1.15.1') throw new Error('Invalid Cx-Routing Gateway package/product version metadata');
 const productVersion = cxrgProductVersion;
 const packagedRuntime = [
   'win-unpacked/Cx-Routing Gateway.exe',

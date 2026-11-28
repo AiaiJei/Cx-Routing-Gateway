@@ -3,10 +3,10 @@
 ## 范围与位置
 
 - 项目 `cx-routing-gateway`；仓库 `aiaijei-cx-routing-gateway`。
-- 任务 `CXRG-CODEX-MODE-TABS-FILTER-20261128`；合同 revision 9。
+- 任务 `CXRG-CODEX-MODE-TABS-FILTER-20261128`；合同 revision 10。
 - 分支 `codex/codex-mode-tabs-filter-20261128`；工作树 `.tmp/worktrees/codex-mode-tabs-filter-20261128`。
-- 基线 `master@ad8fd690d800c299bb145f73962b6982c36e2df1`。不合并、不发布、不递增版本、不删除工作树，不修改真实 Codex 配置或密钥。
-- 专属 PR #28：`https://github.com/AiaiJei/Cx-Routing-Gateway/pull/28`，当前 OPEN，初次 PR head `86ae94917d4a68861ccae19e86f37fbb584d5add`。GitHub 当前没有报告 CI 检查项；未合并。
+- 基线 `master@ad8fd690d800c299bb145f73962b6982c36e2df1`。不合并、不发布 GitHub Release、不删除工作树，不修改真实 Codex 配置或密钥。
+- 专属 PR #28：`https://github.com/AiaiJei/Cx-Routing-Gateway/pull/28`，当前 OPEN，初次 PR head `86ae94917d4a68861ccae19e86f37fbb584d5add`。最新源码提交未合并。
 - Owner 已授权独立合同、活动绑定与专属 PR。原总览任务绑定在主工作树本地档案保留，SHA-256 `6465F499A368EFC5574B01ED57E798E7ABA3859199516A424A7FCB09DD92C838`；总览合同、历史证据和 PR #27 未改。
 
 ## 需求与证据
@@ -27,7 +27,8 @@
 - 本次改动定向：Codex 页面与凭证记忆测试 42/42 PASS。
 - 完整 Desktop：`npm --prefix apps/desktop test -- --no-cache`，359/359，41 文件 PASS。
 - 构建：`npm --prefix apps/desktop run build`，TypeScript 与 Vite PASS。
-- 既有本机服务隔离回归：`node --test tests/runtime/codex-ipc.test.mjs tests/runtime/codex-config-modes.test.mjs tests/runtime/codex-gateway-memory.test.mjs`，34/34 PASS。使用仓内临时假配置、本地 Gateway/Control，不调用真实提供商。
+- Runtime：`node --test tests/runtime/*.test.mjs`，521/521 PASS。
+- 1.1.15.1 专项：SettingsPage 14/14、发布清单 3/3 PASS。
 - `git diff --check` PASS。
 - `browser-smoke.cjs` 在已安装 Edge 上运行：标签只切换视图、空配置导航、启用/重新应用按钮状态、取消保留草稿、成功后标记和分类选择保留均 PASS；1530、1024、390 像素均无横向溢出。结果见 `state-aware-browser-result.json`。
 - 已实际查看本次新截图 `state-aware-mode-1530.png` 与 `state-aware-mode-390.png`；状态按钮在宽屏位于刷新按钮左侧、窄屏能换行，不遮挡标题、标签或配置内容。
@@ -43,17 +44,18 @@
 - 首次独立审查连接返回 `route_not_found`，未记为通过；换可用审查通道后得到上述结果。
 - 依赖锁文件未改。`npm ci` 报告现有 6 个 moderate 依赖告警，未在本 UI 任务中自动升级或运行 `audit fix`。
 - AWG 校验：项目身份、路径范围、创建仓内工作树、`events.jsonl` 留痕。终端源码/合同写入、测试、浏览器与 Git 操作不受 AWG MCP 强制控制。
-- 真实 Codex 配置启用、真实模型请求、原生打包应用验收、部署/发布、Owner 验收：全部 `NOT_RUN`。测试和假桥接浏览器通过不代表已部署。
+- 真实 Codex 配置启用、真实模型请求和 Owner 交互验收：`NOT_RUN`。1.1.15.1 x64 Portable 已做版本、清单及隔离健康烟测；假数据验证不代表真实 Codex 配置或提供商可用。
 
 ## Owner 后续交互修正
 
 - Owner 采纳方案：标签仅作目标模式选择；动作按钮置于标题右侧并随目标模式、生效状态、配置差异、配置缺项和处理状态变化。
 - 交互修正通过定向与全量桌面回归；浏览器验证使用内存假数据，不连接真实配置或提供商。
-- 旧版 1.1.14 文件哈希与基线一致，Gateway 用户数据未读写；五个原进程在先前保留检查时仍运行，但最终复核时这五个 PID 均已不在运行。本任务没有停止它们，不能断言它们现在仍运行。
-- 原 Desktop 1.1.15 测试进程 PID `24156` 在复核时运行，二进制哈希保持旧值 `3082D5AB…CE0904`；没有停止进程或覆盖文件，因此 Desktop 中的旧测试版不包含本次源码修正。
+- Owner 明确要求新建 1.1.15.1 测试目录，不覆盖仍运行的 1.1.15。1.1.15.1 已独立构建、复制与隔离烟测。
+- 旧版 1.1.14 文件哈希与基线一致，Gateway 用户数据未读写；五个原进程在先前保留检查时仍运行，但最终复核时这些 PID 均已不在运行。本任务没有停止它们。
+- 旧 Desktop 1.1.15 测试进程 PID `24156` 仍运行；1.1.15 原文件夹和二进制哈希保持原样。新版本位于独立的 `Cx-Routing Gateway Codex Mode Test 1.1.15.1` 目录。
 
 ## 交付状态
 
-源码实现、本地测试与隔离浏览器验证 `PASS`；原 1.1.15 x64 Portable 仍在桌面隔离目录，但它不含本次修正。旧 1.1.14 文件 SHA-256 与基线一致；初始观察的五个进程在最终复核时均已不运行，且不是由本任务停止。
+源码实现、本地测试、隔离浏览器验证与 1.1.15.1 x64 Portable 桌面烟测 `PASS`。新版位于 `C:\Users\20142\Desktop\Cx-Routing Gateway Codex Mode Test 1.1.15.1\`，SHA-256 `08A88C632B5A7C9EC54FE9F6DDC1C8028D3D7539ABCB3657C488F2C383FD6332`；详见 `local-test-release-1.1.15.1.md`。原 1.1.15 目录、文件与运行进程均未替换或停止。官方 1.1.14 文件 SHA-256 与基线一致；五个基线进程最终复核时均已不运行，且不是由本任务停止。
 
-专属 PR #28 的状态按钮修正已提交至 `eb7567a`，最新证据提交 `83f3cf3` 并已推送；PR 仍 OPEN。GitHub 的 `Devin Review` 状态显示 PASS，但实际说明是额度耗尽、完整审查跳过；没有有效独立审查，状态为 `NOT_RUN`。没有其他 CI 检查。主分支未更新、PR 未合并。桌面旧测试程序 PID `24156` 仍在运行，故没有覆盖它；本次修正没有进入本地 Desktop 二进制。真实 Codex 配置切换和 Owner 交互验收仍 `NOT_RUN`。
+专属 PR #28 的状态按钮修正和版本更新已提交并推送；PR 仍 OPEN。GitHub 的 Devin Review 实际说明为额度耗尽、完整审查跳过；没有有效独立审查，状态为 `NOT_RUN`。主分支未更新、PR 未合并、GitHub Release 未发布。真实 Codex 配置切换、提供商请求和 Owner 交互验收仍 `NOT_RUN`。

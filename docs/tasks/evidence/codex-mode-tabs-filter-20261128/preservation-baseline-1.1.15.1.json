@@ -1,0 +1,19 @@
+{
+  "capturedAt": "2026-11-28T17:09:50.7852835+08:00",
+  "version": "1.1.15.1",
+  "portable": "C:\\Users\\20142\\Desktop\\Cx-Routing Gateway Codex Mode Test 1.1.15.1\\Cx-Routing Gateway Portable 1.1.15.1.exe",
+  "bytes": 115095229,
+  "sha256": "08A88C632B5A7C9EC54FE9F6DDC1C8028D3D7539ABCB3657C488F2C383FD6332",
+  "previousTestPortable": "C:\\Users\\20142\\Desktop\\Cx-Routing Gateway Codex Mode Test 1.1.15\\Cx-Routing Gateway Portable 1.1.15.exe",
+  "previousTestSha256": "3082D5AB7E21DCBE900BAD6A90E5F975BBDF3E6747BCF52A1861EDA612CE0904",
+  "previousTestProcessIds": [
+    24156
+  ],
+  "previousTestUntouched": true,
+  "officialPortable": "C:\\Users\\20142\\Desktop\\Cx-Routing Gateway Portable 1.1.14 - GitHub Release.exe",
+  "officialPortableBytes": 115098062,
+  "officialPortableSha256": "D0C3B29920E38FF0866A0FB8FD873EF8926118D0D9A482F4CE74844C171A188D",
+  "officialBaselineProcessIdsStillRunning": [],
+  "userDataCopied": false,
+  "providerCalls": "NOT_RUN"
+}
