@@ -91,7 +91,8 @@
   "independent_review_followup": "PASS",
   "independent_review_notes": "Independent read-only review identified stale invalid values and a Messages cache-total edge; both were fixed with regression tests. Follow-up review confirmed fixes and found no actionable issue.",
   "owner_acceptance": "PENDING",
-  "pull_request": null,
-  "pull_request_state": "NOT_CREATED",
+  "pull_request": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/29",
+  "pull_request_state": "OPEN",
+  "pull_request_initial_head_commit": "6633611f2778cb480683a1a142a84d80523d2592",
   "rollback": "Revert only this task's commits on its dedicated branch. Preserve PR #16, PR #28, all other worktrees, existing untracked files, running Desktop processes and user data. Do not merge, release, synchronize master or delete worktrees/files."
 }
