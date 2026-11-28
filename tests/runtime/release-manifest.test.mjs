@@ -23,11 +23,11 @@ test('release manifest includes packaged runtime resources', async (t) => {
   const { version, cxrgProductVersion } = JSON.parse(await fs.readFile(new URL('../../apps/desktop/package.json', import.meta.url), 'utf8'));
   const lock = JSON.parse(await fs.readFile(new URL('../../apps/desktop/package-lock.json', import.meta.url), 'utf8'));
   const builderConfig = await fs.readFile(new URL('../../apps/desktop/electron-builder.yml', import.meta.url), 'utf8');
-  assert.equal(version, '1.1.15.1');
-  assert.equal(cxrgProductVersion, '1.1.15.1');
-  assert.equal(lock.version, '1.1.15.1');
-  assert.equal(lock.packages[''].version, '1.1.15.1');
-  assert.equal(lock.packages[''].cxrgProductVersion, '1.1.15.1');
+  assert.equal(version, '1.1.15');
+  assert.equal(cxrgProductVersion, '1.1.15');
+  assert.equal(lock.version, '1.1.15');
+  assert.equal(lock.packages[''].version, '1.1.15');
+  assert.equal(lock.packages[''].cxrgProductVersion, '1.1.15');
   assert.equal(builderConfig.split(/\r?\n/).some((line) => line.trim() === `buildVersion: ${cxrgProductVersion}`), true);
   const portableAsset = `Cx-Routing Gateway Portable ${cxrgProductVersion}.exe`;
   const installerAsset = `Cx-Routing Gateway Setup ${cxrgProductVersion}.exe`;
@@ -45,7 +45,7 @@ test('release manifest includes packaged runtime resources', async (t) => {
   await fs.rename(`${metricsModule}.omitted`, metricsModule);
   const pkg = JSON.parse(await fs.readFile(new URL('../../apps/desktop/package.json', import.meta.url), 'utf8'));
   assert.equal(manifest.version, pkg.cxrgProductVersion);
-  assert.equal(pkg.version, '1.1.15.1');
+  assert.equal(pkg.version, '1.1.15');
   assert.equal(manifest.artifacts.some((item) => item.path === 'win-unpacked/resources/runtime/services/local-control/src/server.mjs'), true);
   assert.equal(manifest.artifacts.some((item) => item.path === 'win-unpacked/resources/runtime/packages/shared/src/config-store.mjs'), true);
   assert.equal(manifest.artifacts.some((item) => item.path === portableAsset), true);
@@ -76,7 +76,7 @@ test('local test manifest verifies the portable package without requiring an ins
     'win-unpacked/resources/runtime/packages/shared/src/destination-policy.mjs',
     'win-unpacked/resources/runtime/packages/shared/src/secret-vault.mjs',
     'win-unpacked/resources/runtime/scripts/check-update.mjs',
-    'Cx-Routing Gateway Portable 1.1.15.1.exe',
+    'Cx-Routing Gateway Portable 1.1.15.exe',
   ];
   for (const relative of localTestFiles) {
     const file = path.join(releaseDir, relative);
@@ -84,8 +84,8 @@ test('local test manifest verifies the portable package without requiring an ins
     await fs.writeFile(file, 'test artifact');
   }
   const manifest = await runVerifier(releaseDir, ['--local-test']);
-  assert.equal(manifest.version, '1.1.15.1');
+  assert.equal(manifest.version, '1.1.15');
   assert.equal(manifest.artifacts.length, localTestFiles.length);
-  assert.equal(manifest.artifacts.some(({ path: relative }) => relative.endsWith('Portable 1.1.15.1.exe')), true);
+  assert.equal(manifest.artifacts.some(({ path: relative }) => relative.endsWith('Portable 1.1.15.exe')), true);
   assert.equal(manifest.artifacts.some(({ path: relative }) => relative.includes('Setup')), false);
 });

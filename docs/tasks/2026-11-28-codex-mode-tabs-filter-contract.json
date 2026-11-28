@@ -3,7 +3,7 @@
   "project_id": "cx-routing-gateway",
   "repo_id": "aiaijei-cx-routing-gateway",
   "task_id": "CXRG-CODEX-MODE-TABS-FILTER-20261128",
-  "contract_revision": 10,
+  "contract_revision": 11,
   "contract_path": ".codex/codex-awg-task-contracts/CXRG-CODEX-MODE-TABS-FILTER-20261128.json",
   "archive_contract_path": "docs/tasks/2026-11-28-codex-mode-tabs-filter-contract.json",
   "project": "Cx-Routing Gateway",
@@ -43,6 +43,8 @@
     "apps/desktop/release/codex-mode-tabs-test-1.1.15/**",
     "apps/desktop/release/codex-mode-tabs-test-1.1.15.1",
     "apps/desktop/release/codex-mode-tabs-test-1.1.15.1/**",
+    "apps/desktop/release/github-v1.1.15",
+    "apps/desktop/release/github-v1.1.15/**",
     "docs/tasks/2026-11-28-codex-mode-tabs-filter-contract.json",
     "docs/tasks/evidence/codex-mode-tabs-filter-20261128/**"
   ],
@@ -61,22 +63,26 @@
     "commit": true,
     "push": true,
     "pull_request": true,
-    "merge": false,
-    "release": false,
-    "github_release": false,
+    "merge": true,
+    "release": true,
+    "github_release": true,
     "version_bump": true,
     "local_desktop_test_release": true,
     "local_desktop_official_release": false,
     "isolated_local_smoke": true,
-    "sync_main_worktree": false,
+    "sync_main_worktree": true,
     "delete": false
   },
-  "authorization_source": "Owner authorized a dedicated task contract and active task binding on 2026-11-28, plus follow-ups to preserve existing data and publish local Desktop test builds. The first follow-up authorized only product version 1.1.15 in its own directory. The Owner then explicitly authorized version 1.1.15.1 in a new Desktop directory without overwriting or stopping the running 1.1.15 test app. Build and smoke-test the new x64 Portable with temporary userData/CODEX_HOME/ports; never copy or migrate source Gateway data, call providers, merge, publish GitHub, or delete existing files.",
+  "authorization_source": "Revision 11: On 2026-11-28 the Owner explicitly authorized merging PR #28, publishing the official GitHub release v1.1.15, and fast-forwarding the task result into the main worktree. Build release artifacts only in the new apps/desktop/release/github-v1.1.15 directory. Preserve all user data, existing untracked files, both separate local 1.1.15 and 1.1.15.1 test Desktop folders/processes, and the task worktree; do not migrate data, make provider calls, overwrite local Desktop copies, force-push, or delete anything. Earlier authorization remains limited to isolated local test builds.",
   "design_gate": {
     "status": "APPROVED_BY_EXPLICIT_TASK_DIRECTIVE",
     "basis": "The Owner approved tabs as target-mode selection only and a state-aware header action that guides incomplete setup, applies explicit mode changes, and re-applies changed Gateway drafts. The active-mode indicator reflects only successful application."
   },
   "revision_history": [
+    {
+      "revision": 11,
+      "reason": "Owner explicitly authorized merge of PR #28, official GitHub release v1.1.15, and fast-forward sync to the main worktree. Add a unique official-build output path and preserve local test copies, user data, existing untracked files, and the task worktree."
+    },
     {
       "revision": 10,
       "reason": "Owner explicitly requested a 1.1.15.1 local test build in a new Desktop directory without overwriting the previous 1.1.15 copy. Add the new isolated build/output path and preserve the running prior test process and its data."
@@ -121,7 +127,7 @@
     "Keep filtered bulk selection within Codex's 100-model limit and preserve the existing default model.",
     "Test tab-only selection, setup guidance, action states for active/changed/busy/unavailable modes, explicit preview/confirmation/cancel/apply, filter counts, category changes, and selection preservation.",
     "Build and validate x64 Portable 1.1.15.1 into a new worktree output and a separate Desktop folder; do not overwrite the existing 1.1.15 folder or stop its process.",
-    "Create a dedicated PR against master; do not merge or publish."
+    "Merge PR #28 into master, publish the GitHub v1.1.15 release from the merged commit, and fast-forward the main worktree. Do not overwrite or stop either local Desktop test copy, do not delete branches/worktrees, and preserve existing untracked files and user data."
   ],
   "verification_plan": [
     "Run focused Codex page tests, then the relevant Desktop tests and production build.",
@@ -130,9 +136,9 @@
   ],
   "implementation_result": "PASS: removed Gateway activation button, mode tabs use the existing confirmation flow, and shared family filtering is reused.",
   "verification_result": "PASS: Runtime 521/521; Desktop 358/358; SettingsPage 14/14; release manifest 3/3; production build; x64 Portable packaging; unpacked version smoke; isolated smoke of the Desktop copy; unsigned hash-verified 1.1.15 Desktop test delivery. Original 1.1.14 Portable hash and 5 running processes remained unchanged.",
-  "verification_followup_result": "PASS: Desktop 359/359; Runtime 521/521; SettingsPage 14/14; release manifest 3/3; TypeScript/Vite build; 1.1.15.1 x64 Portable packaging; manifest verification (11 artifacts); packaged version smoke; isolated smoke of the new separate Desktop copy; launch-script syntax. Existing 1.1.15 Desktop folder/process was not replaced or stopped; 1.1.14 Portable hash remains unchanged.",
+  "verification_followup_result": "PASS: official source metadata aligned to 1.1.15; Desktop 359/359; Runtime 521/521 on serial rerun (the first parallel run had one timing failure that passed in isolation and serial rerun); SettingsPage assertions and release-manifest 3/3; TypeScript/Vite production build; Windows x64 NSIS, blockmap, and Portable build; 13-artifact manifest hash/size verification; unpacked --version smoke; isolated Portable Local Control/Gateway health smoke. No code-signing certificate is configured. Existing local Desktop 1.1.15 and 1.1.15.1 files/processes remain untouched; provider calls and Owner interactive acceptance are NOT_RUN.",
   "independent_review": "PASS: read-only reviewer found no actionable defects; browser keyboard and pending-login coverage added after review.",
-  "independent_review_followup": "NOT_RUN: review dispatch returned route_not_found; Devin Review check indicated full review skipped due expired trial.",
+  "independent_review_followup": "NOT_RUN: no GitHub review submitted; Devin Review check explicitly states full review skipped due expired trial and no credits. Its green status is not an independent review.",
   "owner_acceptance": "NOT_RUN",
   "pull_request": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/28",
   "pull_request_state": "OPEN",
@@ -184,5 +190,34 @@
     "reuses_source_user_data": false,
     "smoke_test": "isolated temporary profile only"
   },
-  "rollback": "Keep implementation isolated in the task worktree. Preserve the prior overview contract and binding snapshot. Do not merge, release, delete branches, or delete worktrees."
+  "official_release_candidate": {
+    "version": "1.1.15",
+    "status": "BUILD_AND_SMOKE_PASS_NOT_YET_PUBLISHED",
+    "build_output": "apps/desktop/release/github-v1.1.15",
+    "manifest_sha256": "5f1586177d2d47bb5b470ccca42760ba7abd1546d880ca1d407d095f9232c92e",
+    "signed": false,
+    "artifacts": [
+      {
+        "name": "Cx-Routing Gateway Setup 1.1.15.exe",
+        "bytes": 126627752,
+        "sha256": "42f127db05f2f75d5725ce9dbefd47976b4ed0fb1e7107527e3adc63b6d131cc"
+      },
+      {
+        "name": "Cx-Routing Gateway Setup 1.1.15.exe.blockmap",
+        "bytes": 133626,
+        "sha256": "bc1cd6d0b11a32f7e5287667ca8e45222dea49d907d0bf92635b58716e26e2a9"
+      },
+      {
+        "name": "Cx-Routing Gateway Portable 1.1.15.exe",
+        "bytes": 115090728,
+        "sha256": "2ea715e95a14279249305a71e4dad5dd32278dd8ef8ae5130bc9e0ba13aa5a7e"
+      }
+    ],
+    "unpacked_version_smoke": "PASS",
+    "isolated_portable_health_smoke": "PASS",
+    "provider_calls": "NOT_RUN",
+    "owner_acceptance": "NOT_RUN",
+    "published": false
+  },
+  "rollback": "If tests or required checks fail, stop before merge or release and retain the task worktree. Preserve user data, existing untracked files, both local Desktop test copies/processes, and all release output; do not force-push, overwrite, or delete anything."
 }
