@@ -101,7 +101,7 @@ export function LogsPage() {
           <div><dt>网关处理</dt><dd>{formatDuration(selectedLog.gatewayProcessingMs)}</dd></div>
           <div><dt>错误信息</dt><dd>{requestStatusDetails(selectedLog)}</dd></div>
         </dl>
-        <section className="log-detail-tokens" aria-label="Token 用量"><h3 className="tooltip-heading">Token 用量</h3><TokenDetails tokens={selectedLog.tokens} /></section>
+        <section className="log-detail-tokens" aria-label="Token 用量"><h3 className="tooltip-heading">Token 用量</h3><TokenDetails tokens={selectedLog.tokens} diagnostic={selectedLog.usageDiagnostic} /></section>
         <p className="action-feedback">请求和响应正文未记录；日志字段已脱敏。</p>
       </Modal>}
       {clearConfirmationOpen && <Modal title="清空请求日志" onClose={() => setClearConfirmationOpen(false)} canClose={!clearingLogs}>

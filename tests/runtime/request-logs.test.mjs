@@ -108,6 +108,34 @@ test('passthrough and converted streams preserve responses and persist first-gen
   }
 });
 
+test('Responses logs recover nested completion usage when an earlier usage source is empty', async t => {
+  const app = await setup(t, (_req, res) => {
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.end(event({ type: 'response.output_text.delta', delta: 'done' }) + event({ type: 'response.completed', usage: {}, response: { status: 'completed', usage: { input_tokens: 3, output_tokens: 2, private: 'secret-provider-field' } } }));
+  }, 'Res');
+  const response = await app.request('Res', true);
+  assert.equal(response.status, 200);
+  await response.text();
+  const [log] = await app.logs(1);
+  assert.equal(log.status, 'completed');
+  assert.deepEqual(log.tokens, { input: 3, output: 2, total: 5 });
+  assert.deepEqual(log.usageDiagnostic, { status: 'reported', sources: ['usage', 'response.usage'], missingFields: [], invalidFields: [] });
+  assert.doesNotMatch(JSON.stringify(log), /secret-provider-field/);
+});
+
+test('completed Responses without upstream usage stay successful and record missing usage', async t => {
+  const app = await setup(t, (_req, res) => {
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.end(event({ type: 'response.output_text.delta', delta: 'done' }) + event({ type: 'response.completed', response: { status: 'completed' } }));
+  }, 'Res');
+  const response = await app.request('Res', true);
+  assert.equal(response.status, 200);
+  await response.text();
+  const [log] = await app.logs(1);
+  assert.equal(log.status, 'completed');
+  assert.deepEqual(log.usageDiagnostic, { status: 'missing', sources: [], missingFields: ['input_tokens', 'output_tokens'], invalidFields: [] });
+});
+
 test('paced Responses-to-Chat stream logs separate upstream stages without retaining payload data', async t => {
   const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
   const app = await setup(t, async (_req, res) => {

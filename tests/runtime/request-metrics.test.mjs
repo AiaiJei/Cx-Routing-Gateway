@@ -5,6 +5,71 @@ import { createRequestMetrics } from '../../services/gateway/src/request-metrics
 
 const frame = (data, event = '') => `${event ? `event: ${event}\r\n` : ''}data: ${JSON.stringify(data)}\r\n\r\n`;
 
+test('usage diagnostics distinguish missing, invalid, partial and reported zeros without retaining payloads', () => {
+  for (const [usage, status] of [[undefined, 'missing'], [{}, 'invalid'], [{ input_tokens: 'secret' }, 'invalid'], [{ input_tokens: 3 }, 'partial'], [{ input_tokens: 0, output_tokens: 0 }, 'reported']]) {
+    const metrics = createRequestMetrics({ protocol: 'Res', stream: true, startedAt: 0 });
+    metrics.push(Buffer.from(frame({ type: 'response.completed', response: { usage } })));
+    metrics.finish();
+    assert.equal(metrics.usageDiagnostic().status, status);
+    assert.equal(JSON.stringify(metrics.usageDiagnostic()).includes('secret'), false);
+  }
+});
+
+test('an empty top-level usage must not hide valid nested Responses completion usage', () => {
+  const metrics = createRequestMetrics({ protocol: 'Res', stream: true, startedAt: 0 });
+  metrics.push(Buffer.from(frame({ type: 'response.completed', usage: {}, response: { usage: { input_tokens: 3, output_tokens: 2 } } })));
+  metrics.finish();
+  assert.deepEqual(metrics.snapshot().tokens, { input: 3, output: 2, total: 5 });
+  assert.deepEqual(metrics.usageDiagnostic().sources, ['usage', 'response.usage']);
+});
+
+test('a later invalid core usage value does not leave a stale token count or total', () => {
+  const metrics = createRequestMetrics({ protocol: 'Res', stream: false, startedAt: 0 });
+  metrics.observeJson({ usage: { input_tokens: 10, output_tokens: 2, total_tokens: 12 } });
+  metrics.observeJson({ usage: { output_tokens: 'private-invalid-value' } });
+  assert.deepEqual(metrics.snapshot(), { stream: false, tokens: { input: 10 } });
+  assert.deepEqual(metrics.usageDiagnostic(), { status: 'partial', sources: ['usage'], missingFields: ['output_tokens'], invalidFields: ['output_tokens'] });
+});
+
+test('a later valid nested usage detail clears a previous malformed-parent diagnostic', () => {
+  const metrics = createRequestMetrics({ protocol: 'Res', stream: false, startedAt: 0 });
+  metrics.observeJson({ usage: { input_tokens: 10, output_tokens: 2, input_tokens_details: 'private-invalid-parent' } });
+  metrics.observeJson({ usage: { input_tokens_details: { cached_tokens: 4 } } });
+  assert.deepEqual(metrics.snapshot(), { stream: false, tokens: { input: 10, output: 2, cacheRead: 4, total: 12 } });
+  assert.deepEqual(metrics.usageDiagnostic(), { status: 'reported', sources: ['usage'], missingFields: [], invalidFields: [] });
+});
+
+test('a later valid usage object clears a previous malformed usage marker', () => {
+  const metrics = createRequestMetrics({ protocol: 'Res', stream: false, startedAt: 0 });
+  metrics.observeJson({ usage: 'private-invalid-usage' });
+  metrics.observeJson({ usage: { input_tokens: 3, output_tokens: 2 } });
+  assert.deepEqual(metrics.usageDiagnostic(), { status: 'reported', sources: ['usage'], missingFields: [], invalidFields: [] });
+});
+
+test('a later malformed usage container does not display stale numbers from an earlier frame', () => {
+  const metrics = createRequestMetrics({ protocol: 'Res', stream: false, startedAt: 0 });
+  metrics.observeJson({ usage: { input_tokens: 3, output_tokens: 2, total_tokens: 5 } });
+  metrics.observeJson({ usage: 'private-invalid-usage' });
+  assert.deepEqual(metrics.snapshot(), { stream: false });
+  assert.deepEqual(metrics.usageDiagnostic(), { status: 'invalid', sources: ['usage'], missingFields: ['input_tokens', 'output_tokens'], invalidFields: ['usage'] });
+});
+
+test('an invalid Messages cache breakdown invalidates a stale reported total', () => {
+  const metrics = createRequestMetrics({ protocol: 'Mes', stream: false, startedAt: 0 });
+  metrics.observeJson({ usage: { input_tokens: 10, output_tokens: 5, cache_read_input_tokens: 3, cache_creation_input_tokens: 2, total_tokens: 20 } });
+  assert.equal(metrics.snapshot().tokens.total, 20);
+  metrics.observeJson({ usage: { input_tokens_details: 'private-invalid-details' } });
+  assert.deepEqual(metrics.snapshot(), { stream: false, tokens: { input: 10, output: 5, cacheWrite: 2 } });
+  assert.deepEqual(metrics.usageDiagnostic(), { status: 'reported', sources: ['usage'], missingFields: [], invalidFields: ['input_tokens_details'] });
+});
+
+test('a malformed optional Messages detail does not erase a valid top-level cache count', () => {
+  const metrics = createRequestMetrics({ protocol: 'Mes', stream: false, startedAt: 0 });
+  metrics.observeJson({ usage: { input_tokens: 10, output_tokens: 5, cache_read_input_tokens: 3, cache_creation_input_tokens: 2, total_tokens: 20, input_tokens_details: 'private-invalid-details' } });
+  assert.deepEqual(metrics.snapshot(), { stream: false, tokens: { input: 10, output: 5, cacheRead: 3, cacheWrite: 2, total: 20 } });
+  assert.deepEqual(metrics.usageDiagnostic(), { status: 'reported', sources: ['usage'], missingFields: [], invalidFields: ['input_tokens_details'] });
+});
+
 test('JSON usage is allowlisted across Chat, Res and Mes, including zeros and cache breakdowns', () => {
   const cases = [
     ['Chat', { prompt_tokens: 100, completion_tokens: 12, total_tokens: 112, prompt_tokens_details: { cached_tokens: 80, audio_tokens: 0 }, completion_tokens_details: { reasoning_tokens: 4 }, secret: 'never-log' }, { input: 100, output: 12, total: 112, cacheRead: 80, inputAudio: 0, reasoning: 4 }],
@@ -15,6 +80,7 @@ test('JSON usage is allowlisted across Chat, Res and Mes, including zeros and ca
     const metrics = createRequestMetrics({ protocol, stream: false, startedAt: 100 });
     metrics.observeJson({ usage, content: 'private-body' });
     assert.deepEqual(metrics.snapshot(), { stream: false, tokens: expected });
+    assert.deepEqual(metrics.usageDiagnostic(), { status: 'reported', sources: ['usage'], missingFields: [], invalidFields: [] });
   }
 });
 
@@ -49,6 +115,7 @@ test('Mes start/delta usage merges cumulative fields without summing snapshots',
   metrics.push(Buffer.from(frame({ type: 'content_block_delta', delta: { type: 'input_json_delta', partial_json: '{' } })));
   metrics.push(Buffer.from(frame({ type: 'message_delta', usage: { output_tokens: 6 } }) + frame({ type: 'message_delta', usage: { output_tokens: 7 } })));
   assert.deepEqual(metrics.snapshot(), { stream: true, firstTokenMs: 25, tokens: { input: 10, output: 7, cacheRead: 0, cacheWrite: 5, total: 22 } });
+  assert.deepEqual(metrics.usageDiagnostic(), { status: 'reported', sources: ['message.usage', 'usage'], missingFields: [], invalidFields: [] });
 });
 
 test('Responses records generation but ignores lifecycle and recognizes nested completion usage', () => {

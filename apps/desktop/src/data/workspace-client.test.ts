@@ -119,6 +119,7 @@ it("maps measured metrics while preserving missing, zero and invalid historical 
   expect(legacy.durationMs).toBeNull();
   expect(legacy.stream).toBeUndefined();
   expect(legacy.firstTokenMs).toBeUndefined();
+  expect(legacy.usageDiagnostic).toBeUndefined();
   expect(legacy).not.toHaveProperty("upstreamHeadersMs");
   expect(invalid.durationMs).toBeNull();
   expect(invalid.stream).toBeUndefined();
@@ -129,6 +130,15 @@ it("maps measured metrics while preserving missing, zero and invalid historical 
   expect(invalid).not.toHaveProperty("upstreamChunkCount");
   expect(invalid).not.toHaveProperty("gatewayProcessingMs");
   expect(invalid.tokens).toBeUndefined();
+});
+
+it("sanitizes bounded usage diagnostics and omits unknown diagnostic values", () => {
+  const { logs } = mapRuntimeState({
+    settings: { gatewayHost: "127.0.0.1", gatewayPort: 4318 }, upstreams: [], routes: [], clientKeys: [],
+    usage: [{ usageDiagnostic: { status: "partial", sources: ["response.usage", "private-source"], missingFields: ["output_tokens", "private-field"], invalidFields: ["input_tokens", "provider-secret"] }, responseBody: "private-response" }],
+  });
+  expect(logs[0].usageDiagnostic).toEqual({ status: "partial", sources: ["response.usage"], missingFields: ["output_tokens"], invalidFields: ["input_tokens"] });
+  expect(JSON.stringify(logs)).not.toMatch(/private-source|private-field|provider-secret|private-response/);
 });
 
 it("prefers the persisted upstream name, falls back by ID, and redacts unknown sources", () => {
