@@ -11,7 +11,7 @@ describe("Codex route policy help", () => {
     ]} upstreams={[]} routeIds={[]} defaultRouteId="" onModels={() => {}} onDefault={() => {}} locked={false} gatewayReady loading={false} />);
     expect(screen.getByText(/推理：low → max/)).toBeVisible();
     expect(screen.getByText(/推理：不限（兼容旧路由）/)).toBeVisible();
-    expect(screen.getByText(/重新保存并启用网关/)).toHaveTextContent("立即");
+    expect(screen.getByText(/切换到上方 CX-RG 网关标签并确认启用/)).toHaveTextContent("立即");
   });
 
   it("explains hosted search loss while preserving local tools and the profile boundary", () => {

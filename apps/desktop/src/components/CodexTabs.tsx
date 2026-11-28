@@ -5,10 +5,12 @@ export function CodexTabs({
   value,
   activeMode,
   onChange,
+  disabled = false,
 }: {
   value: CodexTab | null;
   activeMode?: CodexStatus["mode"];
   onChange: (tab: CodexTab) => void;
+  disabled?: boolean;
 }) {
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
   const tabs = [
@@ -23,7 +25,6 @@ export function CodexTabs({
     else if (event.key === "End") next = 1;
     else return;
     event.preventDefault();
-    onChange(tabs[next].id);
     buttons.current[next]?.focus();
   }
   return (
@@ -40,6 +41,7 @@ export function CodexTabs({
           aria-selected={value === tab.id}
           aria-controls={"codex-panel-" + tab.id}
           tabIndex={value === tab.id || (!value && index === 0) ? 0 : -1}
+          disabled={disabled}
           onClick={() => onChange(tab.id)}
           onKeyDown={(event) => key(event, index)}
         >

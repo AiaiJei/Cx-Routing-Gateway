@@ -4,6 +4,13 @@
 .codex-page .page-header > div {
   min-width: 0;
 }
+.codex-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
 .codex-page .fixture-notice {
   margin: -4px 0 0;
 }
@@ -226,6 +233,8 @@
 }
 .codex-model-options {
   display: grid;
+  grid-auto-rows: max-content;
+  align-content: start;
   max-height: 440px;
   overflow-y: auto;
 }

@@ -9,6 +9,18 @@ const emptyDraft = (): CodexGatewayDraft => ({
   defaultRouteId: "",
   credentialSource: "current",
 });
+function sameDraft(left: CodexGatewayDraft, right: CodexGatewayDraft) {
+  const leftRouteIds = [...left.routeIds].sort();
+  const rightRouteIds = [...right.routeIds].sort();
+  return (
+    leftRouteIds.length === rightRouteIds.length &&
+    leftRouteIds.every((id, index) => id === rightRouteIds[index]) &&
+    left.defaultRouteId === right.defaultRouteId &&
+    left.credentialSource === right.credentialSource &&
+    (left.credentialSource !== "stored" ||
+      left.credentialId === right.credentialId)
+  );
+}
 const queues = new WeakMap<object, Promise<unknown>>();
 function ordered<T>(owner: object, operation: () => Promise<T>): Promise<T> {
   const next = (queues.get(owner) || Promise.resolve())
@@ -25,6 +37,7 @@ export function useCodexGatewayPreferences(status: CodexStatus | null) {
   const owner = window.desktopControls;
   const available = !!controls;
   const [draft, setDraft] = useState<CodexGatewayDraft>(emptyDraft);
+  const [baseline, setBaseline] = useState<CodexGatewayDraft>(emptyDraft);
   const [ready, setReady] = useState(!available);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -141,6 +154,7 @@ export function useCodexGatewayPreferences(status: CodexStatus | null) {
               };
         current.current = initial;
         setDraft(initial);
+        setBaseline(initial);
         seeded.current = value.exists || active?.mode === "gateway";
       }
       setReady(true);
@@ -187,6 +201,7 @@ export function useCodexGatewayPreferences(status: CodexStatus | null) {
       };
       current.current = initial;
       setDraft(initial);
+      setBaseline(initial);
       seeded.current = true;
       pending.current = initial;
       void flush();
@@ -209,14 +224,26 @@ export function useCodexGatewayPreferences(status: CodexStatus | null) {
     clearTimeout(timer.current);
     timer.current = setTimeout(() => void flush(), 400);
   }
+  function markApplied() {
+    const applied = {
+      ...current.current,
+      routeIds: [...current.current.routeIds],
+    };
+    current.current = applied;
+    setDraft(applied);
+    setBaseline(applied);
+    touched.current = false;
+  }
   return {
     available,
     draft,
+    dirty: !sameDraft(draft, baseline),
     ready,
     saving,
     error,
     message,
     change,
+    markApplied,
     flush,
     canUseDraft() {
       return !available || revision.current !== null;

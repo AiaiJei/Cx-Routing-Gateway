@@ -36,7 +36,7 @@ describe("Codex catalog status", () => {
   it("asks for explicit Gateway reapplication when the catalog is stale", () => {
     render(<CodexStatusPanel available loading={false} status={{ ...baseStatus, catalogSync: { state: "stale", source: "gateway", models: [{ model: "image-model", inputModalities: ["text"] }] } }} />);
     const catalog = screen.getByRole("region", { name: "模型能力目录" });
-    expect(within(catalog).getByText(/目录待重新应用/)).toHaveTextContent("重新保存并启用网关");
+    expect(within(catalog).getByText(/目录待重新应用/)).toHaveTextContent("点击上方 CX-RG 网关标签并确认启用");
     expect(within(catalog).getByText("image-model：仅文本")).toBeVisible();
     expect(within(catalog).getByText(/当前已写入目录的输入能力/)).toBeVisible();
   });
@@ -52,12 +52,12 @@ describe("Codex catalog status", () => {
     render(<CodexStatusPanel available loading={false} status={{ ...baseStatus, mode, catalogStatus: mode === "direct" ? "none" : "managed", catalogSync: { state: "not-applied", source: "none", models: [] } }} />);
     const catalog = screen.getByRole("region", { name: "模型能力目录" });
     expect(within(catalog).getByText(/当前接入未使用本产品的模型能力目录/)).toHaveTextContent("或被启动配置、模型选择覆盖。模型路由中的能力不能据此认定已应用。");
-    expect(within(catalog).getByText(/如果要使用网关路由/)).toHaveTextContent("保存并启用网关");
+    expect(within(catalog).getByText(/如果要使用网关路由/)).toHaveTextContent("点击上方 CX-RG 网关标签并确认启用");
     expect(within(catalog).queryByText(/目录文件不存在/)).not.toBeInTheDocument();
   });
 
   it.each([
-    ["gateway", "重新保存并启用网关"],
+    ["gateway", "点击上方 CX-RG 网关标签并确认启用"],
     ["direct", "重新保存并启用当前直连方案"],
   ] as const)("explains both service and directory repair when %s catalog verification is unavailable", (source, repairAction) => {
     render(<CodexStatusPanel available loading={false} status={{ ...baseStatus, catalogSync: { state: "unavailable", source, models: [] } }} />);
