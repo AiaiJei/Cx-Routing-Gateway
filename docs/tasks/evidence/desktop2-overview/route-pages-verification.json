@@ -196,5 +196,23 @@
     "provider_calls": "NOT_RUN",
     "master_worktree_changed": false,
     "commit_push_pr": "PENDING"
+  },
+  "commit": "0d42e8a9a8204a0d49843ccc7f4f6a1319c66b95",
+  "pull_request": {
+    "number": 30,
+    "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/30",
+    "state": "OPEN",
+    "isDraft": true,
+    "base": "master",
+    "mergeState": "CLEAN"
+  },
+  "independent_review": {
+    "status": "NOT_RUN",
+    "statusContext": "Devin Review",
+    "reportedState": "SUCCESS",
+    "reportedDescription": "Full review skipped: trial expired and no credits remaining",
+    "interpretation": "Skipped review; not a pass",
+    "submittedReviews": 0,
+    "comments": 0
   }
 }

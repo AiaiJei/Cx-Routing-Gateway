@@ -119,7 +119,8 @@
     "runtime_tests": "PASS",
     "browser_layout": "PASS",
     "awg_scope_check": "NOT_RUN",
-    "live_runtime": "NOT_RUN"
+    "live_runtime": "NOT_RUN",
+    "draft_pull_request": 30
   },
   "revision_history": [
     {
@@ -129,5 +130,13 @@
     }
   ],
   "acceptance_result": "PARTIAL",
-  "verification_evidence": "docs/tasks/evidence/desktop2-overview/route-pages-verification.json"
+  "verification_evidence": "docs/tasks/evidence/desktop2-overview/route-pages-verification.json",
+  "pull_request": {
+    "number": 30,
+    "url": "https://github.com/AiaiJei/Cx-Routing-Gateway/pull/30",
+    "state": "OPEN",
+    "isDraft": true,
+    "base": "master"
+  },
+  "independent_review_evidence": "GitHub Devin Review status reported SUCCESS but description says \"Full review skipped: trial expired and no credits remaining\"; no review or comments were submitted. Treat as NOT_RUN."
 }

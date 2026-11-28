@@ -75,8 +75,10 @@ Every page gets its own hierarchy; do not add a repeated KPI-card row or decorat
 
 - [x] Self-review the complete diff against revision 2 scope and preserve the staged overview batch; separate independent review remains `NOT_RUN` in this execution.
 - [x] Run a whitespace check scoped to this task’s changed source and document files.
-- [ ] Commit and push the completed task branch, then open the dedicated Desktop 2.0 PR to `master`.
-- [ ] Do not merge, publish a release, bump versions, package a Desktop build, delete worktrees or alter running Desktop data/processes.
+- [x] Commit `0d42e8a` and push `codex/desktop2-overview`; open Draft PR #30 to `master`.
+- [x] No merge, release, version bump, package build, worktree deletion or running Desktop data/process change.
+
+Independent review is `NOT_RUN`: the GitHub `Devin Review` context reports that the full review was skipped because the trial expired and no credits remain. The PR remains a draft.
 
 ## Evidence and rollback
 
