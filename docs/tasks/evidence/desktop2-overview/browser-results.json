@@ -1,0 +1,38 @@
+{
+  "verification": "PASS",
+  "productionBundle": true,
+  "fixtureClock": "Only injected by isolated QA server for screenshots; absent from production bundle",
+  "viewportEvidence": [
+    {
+      "charts": 2,
+      "mainOverflow": false,
+      "pageOverflow": false,
+      "width": 1600
+    },
+    {
+      "charts": 2,
+      "mainOverflow": false,
+      "pageOverflow": false,
+      "width": 1440
+    },
+    {
+      "charts": 2,
+      "mainOverflow": false,
+      "pageOverflow": false,
+      "width": 1024
+    },
+    {
+      "charts": 2,
+      "mainOverflow": false,
+      "pageOverflow": false,
+      "width": 390
+    }
+  ],
+  "modelSelection": "PASS",
+  "rangeAndRefresh": "PASS",
+  "otherPageScopedStyles": "PASS",
+  "textContrastMinimum": 4.840619966647179,
+  "textContrastIssues": [],
+  "liveRuntime": "NOT_RUN",
+  "providerCalls": "NOT_RUN"
+}

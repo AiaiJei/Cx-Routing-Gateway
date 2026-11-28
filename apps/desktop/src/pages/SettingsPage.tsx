@@ -115,7 +115,7 @@ export function SettingsPage() {
   if (loading || error) return <WorkspaceState title="设置" loading={loading} error={error} />;
 
   return (
-    <div className="page-content">
+    <div className="page-content desktop2-page desktop2-settings">
       <PageHeader title="设置" description="本机 Gateway 与桌面应用的运行选项。" />
       <FixtureNotice live={data.meta.live}>{data.meta.live ? "本机运行时配置" : "示例配置 · 只读"}</FixtureNotice>
       <p className="action-feedback" role="note">{data.meta.live ? "运行时已接入；可调整日志保留条数。" : "运行时未接入，以下配置尚不可更改。"}</p>

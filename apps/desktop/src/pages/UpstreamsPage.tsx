@@ -139,7 +139,7 @@ export function UpstreamsPage() {
   if (loading || error) return <WorkspaceState title="上游服务" loading={loading} error={error} />;
 
   return (
-    <div className="page-content">
+    <div className="page-content desktop2-page desktop2-upstreams">
       <PageHeader title="上游服务" description="管理目标服务与配置的上游出站协议。" action={<Button variant="primary" onClick={() => setFormOpen((open) => !open)}>添加上游</Button>} />
       <FixtureNotice live={data.meta.live}>{data.meta.live ? "本机运行时数据" : "示例数据 · 非实时"}</FixtureNotice>
       <div className="toolbar"><SearchField label="搜索上游服务" value={query} onChange={setQuery} /><span className="result-count">{visibleUpstreams.length} 项</span></div>

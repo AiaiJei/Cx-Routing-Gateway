@@ -64,7 +64,7 @@ export function CredentialsPage() {
   if (loading || error) return <WorkspaceState title="接入凭证" loading={loading} error={error} />;
 
   return (
-    <div className="page-content">
+    <div className="page-content desktop2-page desktop2-credentials">
       <PageHeader title="接入凭证" description="供下游客户端使用的访问凭证管理界面。" action={<Button variant="primary" onClick={() => void createCredential()}>{data.meta.live ? "创建凭证" : "演示创建凭证"}</Button>} />
       <FixtureNotice live={data.meta.live}>{data.meta.live ? "本机凭证 · 仅显示脱敏预览" : "脱敏示例 · 未生成真实密钥"}</FixtureNotice>
       <p className="action-feedback" role="note">{data.meta.live ? "Key 只在创建或轮换结果中显示一次；页面列表只保留脱敏预览。" : "密钥创建、轮换和撤销尚未接入本机运行时。此页仅展示界面。"}</p>

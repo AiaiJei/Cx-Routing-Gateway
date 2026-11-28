@@ -77,7 +77,7 @@ export function RoutesPage() {
   if (loading || error) return <WorkspaceState title="模型路由" loading={loading} error={error} />;
 
   return (
-    <div className="page-content routes-page">
+    <div className="page-content routes-page desktop2-page desktop2-routes">
       <PageHeader title="模型路由" description="将客户端请求映射到上游，响应返回原入站协议。" action={<Button variant="primary" onClick={() => openForm(null)}><span className="button-plus" aria-hidden="true">+</span>添加路由</Button>} />
       {message && <p className="action-feedback" role="status">{message}</p>}
       {formOpen && <RouteEditor route={editingRoute} routes={routes} upstreams={data.upstreams} live={data.meta.live} onSave={saveRoutes} onClose={() => setFormOpen(false)} />}

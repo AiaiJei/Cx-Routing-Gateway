@@ -7,6 +7,7 @@ import "./styles/tokens.css";
 import "./styles/app.css";
 import "./styles/shell.css";
 import "./styles/routes.css";
+import "./styles/desktop2-routes.css";
 import { App } from "./App";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

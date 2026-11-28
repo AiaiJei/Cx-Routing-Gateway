@@ -244,7 +244,7 @@ export function CodexPage() {
     modeActionOnClick = enableDirect;
   }
   return (
-    <div className="page-content codex-page">
+    <div className="page-content codex-page desktop2-page desktop2-codex">
       <PageHeader
         title="Codex"
         description="管理官方或第三方直连供应商，或通过 CX-RG 网关使用模型。"
