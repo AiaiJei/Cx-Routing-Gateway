@@ -65,9 +65,21 @@ export function RequestProtocol({ log }: { log: CallLog }) {
   </>}>{["Res", "Mes", "Chat"].includes(inbound) ? <ProtocolBadge protocol={inbound as Protocol} /> : "—"}</Tooltip>;
 }
 
-export function TokenDetails({ tokens }: { tokens?: RequestTokens }) {
+const usageDiagnosticMessages = {
+  reported: "上游核心用量完整",
+  partial: "上游只返回了部分 Token 用量",
+  missing: "上游未返回 Token 用量",
+  invalid: "上游返回的 Token 用量格式无效",
+} as const;
+
+export function TokenDetails({ tokens, diagnostic }: { tokens?: RequestTokens; diagnostic?: CallLog["usageDiagnostic"] }) {
   return <><dl className="tooltip-facts token-facts">{tokenFields.map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{formatMetric(tokens?.[key])}</dd></div>)}</dl>
-    <p className="helper-text">— 表示未提供。缓存计数按上游口径，可能已计入输入；总量不重复累加缓存。</p></>;
+    <p className="helper-text">— 表示未提供。缓存计数按上游口径，可能已计入输入；总量不重复累加缓存。</p>
+    {diagnostic && <><p className="helper-text">{usageDiagnosticMessages[diagnostic.status]}</p>
+      {diagnostic.missingFields.length > 0 && <p className="helper-text">缺少字段：{diagnostic.missingFields.join("、")}</p>}
+      {diagnostic.invalidFields.length > 0 && <p className="helper-text">格式异常字段：{diagnostic.invalidFields.join("、")}</p>}
+      {diagnostic.sources.length > 0 && <p className="helper-text">用量来源：{diagnostic.sources.join("、")}</p>}
+    </>}</>;
 }
 
 export function RequestTokenSummary({ log }: { log: CallLog }) {

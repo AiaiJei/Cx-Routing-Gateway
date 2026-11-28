@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "project_id": "cx-routing-gateway",
+  "repo_id": "aiaijei-cx-routing-gateway",
+  "task_id": "CXRG-UPSTREAM-USAGE-DIAGNOSTICS-20261128",
+  "contract_revision": 2,
+  "contract_path": ".codex/codex-awg-task-contracts/CXRG-UPSTREAM-USAGE-DIAGNOSTICS-20261128.json",
+  "archive_contract_path": "docs/tasks/2026-11-28-upstream-usage-diagnostics-contract.json",
+  "project": "Cx-Routing Gateway",
+  "repository": "AiaiJei/Cx-Routing-Gateway",
+  "state": "active",
+  "branch": "codex/upstream-usage-diagnostics-20261128",
+  "worktree_directory": ".tmp/worktrees",
+  "worktree": ".tmp/worktrees/upstream-usage-diagnostics-20261128",
+  "base_commit": "37430c9ea09a18ba9eee7c3c3069efa9724f9545",
+  "base_branch": "master",
+  "pull_request_base_branch": "master",
+  "scope_paths": [
+    ".codex/awg-task.json",
+    ".codex/codex-awg-task-contracts/CXRG-UPSTREAM-USAGE-DIAGNOSTICS-20261128.json",
+    ".tmp/worktrees/upstream-usage-diagnostics-20261128",
+    ".tmp/worktrees/upstream-usage-diagnostics-20261128/**",
+    "services/gateway/src/request-metrics.mjs",
+    "services/gateway/src/server.mjs",
+    "tests/runtime/request-metrics.test.mjs",
+    "tests/runtime/gateway-server.test.mjs",
+    "tests/runtime/request-logs.test.mjs",
+    "apps/desktop/src/domain/types.ts",
+    "apps/desktop/src/data/workspace-client.ts",
+    "apps/desktop/src/data/workspace-client.test.ts",
+    "apps/desktop/src/components/RequestLogCells.tsx",
+    "apps/desktop/src/components/RequestLogCells.test.tsx",
+    "apps/desktop/src/pages/LogsPage.tsx",
+    "apps/desktop/src/pages/LogsPage.test.tsx",
+    "docs/tasks/2026-11-28-upstream-usage-diagnostics-contract.json",
+    "docs/tasks/evidence/upstream-usage-diagnostics-20261128/**"
+  ],
+  "allowed_external_paths": [],
+  "authorization": {
+    "implementation": true,
+    "evidence_append": true,
+    "create_worktree": true,
+    "local_tests": true,
+    "local_build": true,
+    "commit": true,
+    "push": true,
+    "pull_request": true,
+    "merge": false,
+    "release": false,
+    "github_release": false,
+    "version_bump": false,
+    "local_desktop_test_release": false,
+    "local_desktop_official_release": false,
+    "isolated_local_smoke": false,
+    "sync_main_worktree": false,
+    "delete": false
+  },
+  "authorization_source": "Owner requested a dedicated PR to diagnose and fix request 2c6e0f92-c8fe-4115-ad4c-78ba2b5a3934 and explicitly authorized execution on 2026-11-28. Isolate the approved usage diagnostic delta on current master 37430c9; PR #16 is stale/conflicting, so do not copy its old stream-completion implementation or modify that PR. Commit, push and open a dedicated PR are authorized; merge, release, version bump, Desktop packaging, main-worktree sync and deletion are not authorized.",
+  "design_gate": {
+    "status": "APPROVED_BY_EXPLICIT_TASK_DIRECTIVE",
+    "basis": "Owner approved distinguishing reported, partial, missing and invalid upstream usage without inventing token values or persisting response bodies or raw SSE, and explaining the diagnosis in request logs."
+  },
+  "revision_history": [
+    {
+      "revision": 1,
+      "reason": "Initial isolated task contract, explicitly authorized by Owner. Pre-write review corrected the base to current master after detecting PR #16 conflicts; keep the approved diagnostic-only scope."
+    },
+    {
+      "revision": 2,
+      "reason": "Expanded the authorized scope to include the Desktop runtime-state mapping test and recorded the approved current-master base after confirming PR #16 has broad merge conflicts."
+    }
+  ],
+  "acceptance_criteria": [
+    "Valid Responses completion usage is captured with its bounded source path and numeric token fields.",
+    "Reported, partial, missing and invalid usage are distinguishable; explicit zero remains zero and unknown values are never fabricated.",
+    "HTTP 200 and protocol completion remain separate from usage completeness; absent usage alone does not misreport a successful response as failed.",
+    "Request logs persist only allowlisted diagnostic metadata; no response body, credential, raw SSE or arbitrary provider text is stored.",
+    "Desktop request logs explain missing or invalid usage separately from numeric token values.",
+    "Regression tests cover normal, zero, missing, partial, malformed and stream termination paths without real provider calls."
+  ],
+  "verification_plan": [
+    "Run node --test tests/runtime/request-metrics.test.mjs tests/runtime/gateway-server.test.mjs tests/runtime/request-logs.test.mjs.",
+    "Run npm test -- src/pages/LogsPage.test.tsx and npm run build from apps/desktop.",
+    "Run npm test from repository root.",
+    "Inspect the final diff, verify no response bodies, credentials or raw SSE are persisted, and obtain independent review before opening the PR."
+  ],
+  "implementation_result": "PASS",
+  "verification_result": "PASS",
+  "verification_followup_result": "PASS",
+  "independent_review": "PASS",
+  "independent_review_followup": "PASS",
+  "independent_review_notes": "Independent read-only review identified stale invalid values and a Messages cache-total edge; both were fixed with regression tests. Follow-up review confirmed fixes and found no actionable issue.",
+  "owner_acceptance": "PENDING",
+  "pull_request": null,
+  "pull_request_state": "NOT_CREATED",
+  "rollback": "Revert only this task's commits on its dedicated branch. Preserve PR #16, PR #28, all other worktrees, existing untracked files, running Desktop processes and user data. Do not merge, release, synchronize master or delete worktrees/files."
+}

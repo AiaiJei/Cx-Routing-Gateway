@@ -1,6 +1,6 @@
 import { finiteMetric, sanitizeTokens } from '../domain/request-log';
 import { workspaceFixtures } from "./fixtures";
-import type { CallLog, RouteTestResult, StreamFailurePhase, UpstreamUpdateInput, WorkspaceFixtures } from "../domain/types";
+import type { CallLog, RouteTestResult, StreamFailurePhase, UpstreamUpdateInput, UsageDiagnostic, UsageDiagnosticField, UsageDiagnosticSource, UsageDiagnosticStatus, WorkspaceFixtures } from "../domain/types";
 
 function httpStatus(value: unknown): number | undefined {
   return typeof value === "number" && Number.isInteger(value) && value >= 100 && value <= 599 ? value : undefined;
@@ -8,6 +8,21 @@ function httpStatus(value: unknown): number | undefined {
 
 function streamFailurePhase(value: unknown): StreamFailurePhase | undefined {
   return value === "upstream_headers" || value === "upstream_body" || value === "downstream_closed" ? value : undefined;
+}
+
+const usageDiagnosticStatuses = new Set<UsageDiagnosticStatus>(["reported", "partial", "missing", "invalid"]);
+const usageDiagnosticSources = new Set<UsageDiagnosticSource>(["usage", "message.usage", "response.usage"]);
+const usageDiagnosticFields = new Set<UsageDiagnosticField>(["usage", "input_tokens", "output_tokens", "prompt_tokens", "completion_tokens", "total_tokens", "cache_read_input_tokens", "cache_creation_input_tokens", "input_tokens_details", "output_tokens_details", "prompt_tokens_details", "completion_tokens_details", "cache_creation", "input_tokens_details.cached_tokens", "output_tokens_details.reasoning_tokens", "prompt_tokens_details.cached_tokens", "completion_tokens_details.reasoning_tokens", "input_tokens_details.audio_tokens", "output_tokens_details.audio_tokens", "prompt_tokens_details.audio_tokens", "completion_tokens_details.audio_tokens", "cache_creation.ephemeral_5m_input_tokens", "cache_creation.ephemeral_1h_input_tokens"]);
+
+function usageDiagnostic(value: unknown): UsageDiagnostic | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const input = value as Record<string, unknown>;
+  if (!usageDiagnosticStatuses.has(input.status as UsageDiagnosticStatus)) return undefined;
+  const filter = <T extends string>(items: unknown, allowed: Set<T>): T[] => Array.isArray(items) ? [...new Set(items.filter((item): item is T => typeof item === "string" && allowed.has(item as T)))] : [];
+  const sources = filter(input.sources, usageDiagnosticSources);
+  const missingFields = filter(input.missingFields, new Set(["input_tokens", "output_tokens", "prompt_tokens", "completion_tokens"]));
+  const invalidFields = filter(input.invalidFields, usageDiagnosticFields);
+  return { status: input.status as UsageDiagnosticStatus, sources, missingFields, invalidFields };
 }
 
 function requestLogStatuses(item: any): Pick<CallLog, "httpStatus" | "upstreamStatus" | "gatewayStatus" | "streamFailurePhase"> {
@@ -87,7 +102,7 @@ export function mapRuntimeState(state: any): WorkspaceFixtures {
     gateway: { state: state.runtimeStatus?.state === "failed" ? "启动失败" : "运行中", url: `http://${state.settings.gatewayHost}:${state.settings.gatewayPort}`, metrics: state.metrics },
     upstreams: state.upstreams.map((item: any) => ({ id: item.id, name: item.name, baseUrl: item.baseUrl, credentialLabel: item.credentialRef ? "已配置（已脱敏）" : "未配置", status: (item.lastCheckedAt ? "已连接" : item.enabled ? "待测试" : "未连接") as WorkspaceFixtures["upstreams"][number]["status"], models: item.models || [] })),
     routes: state.routes.map((item: any) => ({ id: item.id, alias: item.alias, inboundProtocol: protocol(item.inboundProtocol), outboundProtocol: protocol(item.outboundProtocol), enabled: item.enabled, failover: item.failover, ...(item.reasoning ? { reasoning: { min: item.reasoning.min, max: item.reasoning.max } } : {}), ...(item.capabilities ? { capabilities: structuredClone(item.capabilities) } : {}), targets: (item.targets?.length ? item.targets : [{ upstreamId: item.upstreamId, modelId: item.modelId }]).map((target: any) => ({ upstreamId: target.upstreamId, upstreamModel: target.modelId })) })),
-    logs: (state.usage || []).map((item: any) => ({ id: item.requestId, time: item.createdAt, model: item.modelId, credential: "已脱敏", upstream: item.upstreamName || upstreamNames.get(item.upstreamId) || "—", reasoning: typeof item.reasoningEffort === "string" ? item.reasoningEffort : undefined, ...requestLogStatuses(item), ...requestLogTimings(item), error: gatewayErrorDescription(item), direction: `${item.inboundProtocol ?? "—"} → ${item.outboundProtocol ?? "—"} → ${item.inboundProtocol ?? "—"}`, status: (item.status === "completed" ? "成功" : "失败") as WorkspaceFixtures["logs"][number]["status"], durationMs: finiteMetric(item.durationMs) ?? null, stream: typeof item.stream === "boolean" ? item.stream : undefined, firstTokenMs: finiteMetric(item.firstTokenMs), tokens: sanitizeTokens(item.tokens) })),
+    logs: (state.usage || []).map((item: any) => ({ id: item.requestId, time: item.createdAt, model: item.modelId, credential: "已脱敏", upstream: item.upstreamName || upstreamNames.get(item.upstreamId) || "—", reasoning: typeof item.reasoningEffort === "string" ? item.reasoningEffort : undefined, ...requestLogStatuses(item), ...requestLogTimings(item), error: gatewayErrorDescription(item), direction: `${item.inboundProtocol ?? "—"} → ${item.outboundProtocol ?? "—"} → ${item.inboundProtocol ?? "—"}`, status: (item.status === "completed" ? "成功" : "失败") as WorkspaceFixtures["logs"][number]["status"], durationMs: finiteMetric(item.durationMs) ?? null, stream: typeof item.stream === "boolean" ? item.stream : undefined, firstTokenMs: finiteMetric(item.firstTokenMs), tokens: sanitizeTokens(item.tokens), usageDiagnostic: usageDiagnostic(item.usageDiagnostic) })),
     credentials: state.clientKeys.map((item: any) => ({ id: item.id, label: item.name, preview: "cxrg_••••••••", scope: item.scope?.length ? item.scope.join(", ") : "全部模型", createdAt: item.createdAt.slice(0, 10), lastUsed: item.enabled ? (item.lastUsedAt || "暂无记录") : "已撤销", status: item.enabled ? "运行时" as const : "已撤销" as const })),
     settings: [{ label: "Gateway 监听地址", value: state.settings.gatewayHost, available: true }, { label: "本机端口", value: String(state.settings.gatewayPort), available: true }, { label: "日志保留条数", value: `${state.settings.usageRetentionCount ?? 1000} 条`, available: true }, { label: "开机启动", value: "关闭", available: false }],
   };

@@ -47,6 +47,11 @@ export type ModelRoute = {
 
 export type RequestTokens = Partial<Record<'input' | 'output' | 'cacheRead' | 'cacheWrite' | 'total' | 'reasoning' | 'inputAudio' | 'outputAudio' | 'cacheWrite5m' | 'cacheWrite1h', number>>;
 
+export type UsageDiagnosticStatus = "reported" | "partial" | "missing" | "invalid";
+export type UsageDiagnosticSource = "usage" | "message.usage" | "response.usage";
+export type UsageDiagnosticField = "usage" | "input_tokens" | "output_tokens" | "prompt_tokens" | "completion_tokens" | "total_tokens" | "cache_read_input_tokens" | "cache_creation_input_tokens" | "input_tokens_details" | "output_tokens_details" | "prompt_tokens_details" | "completion_tokens_details" | "cache_creation" | "input_tokens_details.cached_tokens" | "output_tokens_details.reasoning_tokens" | "prompt_tokens_details.cached_tokens" | "completion_tokens_details.reasoning_tokens" | "input_tokens_details.audio_tokens" | "output_tokens_details.audio_tokens" | "prompt_tokens_details.audio_tokens" | "completion_tokens_details.audio_tokens" | "cache_creation.ephemeral_5m_input_tokens" | "cache_creation.ephemeral_1h_input_tokens";
+export type UsageDiagnostic = { status: UsageDiagnosticStatus; sources: UsageDiagnosticSource[]; missingFields: string[]; invalidFields: UsageDiagnosticField[] };
+
 export type StreamFailurePhase = "upstream_headers" | "upstream_body" | "downstream_closed";
 
 export type CallLog = {
@@ -71,6 +76,7 @@ export type CallLog = {
   upstreamChunkCount?: number;
   gatewayProcessingMs?: number;
   tokens?: RequestTokens;
+  usageDiagnostic?: UsageDiagnostic;
   error?: string;
 };
 

@@ -3,6 +3,7 @@ import { performance } from 'node:perf_hooks';
 // Observe only bounded, numeric metadata. Never retain response bodies in a log.
 const MAX_FRAME = 256 * 1024;
 const count = value => Number.isSafeInteger(value) && value >= 0;
+const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
 const nonempty = value => typeof value === 'string' && value.length > 0;
 const textContent = value => nonempty(value) || (Array.isArray(value) && value.some(part => nonempty(part?.text)));
 
@@ -23,6 +24,12 @@ function hasGeneration(protocol, event, payload) {
 
 export function createRequestMetrics({ protocol, stream, startedAt, clock = () => performance.now() }) {
   const tokens = {};
+  const usageSources = new Set();
+  const validUsageFields = new Set();
+  const validCoreFields = new Set();
+  const invalidUsageFields = new Set();
+  const requiredUsageFields = protocol === 'Chat' ? ['prompt_tokens', 'completion_tokens'] : ['input_tokens', 'output_tokens'];
+  let usageObjectSeen = false;
   let firstTokenMs;
   let upstreamHeadersMs;
   let upstreamFirstByteMs;
@@ -37,25 +44,75 @@ export function createRequestMetrics({ protocol, stream, startedAt, clock = () =
   const elapsed = value => Number.isFinite(value) && value >= 0 ? value : undefined;
   const put = (name, value) => {
     if (!count(value)) return;
+    if (name === 'total') { reportedTotal = value; return; }
     const affectsTotal = name === 'input' || name === 'output' || (protocol === 'Mes' && ['cacheRead', 'cacheWrite'].includes(name));
     if (affectsTotal && tokens[name] !== value) reportedTotal = undefined;
     tokens[name] = value;
   };
-  function observeUsage(usage) {
-    if (!usage || typeof usage !== 'object') return;
+  function observeUsageValue(field, value, name, core = false) {
+    if (count(value)) {
+      validUsageFields.add(field);
+      invalidUsageFields.delete(field);
+      if (core) validCoreFields.add(field);
+      put(name, value);
+      return;
+    }
+    validUsageFields.delete(field);
+    invalidUsageFields.add(field);
+    delete tokens[name];
+    if (core || name === 'total' || (protocol === 'Mes' && ['cacheRead', 'cacheWrite'].includes(name))) reportedTotal = undefined;
+    if (core) validCoreFields.delete(field);
+  }
+  function observeNestedUsageValue(usage, parent, child, name) {
+    if (!hasOwn(usage, parent)) return;
+    const detail = usage[parent];
+    if (!detail || typeof detail !== 'object' || Array.isArray(detail)) {
+      invalidUsageFields.add(parent);
+      validUsageFields.delete(`${parent}.${child}`);
+      delete tokens[name];
+      if (protocol === 'Mes' && ['cacheRead', 'cacheWrite'].includes(name)) reportedTotal = undefined;
+      return;
+    }
+    invalidUsageFields.delete(parent);
+    if (hasOwn(detail, child)) observeUsageValue(`${parent}.${child}`, detail[child], name);
+  }
+  function observeUsage(usage, source) {
+    if (usage === undefined || usage === null) return;
+    usageObjectSeen = true;
+    usageSources.add(source);
+    if (typeof usage !== 'object' || Array.isArray(usage)) {
+      invalidUsageFields.add('usage');
+      validUsageFields.clear();
+      validCoreFields.clear();
+      for (const name of Object.keys(tokens)) delete tokens[name];
+      reportedTotal = undefined;
+      return;
+    }
+    invalidUsageFields.delete('usage');
     const chat = protocol === 'Chat';
-    put('input', chat ? usage.prompt_tokens : usage.input_tokens);
-    put('output', chat ? usage.completion_tokens : usage.output_tokens);
-    const inputDetails = chat ? usage.prompt_tokens_details : usage.input_tokens_details;
-    const outputDetails = chat ? usage.completion_tokens_details : usage.output_tokens_details;
-    put('cacheRead', protocol === 'Mes' ? usage.cache_read_input_tokens : inputDetails?.cached_tokens);
-    put('cacheWrite', usage.cache_creation_input_tokens);
-    put('cacheWrite5m', usage.cache_creation?.ephemeral_5m_input_tokens);
-    put('cacheWrite1h', usage.cache_creation?.ephemeral_1h_input_tokens);
-    put('reasoning', outputDetails?.reasoning_tokens);
-    put('inputAudio', inputDetails?.audio_tokens);
-    put('outputAudio', outputDetails?.audio_tokens);
-    if (count(usage.total_tokens)) reportedTotal = usage.total_tokens;
+    const inputField = chat ? 'prompt_tokens' : 'input_tokens';
+    const outputField = chat ? 'completion_tokens' : 'output_tokens';
+    if (hasOwn(usage, inputField)) observeUsageValue(inputField, usage[inputField], 'input', true);
+    if (hasOwn(usage, outputField)) observeUsageValue(outputField, usage[outputField], 'output', true);
+    if (protocol === 'Mes' && hasOwn(usage, 'cache_read_input_tokens')) observeUsageValue('cache_read_input_tokens', usage.cache_read_input_tokens, 'cacheRead');
+    else observeNestedUsageValue(usage, chat ? 'prompt_tokens_details' : 'input_tokens_details', 'cached_tokens', 'cacheRead');
+    if (hasOwn(usage, 'cache_creation_input_tokens')) observeUsageValue('cache_creation_input_tokens', usage.cache_creation_input_tokens, 'cacheWrite');
+    observeNestedUsageValue(usage, 'cache_creation', 'ephemeral_5m_input_tokens', 'cacheWrite5m');
+    observeNestedUsageValue(usage, 'cache_creation', 'ephemeral_1h_input_tokens', 'cacheWrite1h');
+    observeNestedUsageValue(usage, chat ? 'completion_tokens_details' : 'output_tokens_details', 'reasoning_tokens', 'reasoning');
+    observeNestedUsageValue(usage, chat ? 'prompt_tokens_details' : 'input_tokens_details', 'audio_tokens', 'inputAudio');
+    observeNestedUsageValue(usage, chat ? 'completion_tokens_details' : 'output_tokens_details', 'audio_tokens', 'outputAudio');
+    if (hasOwn(usage, 'total_tokens')) observeUsageValue('total_tokens', usage.total_tokens, 'total');
+  }
+  function observeUsageCandidates(payload) {
+    for (const [source, usage] of [['usage', payload?.usage], ['message.usage', payload?.message?.usage], ['response.usage', payload?.response?.usage]]) {
+      observeUsage(usage, source);
+    }
+  }
+  function usageDiagnostic() {
+    const missingFields = requiredUsageFields.filter(field => !validCoreFields.has(field));
+    const status = !usageObjectSeen ? 'missing' : missingFields.length === 0 ? 'reported' : validUsageFields.size > 0 ? 'partial' : 'invalid';
+    return { status, sources: [...usageSources], missingFields, invalidFields: [...invalidUsageFields] };
   }
   function observeFrame(frame) {
     const lines = frame.split(/\r?\n/);
@@ -65,7 +122,7 @@ export function createRequestMetrics({ protocol, stream, startedAt, clock = () =
       const payload = JSON.parse(data);
       if (!payload || typeof payload !== 'object') return;
       const event = lines.find(line => line.startsWith('event:'))?.slice(6).trim() || payload.type;
-      observeUsage(payload.usage ?? payload.message?.usage ?? payload.response?.usage);
+      observeUsageCandidates(payload);
       if (firstTokenMs === undefined && hasGeneration(protocol, event, payload)) firstTokenMs = Math.max(0, clock() - startedAt);
     } catch { /* Observability must not alter passthrough behavior. */ }
   }
@@ -94,7 +151,8 @@ export function createRequestMetrics({ protocol, stream, startedAt, clock = () =
     }
   }
   return {
-    observeJson(body) { observeUsage(body?.usage); },
+    observeJson(body) { observeUsageCandidates(body); },
+    usageDiagnostic,
     markUpstreamHeaders() {
       if (!stream || upstreamHeadersMs !== undefined) return;
       upstreamHeadersMs = elapsed(clock() - startedAt);

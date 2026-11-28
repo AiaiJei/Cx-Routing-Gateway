@@ -1,8 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, it } from "vitest";
-import type { CallLog } from "../domain/types";
-import { RequestDuration, RequestStatus } from "./RequestLogCells";
+import type { CallLog, UsageDiagnostic } from "../domain/types";
+import { RequestDuration, RequestStatus, TokenDetails } from "./RequestLogCells";
 
 const log: CallLog = {
   id: "req-timing",
@@ -16,6 +16,16 @@ const log: CallLog = {
   stream: true,
   firstTokenMs: 25,
 };
+
+it.each([
+  [{ status: "missing", sources: [], missingFields: ["input_tokens", "output_tokens"], invalidFields: [] }, "上游未返回 Token 用量"],
+  [{ status: "partial", sources: ["response.usage"], missingFields: ["output_tokens"], invalidFields: [] }, "上游只返回了部分 Token 用量"],
+  [{ status: "invalid", sources: ["usage"], missingFields: ["input_tokens", "output_tokens"], invalidFields: ["input_tokens"] }, "上游返回的 Token 用量格式无效"],
+  [{ status: "reported", sources: ["response.usage"], missingFields: [], invalidFields: [] }, "上游核心用量完整"],
+] as const)("explains %s Token usage diagnostics", (usageDiagnostic, message) => {
+  render(<TokenDetails diagnostic={usageDiagnostic as unknown as UsageDiagnostic} />);
+  expect(screen.getByText(message)).toBeInTheDocument();
+});
 
 it.each([
   [{ ...log, httpStatus: 200 }, "200", "status-positive"],
